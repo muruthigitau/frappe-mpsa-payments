@@ -5,7 +5,7 @@ from typing import Generator
 import frappe
 from frappe import _
 
-from .doctype_names import ACCESS_TOKENS_DOCTYPE
+# from .doctype_names import ACCESS_TOKENS_DOCTYPE
 
 
 def create_payment_gateway(
@@ -39,28 +39,28 @@ def erpnext_app_import_guard() -> Generator:
         frappe.throw(msg, title=_("Missing ERPNext App"))
 
 
-def save_access_token(
-    token: str,
-    expiry_time: str | datetime,
-    fetch_time: str | datetime,
-    associated_setting: str,
-    doctype: str = ACCESS_TOKENS_DOCTYPE,
-) -> bool:
-    doc = frappe.new_doc(doctype)
+# def save_access_token(
+#     token: str,
+#     expiry_time: str | datetime,
+#     fetch_time: str | datetime,
+#     associated_setting: str,
+#     doctype: str = ACCESS_TOKENS_DOCTYPE,
+# ) -> bool:
+#     doc = frappe.new_doc(doctype)
 
-    doc.associated_settings = associated_setting
+#     doc.associated_settings = associated_setting
 
-    doc.access_token = token
-    doc.expiry_time = expiry_time
-    doc.token_fetch_time = fetch_time
+#     doc.access_token = token
+#     doc.expiry_time = expiry_time
+#     doc.token_fetch_time = fetch_time
 
-    try:
-        doc.save(ignore_permissions=True)
-        doc.submit()
+#     try:
+#         doc.save(ignore_permissions=True)
+#         doc.submit()
 
-        return True
+#         return True
 
-    except Exception:
-        # TODO: Not sure what exception is thrown here. Confirm
-        frappe.throw("Error Encountered")
-        return False
+#     except Exception:
+#         # TODO: Not sure what exception is thrown here. Confirm
+#         frappe.throw("Error Encountered")
+#         return False

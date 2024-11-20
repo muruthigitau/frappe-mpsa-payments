@@ -43,11 +43,12 @@ frappe.ui.form.on("MPesa B2C Payment", {
           fields: ["*"],
           filters: {
             // TODO: Fix problem with date filters not working properly
-            creation: [">", frm.doc.start_date],
+            creation: [">=", frm.doc.start_date],
             creation: ["<=", frm.doc.end_date],
           },
         })
         .then((response) => {
+          console.log("Answe",response)
           if (!response.length) {
             throw new Error("No Data Fetched");
           } else {

@@ -6,8 +6,8 @@
 import frappe
 from frappe.model.document import Document
 
-from ...scripts.server.mpesa_connector import MpesaB2CConnector
-from ...utils.definitions import B2CRequestDefinition
+from ...api.mpsa_b2c import MpesaB2CConnector
+from ....utils.definitions import B2CRequestDefinition
 from .. import app_logger
 from ..custom_exceptions import InformationMismatchError
 
@@ -37,10 +37,10 @@ class MPesaB2CPayment(Document):
             for item in self.items:
                 item.validate()
 
-    def on_submit(self) -> None:
+    def before_save(self) -> None:
         setting: Document = frappe.get_doc(
             "Mpesa Settings",
-            {"payment_gateway_name": self.mpesa_setting, "api_type": "Disbursement"},
+            {"payment_gateway_name": self.mpesa_setting, "api_type": "MPesa B2C (Business to Customer)"},
             [
                 "name",
                 "initiator_name",

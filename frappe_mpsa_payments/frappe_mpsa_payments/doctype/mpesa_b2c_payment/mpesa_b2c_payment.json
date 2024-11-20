@@ -113,7 +113,7 @@
    "default": "Today",
    "depends_on": "eval:doc.party_type;",
    "fieldname": "start_date",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "label": "Start Date",
    "mandatory_depends_on": "eval:doc.party_type;"
   },
@@ -121,7 +121,7 @@
    "default": "Today",
    "depends_on": "eval:doc.party_type;",
    "fieldname": "end_date",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "label": "End Date",
    "mandatory_depends_on": "eval:doc.party_type;"
   },
@@ -211,7 +211,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2024-11-20 09:24:13.082289",
+ "modified": "2024-11-20 15:53:49.924878",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",

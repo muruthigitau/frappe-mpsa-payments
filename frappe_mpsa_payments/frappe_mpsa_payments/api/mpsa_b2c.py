@@ -11,14 +11,12 @@ from frappe.utils import get_request_site_address
 from frappe.utils.password import get_decrypted_password
 
 from ...utils.definitions import B2CRequestDefinition
-from ...utils.doctype_names import DARAJA_ACCESS_TOKENS_DOCTYPE
-from ...utils.helpers import save_access_token, update_integration_request
-
 from .base_class import ConnectorBaseClass, ErrorObserver
+from ...utils.helpers import update_integration_request
 
 
 class URLS(Enum):
-    """URLS Constant Exporting class"""
+    """URLs Constant Exporting class"""
 
     SANDBOX = "https://sandbox.safaricom.co.ke"
     PRODUCTION = "https://api.safaricom.co.ke"
@@ -27,12 +25,7 @@ class URLS(Enum):
 class MpesaB2CConnector(ConnectorBaseClass):
     """MPesa B2C Connector Class"""
 
-    def __init__(
-        self,
-        env: str = "sandbox",
-        app_key: bytes | str | None = None,
-        app_secret: bytes | str | None = None,
-    ) -> None:
+    def __init__(self, env="sandbox", app_key=None, app_secret=None):
         """Setup configuration for Mpesa connector and generate new access token."""
         super().__init__()
 
@@ -43,106 +36,44 @@ class MpesaB2CConnector(ConnectorBaseClass):
         self.app_key = app_key
         self.app_secret = app_secret
 
-        if env == "sandbox":
-            self.base_url = URLS.SANDBOX.value
-        else:
-            self.base_url = URLS.PRODUCTION.value
+        self.base_url = URLS.SANDBOX.value if env == "sandbox" else URLS.PRODUCTION.value
 
         self.attach(ErrorObserver())
 
-    def authenticate(self, setting: str) -> dict[str, str | datetime] | None:
-        """Authenticate at following endpoint:
-        https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials (for sandbox)
-
-        Args:
-            setting (str): The Mpesa Settings record to fetch Credentials from
-
-        Returns:
-            dict[str, str | datetime] | None: The fetched response if request was successful.
-            Otherwise an error is raised.
-        """
+    def authenticate(self) -> str:
+        """Fetch a new access token from MPesa API."""
         authenticate_uri = "/oauth/v1/generate?grant_type=client_credentials"
         authenticate_url = f"{self.base_url}{authenticate_uri}"
-
-        r = requests.get(
+        
+        # Use the app credentials to fetch the token
+        response = requests.get(
             authenticate_url,
             auth=HTTPBasicAuth(self.app_key, self.app_secret),
-            timeout=120,
+            timeout=60,
         )
-
-        if r.status_code < 400:
-            # Success state
-            response = r.json()
-
-            self.authentication_token = response["access_token"]
-            self.expires_in = datetime.now() + timedelta(
-                seconds=int(response["expires_in"])
-            )
-            fetch_time = datetime.now()
-
-            # Save access token details
-            # save_access_token(
-            #     token=self.authentication_token,
-            #     expiry_time=self.expires_in,
-            #     fetch_time=fetch_time,
-            #     associated_setting=setting,
-            # )
-
-            # return {
-            #     "access_token": self.authentication_token,
-            #     "expires_in": self.expires_in,
-            #     "fetched_time": fetch_time,
-            # }
+        
+        # Handle API response
+        if response.status_code == 200:
+            data = response.json()
+            self.authentication_token = data["access_token"]
+            self.expires_in = datetime.now() + timedelta(seconds=int(data["expires_in"]))
             return self.authentication_token
+        else:
+            error_msg = f"Failed to authenticate: {response.status_code} - {response.text}"
+            frappe.throw(error_msg)
 
-        # Failure State
-        # frappe.throw(
-        #     f"Can't get token with provided Credentials for setting: <b>{setting}</b>",
-        #     title="Error",
-        # )
-
-    def make_b2c_payment_request(
-        self, request_data: B2CRequestDefinition
-    ) -> str | None:
-        """Initiates a B2C Payment Request to Daraja at following link:
-        https://sandbox.safaricom.co.ke/mpesa/b2c/v3/paymentrequest (for sandbox)
-
-        Args:
-            request_data (B2CRequestDefinition): The data used to generate the request JSON
-
-        Returns:
-            str | None: The Initial response after making the request
-        """
-        # Check if valid Access Token exists
-        # token = frappe.db.get_value(
-        #     DARAJA_ACCESS_TOKENS_DOCTYPE,
-        #     {
-        #         "associated_settings": request_data.Setting,
-        #         "expiry_time": [">", datetime.now()],
-        #     },
-        #     ["name", "access_token"],
-        #     as_dict=True,
-        # )
-        token = self.authenticate(request_data.Setting)
-        if not token:
-            # If no valid token is present in DB
+    def make_b2c_payment_request(self, request_data: B2CRequestDefinition) -> dict:
+        """Make a B2C Payment Request."""
+        # Ensure token is valid or fetch a new one
+        if not self.authentication_token or datetime.now() >= self.expires_in:
             self.app_key = request_data.ConsumerKey
             self.app_secret = request_data.ConsumerSecret
-
-            # Fetch and save credentials
-            self.authentication_token = self.authenticate(request_data.Setting)[
-                "access_token"
-            ]
-
-        else:
-            self.authentication_token = get_decrypted_password(
-                DARAJA_ACCESS_TOKENS_DOCTYPE, token.name, "access_token"
-            )
-
+            self.authentication_token = self.authenticate()
         saf_url = f"{self.base_url}/mpesa/b2c/v3/paymentrequest"
-        # callback_url = f"https://{urlparse(get_request_site_address(full_address=True)).hostname}/api/method/navari_mpesa_b2c.mpesa_b2c.scripts.server.mpesa_connector.results_callback_url"
-        
-        callback_url = f"https://{urlparse(get_request_site_address(full_address=True)).hostname}/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.results_callback_url"
+        callback_url = (
+            f"https://{urlparse(get_request_site_address(full_address=True)).hostname}"
+            "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.results_callback_url"
+        )
 
         payload = request_data.to_json(
             {
@@ -155,45 +86,59 @@ class MpesaB2CConnector(ConnectorBaseClass):
             "Content-Type": "application/json",
         }
 
-        # Create Integration Request
-        self.integration_request = create_request_log(
+        # Log the integration request
+        integration_request_name = create_request_log(
             url=saf_url,
             is_remote_request=1,
             data=payload,
-            service_name="Mpesa",
+            service_name="Mpesa B2C",
             name=request_data.OriginatorConversationID,
             error=None,
             request_headers=headers,
         ).name
-
         try:
             response = requests.post(
                 saf_url,
-                data=payload,
+                json=payload,
                 headers=headers,
                 timeout=60,
             )
-
+            frappe.throw(str(response))
             response.raise_for_status()
-
-        except (requests.HTTPError, requests.ConnectionError) as e:
+            
+            return response.json()
+        except requests.HTTPError as e:
             self.error = e
             self.notify()
-
-        return response.json()
+            error_msg = f"HTTP error during B2C request: {e.response.status_code} - {e.response.text}"
+            frappe.log_error(error_msg, "Error")
+            frappe.throw(error_msg)
+        except Exception as e:
+        # General exception handling
+            error_msg = (
+                f"Unexpected error: {str(e)}\n"
+            )
+            frappe.log_error(error_msg, "Mpesa B2C UnexpectedError")
+            frappe.throw("An unexpected error occurred during the B2C request. Please check the error log.")
 
 
 @frappe.whitelist(allow_guest=True)
-def results_callback_url(**kwargs) -> None:
-    """Callback URL"""
+def results_callback_url(**kwargs) -> dict:
+    """Handle the callback from MPesa API."""
     result = frappe._dict(kwargs["Result"])
 
     if result.ResultCode != 0:
-        # If Failure Response
         update_integration_request(
             result.OriginatorConversationID,
             "Failed",
             output=result,
             error=result.ResultDesc,
+        )
+        frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
+    else:
+        update_integration_request(
+            result.OriginatorConversationID,
+            "Success",
+            output=result,
         )
     return result
