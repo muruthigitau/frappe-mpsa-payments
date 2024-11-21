@@ -4,12 +4,13 @@ from urllib.parse import urlparse
 
 import requests
 from requests.auth import HTTPBasicAuth
+import traceback
 
 import frappe
 from frappe.integrations.utils import create_request_log
 from frappe.utils import get_request_site_address
 from frappe.utils.password import get_decrypted_password
-
+import json
 from ...utils.definitions import B2CRequestDefinition
 from .base_class import ConnectorBaseClass, ErrorObserver
 from ...utils.helpers import update_integration_request
@@ -75,12 +76,12 @@ class MpesaB2CConnector(ConnectorBaseClass):
             "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.results_callback_url"
         )
 
-        payload = request_data.to_json(
-            {
-                "QueueTimeOutURL": callback_url,
-                "ResultURL": callback_url,
-            }
-        )
+        payload_dict = {
+        **request_data.to_dict(), 
+        "QueueTimeOutURL": callback_url,
+        "ResultURL": callback_url,
+    }
+
         headers = {
             "Authorization": f"Bearer {self.authentication_token}",
             "Content-Type": "application/json",
@@ -90,7 +91,7 @@ class MpesaB2CConnector(ConnectorBaseClass):
         integration_request_name = create_request_log(
             url=saf_url,
             is_remote_request=1,
-            data=payload,
+            data=payload_dict,
             service_name="Mpesa B2C",
             name=request_data.OriginatorConversationID,
             error=None,
@@ -99,24 +100,22 @@ class MpesaB2CConnector(ConnectorBaseClass):
         try:
             response = requests.post(
                 saf_url,
-                json=payload,
+                json=payload_dict,
                 headers=headers,
                 timeout=60,
             )
-            frappe.throw(str(response))
             response.raise_for_status()
-            
             return response.json()
         except requests.HTTPError as e:
             self.error = e
-            self.notify()
+            # self.notify()
             error_msg = f"HTTP error during B2C request: {e.response.status_code} - {e.response.text}"
             frappe.log_error(error_msg, "Error")
             frappe.throw(error_msg)
         except Exception as e:
-        # General exception handling
             error_msg = (
                 f"Unexpected error: {str(e)}\n"
+                f"Traceback: {traceback.format_exc()}"
             )
             frappe.log_error(error_msg, "Mpesa B2C UnexpectedError")
             frappe.throw("An unexpected error occurred during the B2C request. Please check the error log.")
@@ -126,19 +125,21 @@ class MpesaB2CConnector(ConnectorBaseClass):
 def results_callback_url(**kwargs) -> dict:
     """Handle the callback from MPesa API."""
     result = frappe._dict(kwargs["Result"])
-
-    if result.ResultCode != 0:
+    
+    result_json = json.dumps(result)
+    if result.get("ResultCode") != 0:
         update_integration_request(
-            result.OriginatorConversationID,
+            result.get("OriginatorConversationID"),
             "Failed",
-            output=result,
-            error=result.ResultDesc,
+            output=result_json,
+            error=result.get("ResultDesc"),
         )
         frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
     else:
+        print(str(result))
         update_integration_request(
-            result.OriginatorConversationID,
-            "Success",
-            output=result,
+            result.get("OriginatorConversationID"),
+            "Completed",
+            output=result_json,
         )
-    return result
+    return "Success"
