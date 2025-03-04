@@ -11,6 +11,15 @@ frappe.ui.form.on('Mpesa Settings', {
 			frm.reload_doc();
 			frm.events.setup_account_balance_html(frm);
 		});
+
+		frappe.realtime.on("mpesa_transaction_status", function(data) {
+            console.log("Real-time update received:", data);
+            frappe.msgprint({
+                message: __(data.message),
+                title: data.status === "success" ? "Success" : "Error",
+                indicator: data.status === "success" ? "green" : "red"
+            });
+        });
 	},
 
 	get_account_balance: function(frm) {
@@ -35,8 +44,8 @@ frappe.ui.form.on('Mpesa Settings', {
 	},
 
 	check_transaction_status: function(frm) {
-		if (!frm.doc.initiator_name && !frm.doc.initiator_password) {
-			frappe.throw(__("Please set the initiator name and the initiator password"));
+		if (!frm.doc.initiator_name && !frm.doc.security_credential) {
+			frappe.throw(__("Please set the initiator name and the security credential"));
 		}
 		frappe.clear_cache;
 		frappe.prompt(
@@ -62,26 +71,26 @@ frappe.ui.form.on('Mpesa Settings', {
 						remarks: values.remarks
 					},
 					callback: (r) => {
-						if (r.message) {
-							if (r.message.ResponseCode === "0") {
-								frappe.msgprint({
-									message: __("Transaction Status: {0}", [r.message.ResponseDescription]),
-									title: "Success",
-									indicator: "green",
-								});
-							} else {
-								frappe.msgprint({
-									message: r.message.errorCode + ": " + r.message.errorMessage,
-									title: "Error",
-									indicator: "red",
-								});
-							}
+						if (r.message && r.message.status === "queued") {
+						} else {
+							frappe.msgprint({
+								message: __(r.message.message),
+								title: r.message.status === "error" ? "Error" : "Success",
+								indicator: r.message.status === "error" ? "red" : "green"
+							});
 						}
+					},
+					error: (err) => {
+						frappe.msgprint({
+							message: __("An error occurred: {0}", [err.message]),
+							title: "Error",
+							indicator: "red"
+						});
 					}
 				});
 			},
 			__("Transaction Status Query"),
 			__("Submit")
 		);
-	}
+	},
 });
