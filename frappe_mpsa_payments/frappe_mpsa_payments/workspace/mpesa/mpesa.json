@@ -1,7 +1,7 @@
 {
  "charts": [],
- "content": "[{\"id\":\"NCFKBQmrd4\",\"type\":\"card\",\"data\":{\"card_name\":\"Mpesa\",\"col\":4}}]",
- "creation": "2025-02-17 08:04:20.157928",
+ "content": "[{\"id\":\"nu2bkf51Ir\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Mpesa</span>\",\"col\":12}},{\"id\":\"wpupG131up\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"vf0kf-mCfu\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Configurations</b></span>\",\"col\":6}},{\"id\":\"Z_7QeXNH1Q\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Payments</b></span>\",\"col\":6}},{\"id\":\"3MP5wad0YH\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Settings\",\"col\":6}},{\"id\":\"O9RAIWJMwq\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa C2B Payment Register\",\"col\":6}},{\"id\":\"XvfvPaM0Om\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa C2B Payment Register URL\",\"col\":6}},{\"id\":\"Y5fdZwXWPe\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Payment Reconciliation\",\"col\":6}},{\"id\":\"lXslUPOYRR\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Public Key Certificate\",\"col\":6}}]",
+ "creation": "2025-03-06 09:26:13.194859",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -9,121 +9,11 @@
  "hide_custom": 0,
  "icon": "money-coins-1",
  "idx": 0,
- "indicator_color": "",
+ "indicator_color": "green",
  "is_hidden": 0,
  "label": "Mpesa",
- "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa Settings",
-   "link_count": 0,
-   "link_to": "Mpesa Settings",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa C2B Payment Register",
-   "link_count": 0,
-   "link_to": "Mpesa C2B Payment Register",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa C2B Payment Register URL",
-   "link_count": 0,
-   "link_to": "Mpesa C2B Payment Register URL",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa Public Key Certificate",
-   "link_count": 0,
-   "link_to": "Mpesa Public Key Certificate",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa Payment Reconciliation",
-   "link_count": 0,
-   "link_to": "Mpesa Payment Reconciliation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa",
-   "link_count": 5,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa Settings",
-   "link_count": 0,
-   "link_to": "Mpesa Settings",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa C2B Payment Register URL",
-   "link_count": 0,
-   "link_to": "Mpesa C2B Payment Register URL",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa C2B Payment Register",
-   "link_count": 0,
-   "link_to": "Mpesa C2B Payment Register",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa Public Key Certificate",
-   "link_count": 0,
-   "link_to": "Mpesa Public Key Certificate",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Mpesa Payment Reconciliation",
-   "link_count": 0,
-   "link_to": "Mpesa Payment Reconciliation",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  }
- ],
- "modified": "2025-02-17 08:11:20.924151",
+ "links": [],
+ "modified": "2025-03-06 09:36:10.001167",
  "modified_by": "mwendwa@navari.co.ke",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa",
@@ -134,6 +24,45 @@
  "quick_lists": [],
  "roles": [],
  "sequence_id": 48.0,
- "shortcuts": [],
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Mpesa Settings",
+   "link_to": "Mpesa Settings",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Mpesa C2B Payment Register",
+   "link_to": "Mpesa C2B Payment Register",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Mpesa C2B Payment Register URL",
+   "link_to": "Mpesa C2B Payment Register URL",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Mpesa Payment Reconciliation",
+   "link_to": "Mpesa Payment Reconciliation",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Mpesa Public Key Certificate",
+   "link_to": "Mpesa Public Key Certificate",
+   "type": "DocType"
+  }
+ ],
  "title": "Mpesa"
 }
