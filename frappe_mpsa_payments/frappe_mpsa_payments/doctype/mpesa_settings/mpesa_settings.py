@@ -16,14 +16,21 @@ import frappe
 from frappe import _, get_single
 from frappe.integrations.utils import create_request_log
 from frappe.model.document import Document
-from frappe.utils import call_hook_method, fmt_money, get_request_site_address, get_link_to_form
+from frappe.utils import (
+    call_hook_method,
+    fmt_money,
+    get_request_site_address,
+    get_link_to_form,
+)
 from frappe.utils.file_manager import get_file_path
 
 from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE
 from ....utils.utils import erpnext_app_import_guard
 from .mpesa_connector import MpesaConnector
 from .mpesa_custom_fields import create_custom_pos_fields
-from frappe_mpsa_payments.utils.encoding_initiator_password import generate_security_credential
+from frappe_mpsa_payments.utils.encoding_initiator_password import (
+    generate_security_credential,
+)
 
 
 class MpesaSettings(Document):
@@ -68,7 +75,7 @@ class MpesaSettings(Document):
     def get_payment_url(self, **kwargs) -> str:
         """Return the payment URL"""
         return "/all-products"
-    
+
     def on_update(self) -> None:
         """On Update Hook"""
         from ....utils.utils import create_payment_gateway
@@ -174,7 +181,6 @@ def generate_stk_push(**kwargs) -> str | Any:
     try:
         callback_url = (
             get_request_site_address(True)
-            # "https://9836-41-80-117-181.ngrok-free.app"
             + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.verify_transaction"
         )
 
@@ -192,9 +198,10 @@ def generate_stk_push(**kwargs) -> str | Any:
             app_key=mpesa_settings.consumer_key,
             app_secret=mpesa_settings.get_password("consumer_secret"),
         )
-        # phone_no='0740743521'
-        mobile_number=sanitize_mobile_number(args.phone_number)
-        # mobile_number = sanitize_mobile_number(args.sender)
+        mobile_number = sanitize_mobile_number(
+            args.phone_number if args.phone_number else args.sender
+        )
+
         response = connector.stk_push(
             business_shortcode=business_shortcode,
             amount=args.request_amount,
@@ -393,6 +400,7 @@ def create_mode_of_payment(gateway: str, payment_type: str = "General") -> Docum
 
     return frappe.get_doc("Mode of Payment", mode_of_payment)
 
+
 @frappe.whitelist()
 def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
 
@@ -404,8 +412,14 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
         parsed_url = urlparse(site_address)
         site_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
 
-        queue_timeout_url = site_url + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout"
-        result_url = site_url + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_transaction_status_result"
+        queue_timeout_url = (
+            site_url
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout"
+        )
+        result_url = (
+            site_url
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_transaction_status_result"
+        )
 
         integration_request = frappe.get_doc({
             "doctype": "Integration Request",
@@ -464,7 +478,7 @@ def process_transaction_status(integration_request_name):
         connector = MpesaConnector(
             env="production" if not settings.sandbox else "sandbox",
             app_key=settings.consumer_key,
-            app_secret=settings.get_password("consumer_secret")
+            app_secret=settings.get_password("consumer_secret"),
         )
 
         response = connector.transaction_status(
@@ -476,7 +490,7 @@ def process_transaction_status(integration_request_name):
             remarks=remarks,
             occasion="",
             queue_timeout_url=queue_timeout_url,
-            result_url=result_url
+            result_url=result_url,
         )
 
         if response.get("ResponseCode") == "0":

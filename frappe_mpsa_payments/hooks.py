@@ -2,7 +2,7 @@ app_name = "frappe_mpsa_payments"
 app_title = "Frappe Mpesa Payments"
 app_publisher = "Navari Limited"
 app_description = "Frappe Mpesa Payments"
-app_email = "solutions@navari.co.ke"
+app_email = "support@navari.co.ke"
 app_license = "agpl-3.0"
 
 # Apps
