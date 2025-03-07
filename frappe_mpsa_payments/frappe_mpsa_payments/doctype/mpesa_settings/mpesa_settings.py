@@ -412,24 +412,6 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
         parsed_url = urlparse(site_address)
         site_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
 
-        # Retrieve the public certificate path from the Mpesa Public Key Certificate doctype
-        certificate_type = (
-            "sandbox_certificate" if settings.sandbox else "production_certificate"
-        )
-        public_cert_path = frappe.db.get_single_value(
-            "Mpesa Public Key Certificate", certificate_type
-        )
-
-        if not public_cert_path:
-            frappe.throw(
-                f"Certificate file for {certificate_type} not found in {get_link_to_form(r'Mpesa Public Key Certificate', r'Mpesa Public Key Certificate')} doctype."
-            )
-
-        # Generate security credential
-        security_credential = generate_security_credential(
-            settings.get_password("initiator_password"), public_cert_path
-        )
-
         queue_timeout_url = (
             site_url
             + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout"
@@ -439,6 +421,60 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
             + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_transaction_status_result"
         )
 
+        integration_request = frappe.get_doc({
+            "doctype": "Integration Request",
+            "is_remote_request": 1,
+            "integration_request_service": "Mpesa Transaction Status",
+            "reference_doctype": "Mpesa C2B Payment Register",
+            "status": "Queued",
+            "data": dumps({
+                "mpesa_settings": mpesa_settings,
+                "transaction_id": transaction_id,
+                "remarks": remarks,
+                "queue_timeout_url": queue_timeout_url,
+                "result_url": result_url
+            }),
+            "method": "POST"
+        }).insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        frappe.enqueue(
+            "frappe_mpsa_payments.frappe_mpsa_payments.doctype.mpesa_settings.mpesa_settings.process_transaction_status",
+            queue="short",
+            timeout=300,
+            job_id=f"mpesa_status_{integration_request.name}",
+            integration_request_name=integration_request.name,
+            deduplicate=True
+        )
+
+        frappe.publish_realtime(
+            event="mpesa_transaction_status",
+            message={"status": "queued", "message": _("Transaction status check queued for processing")},
+            user=frappe.session.user
+        )
+        return {"status": "queued", "message": "Transaction status check queued"}
+
+    except Exception as e:
+        frappe.log_error(title="Mpesa Transaction Status Queue Error", message=str(e))
+        return {"status": "error", "message": str(e)}
+
+
+def process_transaction_status(integration_request_name):
+    """Process the Mpesa transaction status check in the background"""
+    try:
+
+        integration_request = frappe.get_doc("Integration Request", integration_request_name)
+        data = loads(integration_request.data)
+
+        mpesa_settings = data["mpesa_settings"]
+        transaction_id = data["transaction_id"]
+        remarks = data["remarks"]
+        queue_timeout_url = data["queue_timeout_url"]
+        result_url = data["result_url"]
+
+        settings = frappe.get_doc("Mpesa Settings", mpesa_settings)
+
+        # Initialize Mpesa Connector
         connector = MpesaConnector(
             env="production" if not settings.sandbox else "sandbox",
             app_key=settings.consumer_key,
@@ -447,20 +483,52 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
 
         response = connector.transaction_status(
             initiator=settings.initiator_name,
-            security_credential=security_credential,
+            security_credential=settings.security_credential,
             transaction_id=transaction_id,
-            party_a=(
-                settings.business_shortcode
-                if not settings.sandbox
-                else settings.till_number
-            ),
-            identifier_type=4,  # Assuming Organization Short Code
+            party_a=settings.business_shortcode if not settings.sandbox else settings.till_number,
+            identifier_type=4,  # Organization Short Code
             remarks=remarks,
             occasion="",
             queue_timeout_url=queue_timeout_url,
             result_url=result_url,
         )
-        return response
+
+        if response.get("ResponseCode") == "0":
+            integration_request.status = "Completed"
+            integration_request.output = dumps(response)
+            integration_request.save(ignore_permissions=True)
+            frappe.db.commit()
+
+            frappe.publish_realtime(
+                event="mpesa_transaction_status",
+                message={
+                    "status": "success",
+                    "message": f"Transaction Status: {response.get('ResponseDescription')}"
+                },
+                user=frappe.session.user
+            )
+        else:
+            error_msg = f"{response.get('errorCode', 'Unknown')}: {response.get('errorMessage', 'Unknown error')}"
+            integration_request.status = "Failed"
+            integration_request.output = error_msg
+            integration_request.save(ignore_permissions=True)
+            frappe.db.commit()
+
+            frappe.publish_realtime(
+                event="mpesa_transaction_status",
+                message={"status": "error", "message": error_msg},
+                user=frappe.session.user
+            )
+
     except Exception as e:
-        frappe.log_error(title="Mpesa Transaction Status Error", message=str(e))
-        return {"status": "error", "message": str(e)}
+        integration_request.status = "Failed"
+        integration_request.output = str(e)
+        integration_request.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        frappe.log_error(title="Mpesa Transaction Status Process Error", message=str(e))
+        frappe.publish_realtime(
+            event="mpesa_transaction_status",
+            message={"status": "error", "message": f"Error checking status: {str(e)}"},
+            user=frappe.session.user
+        )

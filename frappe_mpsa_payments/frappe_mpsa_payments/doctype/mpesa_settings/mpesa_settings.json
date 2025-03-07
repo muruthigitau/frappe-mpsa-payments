@@ -12,7 +12,6 @@
   "sandbox",
   "section_break_lkry",
   "initiator_name",
-  "initiator_password",
   "consumer_key",
   "consumer_secret",
   "security_credential",
@@ -124,18 +123,13 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "initiator_password",
-   "fieldtype": "Password",
-   "label": "Initiator Password"
-  },
-  {
    "fieldname": "check_transaction_status",
    "fieldtype": "Button",
    "label": "Check Transaction Status"
   }
  ],
  "links": [],
- "modified": "2025-02-18 11:17:04.338605",
+ "modified": "2025-03-04 09:42:54.120902",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",
