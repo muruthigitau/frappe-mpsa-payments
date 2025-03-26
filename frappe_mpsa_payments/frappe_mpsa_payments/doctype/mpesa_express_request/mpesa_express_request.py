@@ -19,8 +19,9 @@ class MpesaExpressRequest(Document):
             "payment_gateway": self.payment_gateway,
             "phone_number": self.phone_number,
             "request_amount": self.amount,
-            "doctype": self.doctype,
+            "doctype": self.doctype, 
             "document_name": self.name,
+            "reference_name": self.reference_name,
         }
 
         try:

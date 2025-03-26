@@ -32,6 +32,7 @@ from frappe_mpsa_payments.utils.encoding_initiator_password import (
     generate_security_credential,
 )
 
+from ...api.m_pesa_api import get_account_balance
 
 class MpesaSettings(Document):
     supported_currencies = ["KES"]
@@ -267,40 +268,6 @@ def get_completed_integration_requests_info(
 
     return mpesa_receipts, completed_payments
 
-
-def get_account_balance(request_payload: dict) -> str | dict | None:
-    """Call account balance API to send the request to the Mpesa Servers."""
-    try:
-        mpesa_settings = frappe.get_doc(
-            "Mpesa Settings", request_payload.get("reference_docname")
-        )
-        env = "production" if not mpesa_settings.sandbox else "sandbox"
-        connector = MpesaConnector(
-            env=env,
-            app_key=mpesa_settings.consumer_key,
-            app_secret=mpesa_settings.get_password("consumer_secret"),
-        )
-
-        callback_url = (
-            get_request_site_address(True)
-            + "/api/method/payments.payment_gateways.doctype.mpesa_settings.mpesa_settings.process_balance_info"
-        )
-
-        response = connector.get_balance(
-            mpesa_settings.initiator_name,
-            mpesa_settings.security_credential,
-            mpesa_settings.till_number,
-            4,
-            mpesa_settings.name,
-            callback_url,
-            callback_url,
-        )
-        return response
-    except Exception:
-        frappe.log_error("Mpesa: Failed to get account balance")
-        frappe.throw(
-            _("Please check your configuration and try again"), title=_("Error")
-        )
 
 
 @frappe.whitelist(allow_guest=True)

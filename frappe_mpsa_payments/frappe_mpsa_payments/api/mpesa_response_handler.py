@@ -84,12 +84,12 @@ def stk_push_on_success(response: dict, payload: dict, document_name: str, **kwa
 
         frappe.publish_realtime(event='refresh_form', doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=document_name)
 
-        frappe.enqueue(
-            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.check_transaction_status",
-            name=document_name,
-            enqueue_after_commit=True,
-            timeout=300
-        )
+        # frappe.enqueue(
+        #     "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.check_transaction_status",
+        #     name=document_name,
+        #     enqueue_after_commit=True,
+        #     timeout=300
+        # )
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), f"STK Push Success Error for {document_name}")
