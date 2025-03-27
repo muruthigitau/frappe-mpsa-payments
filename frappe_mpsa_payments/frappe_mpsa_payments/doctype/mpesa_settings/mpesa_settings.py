@@ -24,14 +24,15 @@ from frappe.utils import (
 )
 from frappe.utils.file_manager import get_file_path
 
-from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE
-from ....utils.utils import erpnext_app_import_guard
+from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
+from ....utils.utils import erpnext_app_import_guard, create_payment_gateway_account
 from .mpesa_connector import MpesaConnector
 from .mpesa_custom_fields import create_custom_pos_fields
 from frappe_mpsa_payments.utils.encoding_initiator_password import (
     generate_security_credential,
 )
 
+from ...api.m_pesa_api import get_account_balance
 
 class MpesaSettings(Document):
     supported_currencies = ["KES"]
@@ -88,16 +89,23 @@ class MpesaSettings(Document):
             settings="Mpesa Settings",
             controller=self.payment_gateway_name,
         )
-        call_hook_method(
-            "payment_gateway_enabled",
+        
+        # erpnext create_payment_gateway_account doesn't allow for company to be passed, ovveriden
+        # call_hook_method(
+        #     "payment_gateway_enabled",
+        #     gateway="Mpesa-" + self.payment_gateway_name,
+        #     payment_channel="Phone",
+        # )
+        create_payment_gateway_account(
             gateway="Mpesa-" + self.payment_gateway_name,
             payment_channel="Phone",
+            company=self.company,
         )
 
         # required to fetch the bank account details from the payment gateway account
         frappe.db.commit()  # nosemgrep
         create_mode_of_payment(
-            "Mpesa-" + self.payment_gateway_name, payment_type="Phone"
+            "Mpesa-" + self.payment_gateway_name, payment_type="Phone", company=self.company
         )
 
     def request_for_payment(self, **kwargs) -> None:
@@ -111,9 +119,20 @@ class MpesaSettings(Document):
 
                 response = frappe._dict(get_payment_request_response_payload(amount))
             else:
-                response = frappe._dict(generate_stk_push(**args))
-
-            self.handle_api_response("CheckoutRequestID", args, response)
+                # payment_request = frappe.get_doc(args.get("reference_doctype"), args.get("reference_docname"))
+                stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
+                stk_request.update({
+                    "amount": args.get("request_amount", 0.0),
+                    "phone_number": args.get("phone_number", ""),
+                    "timestamp": frappe.utils.now(),
+                    "settings": args.payment_gateway[6:],
+                    "payment_gateway": args.get("payment_gateway"),
+                    "reference_doctype": args.get("reference_doctype"),
+                    "reference_name": args.get("reference_docname"),
+                })
+                stk_request.flags.ignore_permissions = True
+                stk_request.insert(ignore_permissions=True)
+                stk_request.submit()
 
     def split_request_amount_according_to_transaction_limit(
         self, args: frappe._dict
@@ -139,20 +158,12 @@ class MpesaSettings(Document):
 
     @frappe.whitelist()
     def get_account_balance_info(self) -> None:
-        payload = dict(
-            reference_doctype="Mpesa Settings",
-            reference_docname=self.name,
-            doc_details=vars(self),
-        )
-
         if frappe.flags.in_test:
             from .test_mpesa_settings import get_test_account_balance_response
 
-            response = frappe._dict(get_test_account_balance_response())
+            frappe._dict(get_test_account_balance_response())
         else:
-            response = frappe._dict(get_account_balance(payload))
-
-        self.handle_api_response("ConversationID", payload, response)
+            get_account_balance(self.name)
 
     def handle_api_response(
         self, global_id: str, request_dict: frappe._dict, response: frappe._dict
@@ -258,40 +269,6 @@ def get_completed_integration_requests_info(
     return mpesa_receipts, completed_payments
 
 
-def get_account_balance(request_payload: dict) -> str | dict | None:
-    """Call account balance API to send the request to the Mpesa Servers."""
-    try:
-        mpesa_settings = frappe.get_doc(
-            "Mpesa Settings", request_payload.get("reference_docname")
-        )
-        env = "production" if not mpesa_settings.sandbox else "sandbox"
-        connector = MpesaConnector(
-            env=env,
-            app_key=mpesa_settings.consumer_key,
-            app_secret=mpesa_settings.get_password("consumer_secret"),
-        )
-
-        callback_url = (
-            get_request_site_address(True)
-            + "/api/method/payments.payment_gateways.doctype.mpesa_settings.mpesa_settings.process_balance_info"
-        )
-
-        response = connector.get_balance(
-            mpesa_settings.initiator_name,
-            mpesa_settings.security_credential,
-            mpesa_settings.till_number,
-            4,
-            mpesa_settings.name,
-            callback_url,
-            callback_url,
-        )
-        return response
-    except Exception:
-        frappe.log_error("Mpesa: Failed to get account balance")
-        frappe.throw(
-            _("Please check your configuration and try again"), title=_("Error")
-        )
-
 
 @frappe.whitelist(allow_guest=True)
 def process_balance_info(**kwargs) -> None:
@@ -369,7 +346,7 @@ def fetch_param_value(response: dict, key: str, key_field: str) -> str | None:
             return param["Value"]
 
 
-def create_mode_of_payment(gateway: str, payment_type: str = "General") -> Document:
+def create_mode_of_payment(gateway: str, payment_type: str = "General", company: str = None) -> Document:
     with erpnext_app_import_guard():
         from erpnext import get_default_company
 
@@ -388,7 +365,7 @@ def create_mode_of_payment(gateway: str, payment_type: str = "General") -> Docum
                 "accounts": [
                     {
                         "doctype": "Mode of Payment Account",
-                        "company": get_default_company(),
+                        "company": company or get_default_company(),
                         "default_account": payment_gateway_account,
                     }
                 ],
