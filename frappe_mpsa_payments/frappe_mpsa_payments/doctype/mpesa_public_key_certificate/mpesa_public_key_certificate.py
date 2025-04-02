@@ -1,9 +1,9 @@
-# Copyright (c) 2024, Navari Limited and contributors
-# For license information, please see license.txt
+# # Copyright (c) 2024, Navari Limited and contributors
+# # For license information, please see license.txt
 
-# import frappe
-from frappe.model.document import Document
+# # import frappe
+# from frappe.model.document import Document
 
 
-class MpesaPublicKeyCertificate(Document):
-    pass
+# class MpesaPublicKeyCertificate(Document):
+#     pass

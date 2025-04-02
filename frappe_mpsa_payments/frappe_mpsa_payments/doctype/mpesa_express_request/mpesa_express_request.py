@@ -1,32 +1,22 @@
-# Copyright (c) 2025, Navari Limited and contributors
-# For license information, please see license.txt
+from frappe_mpsa_payments_app.models import MpesaExpressRequest
+from django.dispatch import receiver
+from core.signals import document_signals
 
-import frappe
-from frappe.model.document import Document
-from ...api.m_pesa_api import initiate_stk_push  # Import the stk push function
-
-
-class MpesaExpressRequest(Document):
-    def validate(self):
-        if self.settings:
-            self.payment_gateway = frappe.db.get_value(
-                "Payment Gateway", {"gateway_controller": self.settings}, "name"
-            )
-
-    def on_submit(self):
+@receiver(document_signals.on_submit, sender=MpesaExpressRequest)
+def initiate_handler(sender, instance, **kwargs):
+    # if created:  # Ensure this runs only when a new instance is created 
+        # Prepare arguments for initiate_stk_push
         args = {
-            "document_name": self.name,
-            "payment_gateway": self.payment_gateway,
-            "phone_number": self.phone_number,
-            "request_amount": self.amount,
-            "doctype": self.doctype, 
-            "document_name": self.name,
-            "reference_name": self.reference_name,
+            "document_name": instance.id,
+            "payment_gateway": instance.settings,
+            "phone_number": instance.phone_number,
+            "request_amount": instance.amount,
+            "doctype": "MpesaExpressRequest",
+            "reference_name": "Deo", 
         }
 
         try:
-            initiate_stk_push(**args)
-
+            from ...api.api import initiate_stk_push
+            initiate_stk_push(data=args)
         except Exception as e:
-            frappe.log_error(frappe.get_traceback(), "STK Push on Submit Error")
-            frappe.throw(f"Failed to initiate STK push: {str(e)}")
+            print(f"Error initiating STK push: {e}")

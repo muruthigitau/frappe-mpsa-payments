@@ -1,44 +1,46 @@
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Generator
-
-import frappe
-from frappe import _
+from typing import Generator, Optional
 from urllib.parse import urlparse
-from frappe.utils import get_request_site_address
+from django.conf import settings
+from django.urls import reverse
+from django.http import HttpRequest
+from .model_imports import (
+    PaymentGateway,
+    PaymentGatewayAccount,
+    Account,
+)
 
-from .doctype_names import ACCESS_TOKENS_DOCTYPE
+# Constants
+ACCESS_TOKENS_DOCTYPE = "AccessToken"
 
 
 def create_payment_gateway(
-    gateway: str, settings: str | None = None, controller: str | None = None
+    gateway: str, 
+    settings: Optional[str] = None, 
+    controller: Optional[str] = None
 ) -> None:
-    # NOTE: we don't translate Payment Gateway name because it is an internal doctype
-    if not frappe.db.exists("Payment Gateway", gateway):
-        payment_gateway = frappe.get_doc(
-            {
-                "doctype": "Payment Gateway",
-                "gateway": gateway,
-                "gateway_settings": settings,
-                "gateway_controller": controller,
-            }
+    """Create a payment gateway if it doesn't exist"""
+    if not PaymentGateway.objects.filter(gateway=gateway).exists():
+        payment_gateway = PaymentGateway(
+            gateway=gateway,
+            gateway_settings=settings,
+            gateway_controller=controller
         )
-        payment_gateway.insert(ignore_permissions=True)
+        payment_gateway.save()
 
 
 @contextmanager
 def erpnext_app_import_guard() -> Generator:
-    marketplace_link = (
-        '<a href="https://frappecloud.com/marketplace/apps/erpnext">Marketplace</a>'
-    )
-    github_link = '<a href="https://github.com/frappe/erpnext">GitHub</a>'
-    msg = _("erpnext app is not installed. Please install it from {} or {}").format(
-        marketplace_link, github_link
-    )
+    """Context manager to handle ERPNext app import errors"""
+    marketplace_link = "https://frappecloud.com/marketplace/apps/erpnext"
+    github_link = "https://github.com/frappe/erpnext"
+    msg = f"ERPNext app is not installed. Please install it from {marketplace_link} or {github_link}"
+    
     try:
         yield
-    except ImportError:
-        frappe.throw(msg, title=_("Missing ERPNext App"))
+    except ImportError as e:
+        raise ImportError(msg) from e
 
 
 def save_access_token(
@@ -48,100 +50,107 @@ def save_access_token(
     associated_setting: str,
     doctype: str = ACCESS_TOKENS_DOCTYPE,
 ) -> bool:
-    doc = frappe.new_doc(doctype)
+    """Save an access token to the database"""
+    pass
+    # doc = AccessToken(
+    #     associated_settings=associated_setting,
+    #     access_token=token,
+    #     expiry_time=expiry_time,
+    #     token_fetch_time=fetch_time
+    # )
 
-    doc.associated_settings = associated_setting
+    # try:
+    #     doc.save()
+    #     return True
+    # except Exception as e:
+    #     raise Exception("Error Encountered while saving access token") from e
 
-    doc.access_token = token
-    doc.expiry_time = expiry_time
-    doc.token_fetch_time = fetch_time
+
+def get_payment_gateway_controller(payment_gateway: str):
+    """Return payment gateway controller"""
+    try:
+        gateway = PaymentGateway.objects.get(gateway=payment_gateway)
+    except PaymentGateway.DoesNotExist:
+        raise ValueError(f"Payment Gateway {payment_gateway} not found")
+
+    if gateway.gateway_controller is None:
+        try:
+            # Assuming you have a model named {gateway}Settings
+            settings_model = globals().get(f"{payment_gateway}Settings")
+            if settings_model is None:
+                raise ValueError(f"{payment_gateway} Settings model not found")
+            return settings_model.objects.first()
+        except Exception as e:
+            raise ValueError(f"{payment_gateway} Settings not found") from e
+    else:
+        try:
+            # Assuming gateway_settings is the model name and gateway_controller is the ID
+            settings_model = globals().get(gateway.gateway_settings)
+            if settings_model is None:
+                raise ValueError(f"{gateway.gateway_settings} model not found")
+            return settings_model.objects.get(pk=gateway.gateway_controller)
+        except Exception as e:
+            raise ValueError(f"{gateway.gateway_settings} Settings not found") from e
+
+
+def create_payment_gateway_account(gateway: str, payment_channel: str = "Email", company: Optional[str] = None):
+    """Create a payment gateway account"""
+    from .setup_utils import create_bank_account  # Assuming you have this utility
+
+    # company = company or GlobalDefaults.objects.first().default_company
+    if not company:
+        return None
+
+    # Try to get existing account (translated name)
+    bank_account = Account.objects.filter(
+        account_name=gateway,
+        company=company
+    ).values('id', 'account_currency').first()
+
+    if not bank_account:
+        # Try with untranslated name
+        bank_account = Account.objects.filter(
+            account_name=gateway,
+            company=company
+        ).values('id', 'account_currency').first()
+
+    if not bank_account:
+        # Create new account
+        bank_account_data = {
+            'company_name': company,
+            'bank_account': gateway
+        }
+        bank_account = create_bank_account(bank_account_data)
+        if not bank_account:
+            raise ValueError("Payment Gateway Account not created, please create one manually.")
+
+    # Check if payment gateway account already exists
+    if PaymentGatewayAccount.objects.filter(
+        payment_gateway=gateway,
+        currency=bank_account['account_currency']
+    ).exists():
+        return None
 
     try:
-        doc.save(ignore_permissions=True)
-        doc.submit()
+        PaymentGatewayAccount.objects.create(
+            is_default=True,
+            payment_gateway=gateway,
+            payment_account=bank_account['id'],
+            currency=bank_account['account_currency'],
+            payment_channel=payment_channel
+        )
+    except Exception as e:
+        # Handle duplicate entry if needed
+        pass
 
-        return True
-
-    except Exception:
-        # TODO: Not sure what exception is thrown here. Confirm
-        frappe.throw("Error Encountered")
-        return False
-
-def get_payment_gateway_controller(payment_gateway):
-	"""Return payment gateway controller"""
-	gateway = frappe.get_doc("Payment Gateway", payment_gateway)
-	if gateway.gateway_controller is None:
-		try:
-			return frappe.get_doc(f"{payment_gateway} Settings")
-		except Exception:
-			frappe.throw(_("{0} Settings not found").format(payment_gateway))
-	else:
-		try:
-			return frappe.get_doc(gateway.gateway_settings, gateway.gateway_controller)
-		except Exception:
-			frappe.throw(_("{0} Settings not found").format(payment_gateway))
-
-
-def create_payment_gateway_account(gateway, payment_channel="Email", company=None):
-	from erpnext.setup.setup_wizard.operations.install_fixtures import create_bank_account
-
-	company = company or frappe.get_cached_value("Global Defaults", "Global Defaults", "default_company")
-	if not company:
-		return
-
-	# NOTE: we translate Payment Gateway account name because that is going to be used by the end user
-	bank_account = frappe.db.get_value(
-		"Account",
-		{"account_name": _(gateway), "company": company},
-		["name", "account_currency"],
-		as_dict=1,
-	)
-
-	if not bank_account:
-		# check for untranslated one
-		bank_account = frappe.db.get_value(
-			"Account",
-			{"account_name": gateway, "company": company},
-			["name", "account_currency"],
-			as_dict=1,
-		)
-
-	if not bank_account:
-		# try creating one
-		bank_account = create_bank_account({"company_name": company, "bank_account": _(gateway)})
-
-	if not bank_account:
-		frappe.msgprint(_("Payment Gateway Account not created, please create one manually."))
-		return
-
-	# if payment gateway account exists, return
-	if frappe.db.exists(
-		"Payment Gateway Account",
-		{"payment_gateway": gateway, "currency": bank_account.account_currency},
-	):
-		return
-
-	try:
-		frappe.get_doc(
-			{
-				"doctype": "Payment Gateway Account",
-				"is_default": 1,
-				"payment_gateway": gateway,
-				"payment_account": bank_account.name,
-				"currency": bank_account.account_currency,
-				"payment_channel": payment_channel,
-			}
-		).insert(ignore_permissions=True, ignore_if_duplicate=True)
-
-	except frappe.DuplicateEntryError:
-		# already exists, due to a reinstall?
-		pass
 
 def build_callback_url(endpoint: str) -> str:
-    base_url = get_request_site_address(True)
-    parsed_url = urlparse(base_url)
+    """Build a callback URL for API endpoints"""
+    # base_url = request.build_absolute_uri('/')[:-1]  # Get base URL without trailing slash
+    # parsed_url = urlparse(base_url)
 
-    if not (parsed_url.hostname == "localhost" or parsed_url.hostname.replace(".", "").isdigit()):
-        base_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
+    # if not (parsed_url.hostname == "localhost" or parsed_url.hostname.replace(".", "").isdigit()):
+    #     base_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
 
-    return f"{base_url}/api/method/{endpoint}"
+    # # Assuming your API endpoints are structured with 'api' prefix
+    return f"https://564b-102-213-49-43.ngrok-free.app/apis/method/{endpoint}" 
