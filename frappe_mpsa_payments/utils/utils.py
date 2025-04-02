@@ -153,4 +153,4 @@ def build_callback_url(endpoint: str) -> str:
     #     base_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
 
     # # Assuming your API endpoints are structured with 'api' prefix
-    return f"https://564b-102-213-49-43.ngrok-free.app/apis/method/{endpoint}" 
+    return f"https://f10f-102-213-49-42.ngrok-free.app/apis/method/{endpoint}" 
