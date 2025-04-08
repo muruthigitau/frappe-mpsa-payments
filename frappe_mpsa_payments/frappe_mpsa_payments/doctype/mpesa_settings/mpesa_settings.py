@@ -123,7 +123,7 @@ class MpesaSettings(Document):
                 stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
                 stk_request.update({
                     "amount": args.get("request_amount", 0.0),
-                    "phone_number": args.get("phone_number", ""),
+                    "phone_number": args.get("phone_number") or args.get("sender", ""),
                     "timestamp": frappe.utils.now(),
                     "settings": args.payment_gateway[6:],
                     "payment_gateway": args.get("payment_gateway"),

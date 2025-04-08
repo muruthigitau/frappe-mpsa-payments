@@ -269,7 +269,8 @@ def initiate_stk_push(**args) -> any:
             "Timestamp": timestamp,
             "Amount": amount,
             "PartyA": int(mobile_number),
-            "PartyB": business_shortcode,
+            "PartyB": business_shortcode if mpesa_settings.paybill_type == "Pay Bill"
+            else mpesa_settings.till_number,
             "PhoneNumber": int(mobile_number),
             "CallBackURL": callback_url,
             "AccountReference": reference_name,
@@ -323,7 +324,8 @@ def stk_push_callback(**kwargs) -> None:
             payment_entry.create_payment_entry()
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
-        payment_entry.make_invoice()
+        if request_doc.reference_doctype == "Sales Order":
+            payment_entry.make_invoice()
         frappe.db.set_value("Payment Request", payment_entry.name, "status", "Paid")
 
     frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, request_doc.name, {
