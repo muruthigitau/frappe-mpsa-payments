@@ -104,8 +104,7 @@
   {
    "fieldname": "security_credential",
    "fieldtype": "Small Text",
-   "label": "Security Credential",
-   "mandatory_depends_on": "eval:(doc.api_type === \"MPesa B2C (Business to Customer)\");"
+   "label": "Security Credential"
   },
   {
    "fieldname": "get_account_balance",
@@ -260,7 +259,7 @@
   }
  ],
  "links": [],
- "modified": "2025-04-08 16:58:52.608835",
+ "modified": "2025-04-08 17:08:10.478156",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",

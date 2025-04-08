@@ -107,6 +107,20 @@ class MpesaSettings(Document):
         create_mode_of_payment(
             "Mpesa-" + self.payment_gateway_name, payment_type="Phone", company=self.company
         )
+        
+    def validate(self) -> None:   
+        if self.initiator_password and not self.security_credential:     
+            certs = frappe.get_single("Mpesa Public Key Certificate")
+            cert_url = ""
+            if self.sandbox:
+                cert_url = certs.sandbox_certificate
+            else:
+                cert_url = certs.production_certificate
+                
+            self.security_credential = generate_security_credential(
+                self.get_password("initiator_password", "") if self.initiator_password else "",
+                cert_url
+            )
 
     def request_for_payment(self, **kwargs) -> None:
         args = frappe._dict(kwargs)
