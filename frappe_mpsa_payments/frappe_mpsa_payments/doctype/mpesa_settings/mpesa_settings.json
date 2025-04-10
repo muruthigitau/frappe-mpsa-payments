@@ -20,6 +20,7 @@
   "security_credential",
   "column_break_4",
   "business_shortcode",
+  "till_number",
   "online_passkey",
   "transaction_limit",
   "initiator_name",
@@ -103,8 +104,7 @@
   {
    "fieldname": "security_credential",
    "fieldtype": "Small Text",
-   "label": "Security Credential",
-   "mandatory_depends_on": "eval:(doc.api_type === \"MPesa B2C (Business to Customer)\");"
+   "label": "Security Credential"
   },
   {
    "fieldname": "get_account_balance",
@@ -249,10 +249,17 @@
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company"
+  },
+  {
+   "depends_on": "eval:doc.paybill_type == \"Buy Goods\"",
+   "fieldname": "till_number",
+   "fieldtype": "Data",
+   "label": "Till Number",
+   "mandatory_depends_on": "eval:doc.paybill_type == \"Buy Goods\""
   }
  ],
  "links": [],
- "modified": "2025-03-26 20:06:08.344077",
+ "modified": "2025-04-08 17:08:10.478156",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",

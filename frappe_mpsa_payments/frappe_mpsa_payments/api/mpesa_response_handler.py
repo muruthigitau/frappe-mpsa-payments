@@ -28,7 +28,9 @@ def transaction_status_on_success(response: dict, document_name: str, **kwargs) 
                 payment_entry.create_payment_entry()
             except Exception:
                 frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {document_name}")
-            payment_entry.make_invoice()
+                
+            # if request_doc.reference_doctype == "Sales Order":
+            #     payment_entry.make_invoice()
             frappe.db.set_value("Payment Request", payment_entry.name, "status", "Paid")
 
         # Update the database record
