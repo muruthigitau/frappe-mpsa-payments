@@ -324,8 +324,8 @@ def stk_push_callback(**kwargs) -> None:
             payment_entry.create_payment_entry()
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
-        if request_doc.reference_doctype == "Sales Order":
-            payment_entry.make_invoice()
+        # if request_doc.reference_doctype == "Sales Order":
+        #     payment_entry.make_invoice()
         frappe.db.set_value("Payment Request", payment_entry.name, "status", "Paid")
 
     frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, request_doc.name, {
