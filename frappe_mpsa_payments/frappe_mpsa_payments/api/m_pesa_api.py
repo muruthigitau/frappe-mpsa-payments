@@ -317,16 +317,18 @@ def stk_push_callback(**kwargs) -> None:
     status = "Completed" if str(result_code) == "0" else "Failed"
 
     request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id})
+    settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
 
     if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
-        payment_entry = frappe.get_doc("Payment Request", request_doc.reference_name)
+        payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
         try:
-            payment_entry.create_payment_entry()
+            payment_request.create_payment_entry()
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
-        # if request_doc.reference_doctype == "Sales Order":
-        #     payment_entry.make_invoice()
-        frappe.db.set_value("Payment Request", payment_entry.name, "status", "Paid")
+        if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+            payment_request.make_invoice()
+            
+        frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
     frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, request_doc.name, {
         "result_code": result_code,

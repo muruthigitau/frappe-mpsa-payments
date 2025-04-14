@@ -20,18 +20,21 @@ def transaction_status_on_success(response: dict, document_name: str, **kwargs) 
 
         # Fetch the current status from the database
         request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, document_name)
+        settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
+        
 
         # Only proceed if the new status is "Completed" and it's a change from the current status
         if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
-            payment_entry = frappe.get_doc("Payment Request", request_doc.reference_name)
+            payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
             try:
-                payment_entry.create_payment_entry()
+                payment_request.create_payment_entry()
             except Exception:
                 frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {document_name}")
+            
+            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+                payment_request.make_invoice()
                 
-            # if request_doc.reference_doctype == "Sales Order":
-            #     payment_entry.make_invoice()
-            frappe.db.set_value("Payment Request", payment_entry.name, "status", "Paid")
+            frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
         # Update the database record
         frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, document_name, {
