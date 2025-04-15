@@ -8,12 +8,16 @@
  "field_order": [
   "payment_gateway_name",
   "api_type",
-  "get_account_balance",
-  "check_transaction_status",
+  "company",
   "column_break_nhvr",
   "sandbox",
   "paybill_type",
-  "company",
+  "section_break_rrgz",
+  "column_break_uspo",
+  "get_account_balance",
+  "check_transaction_status",
+  "column_break_gtyp",
+  "auto_create_sales_invoice",
   "section_break_lkry",
   "consumer_key",
   "consumer_secret",
@@ -256,10 +260,28 @@
    "fieldtype": "Data",
    "label": "Till Number",
    "mandatory_depends_on": "eval:doc.paybill_type == \"Buy Goods\""
+  },
+  {
+   "fieldname": "section_break_rrgz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_create_sales_invoice",
+   "fieldtype": "Check",
+   "label": "Auto Create Sales Invoice"
+  },
+  {
+   "fieldname": "column_break_uspo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_gtyp",
+   "fieldtype": "Column Break"
   }
  ],
  "links": [],
- "modified": "2025-04-08 17:08:10.478156",
+ "modified": "2025-04-14 19:41:37.448446",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",
