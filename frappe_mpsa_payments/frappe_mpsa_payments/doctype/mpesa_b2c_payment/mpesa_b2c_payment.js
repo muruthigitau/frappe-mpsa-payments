@@ -2,6 +2,15 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("MPesa B2C Payment", {
+    onload: function (frm) {
+      frm.set_query("mpesa_setting", function () {
+        return {
+          filters: {
+            api_type: 'MPesa B2C (Business to Customer)',
+          }
+        };
+      });
+    },
     refresh: function (frm) {
       // Set filters for party type field
       frm.set_query("party_type", function () {
@@ -32,6 +41,14 @@ frappe.ui.form.on("MPesa B2C Payment", {
           filters: [["DocType", "name", "in", doctypeFieldsList]],
         };
       });
+
+      // Set the start and end dates for the current month
+      if (!frm.doc.start_date) {
+        frm.set_value('start_date', frappe.datetime.month_start());
+      }
+      if (!frm.doc.end_date) {
+        frm.set_value('end_date', frappe.datetime.month_end());
+      }
     },
     doctype_to_pay_against: function (frm) {
       frm.set_value("items", []);
@@ -42,13 +59,10 @@ frappe.ui.form.on("MPesa B2C Payment", {
         .get_list(doctype, {
           fields: ["*"],
           filters: {
-            // TODO: Fix problem with date filters not working properly
-            creation: [">=", frm.doc.start_date],
-            creation: ["<=", frm.doc.end_date],
+            creation: [">=", frm.doc.start_date, "<=", frm.doc.end_date]
           },
         })
         .then((response) => {
-          console.log("Answe",response)
           if (!response.length) {
             throw new Error("No Data Fetched");
           } else {
@@ -59,7 +73,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
                 receiver_name: data.employee ?? data.supplier,
                 partyb: null,
                 record_amount:
-                  data.base_rounded_total ?? data.total_sanctioned_amount,
+                  data.base_rounded_total ?? data.total_sanctioned_amount ?? data.advance_amount,
               };
   
               // Apply fetching contact strategy according to document
