@@ -10,6 +10,8 @@
   "naming_series",
   "section_break_pujd",
   "mpesa_setting",
+  "column_break_wwdi",
+  "company",
   "transaction_details_section",
   "commandid",
   "remarks",
@@ -204,12 +206,23 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wwdi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-30 09:32:37.599749",
+ "modified": "2025-05-06 01:46:36.988064",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",

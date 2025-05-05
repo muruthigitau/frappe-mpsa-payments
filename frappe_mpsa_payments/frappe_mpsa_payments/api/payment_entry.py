@@ -51,6 +51,7 @@ def create_payment_entry(
 	amount,
 	currency,
 	mode_of_payment,
+	party_type="Customer",
 	reference_date=None,
 	reference_no=None,
 	posting_date=None,
@@ -77,7 +78,7 @@ def create_payment_entry(
 	"""
 	# TODO : need to have a better way to handle currency
 	date = nowdate() if not posting_date else posting_date
-	party_type = "Customer"
+	party_type = party_type
 	party_account = get_party_account(party_type, customer, company)
 	party_account_currency = get_account_currency(party_account)
 	if party_account_currency != currency:
@@ -86,11 +87,11 @@ def create_payment_entry(
 				"Currency is not correct, party account currency is {party_account_currency} and transaction currency is {currency}"
 			).format(party_account_currency=party_account_currency, currency=currency)
 		)
-	payment_type = "Receive"
+	payment_type = "Pay" if party_type in ["Employee", "Supplier"] else "Receive"
 
 	bank = get_bank_cash_account(company, mode_of_payment)
 	company_currency = frappe.get_value("Company", company, "default_currency")
-	conversion_rate = get_exchange_rate(currency, company_currency, date, "for_selling")
+	conversion_rate = get_exchange_rate(currency, company_currency, date, "for_selling" if payment_type == "Receive" else "for_buying")
 	paid_amount, received_amount = set_paid_amount_and_received_amount(
 		party_account_currency, bank, amount, payment_type, None, conversion_rate
 	)
@@ -117,7 +118,7 @@ def create_payment_entry(
 	pe.letter_head = frappe.get_value("Company", company, "default_letter_head")
 	pe.reference_date = reference_date
 	pe.reference_no = reference_no
-	if pe.party_type in ["Customer", "Supplier"]:
+	if pe.party_type in ["Customer", "Supplier", "Employee"]:
 		bank_account = get_party_bank_account(pe.party_type, pe.party)
 		pe.set("bank_account", bank_account)
 		pe.set_bank_account_data()

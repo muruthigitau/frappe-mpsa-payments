@@ -7,13 +7,16 @@ from requests.auth import HTTPBasicAuth
 import traceback
 
 import frappe
+import erpnext
 from frappe.integrations.utils import create_request_log
-from frappe.utils import get_request_site_address
+from frappe.utils import get_request_site_address, nowdate
 from frappe.utils.password import get_decrypted_password
 import json
 from ...utils.definitions import B2CRequestDefinition
 from .base_class import ConnectorBaseClass, ErrorObserver
 from ...utils.helpers import update_integration_request
+
+from .payment_entry import create_payment_entry
 
 
 class URLS(Enum):
@@ -134,7 +137,8 @@ def results_callback_url(**kwargs) -> dict:
     result_json = json.dumps(result)
 
     try:
-        mpesa_b2c_payment_item = frappe.get_doc("Mpesa B2C Employee Payment Item", {"originator_conversation_id": originator_conversation_id})
+        mpesa_b2c_payment_item = frappe.get_doc("MPesa B2C Employee Payment Item", {"originator_conversation_id": originator_conversation_id})
+        mpesa_b2c_payment = frappe.get_doc(mpesa_b2c_payment_item.parenttype, mpesa_b2c_payment_item.parent)
 
         if result.get("ResultCode") != 0:
             update_integration_request(
@@ -162,10 +166,11 @@ def results_callback_url(**kwargs) -> dict:
             mpesa_b2c_payment_item.save(ignore_permissions=True)
 
             frappe.enqueue(
-                "",
+                "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
                 queue="long",
                 timeout=600,
-                child_doc_name=mpesa_b2c_payment_item.name
+                parent_doc=mpesa_b2c_payment,
+                child_doc=mpesa_b2c_payment_item
             )
 
         mpesa_b2c_payment_item.save(ignore_permissions=True)
@@ -184,24 +189,67 @@ def handle_successful_payment(parent_doc, child_doc):
     """
 
     try:
-        match doc.reference_doctype:
+        match child_doc.reference_doctype:
             case "Salary Slip":
                 create_journal_entry(parent_doc, child_doc) # TODO: create helper functions for this
             case "Employee Advance" | "Expense Claim" | "Purchase Invoice":
-                create_payment_entry(parent_doc, child_doc) # TODO: create helper functions for this
+                creat_payment_entry_for_doc(parent_doc, child_doc) # TODO: create helper functions for this
             case _:
                 frappe.log_error(
-                    f"Unsupported reference_doctype: {doc.reference_doctype}",
+                    f"Unsupported reference_doctype: {child_doc.reference_doctype}",
                     "Payment Callback Handler"
                 )
     except Exception as e:
-        frappe.log_error(f"Error handling payment for {doc.name}: {str(e)}", "Mpesa B2C Employee Payment Item")
+        error_msg = f"Error handling payment for {child_doc.name}: {str(e)}"
+        error_msg = error_msg
+        frappe.log_error(frappe.get_traceback(), "MPesa B2C Employee Payment Item")
         frappe.db.set_value(
-            'Mpesa B2C Employee Payment Item', 
-            doc.name, 
+            'MPesa B2C Employee Payment Item', 
+            child_doc.name, 
             {
                 "error_code": "500",
                 "error_description": str(e)
             }
         )
         frappe.db.commit()
+
+
+def create_journal_entry(parent_doc, child_doc):
+    pass
+
+def creat_payment_entry_for_doc(parent_doc, child_doc):
+    party_type = "Employee" if child_doc.reference_doctype in ["Employee Advance", "Expense Claim"] else "Supplier"
+    party = frappe.db.get_value(party_type, child_doc.receiver_name, "name")
+    amount = child_doc.amount
+
+    company = parent_doc.company
+    currency = frappe.db.get_value('Company', company, 'default_currency')
+
+    mpesa_setting = parent_doc.get('mpesa_setting')
+    mode_of_payment = frappe.db.get_value("Mode of Payment", f"Mpesa-{mpesa_setting}", "name")
+
+    payment_entry = create_payment_entry(
+        company,
+        party,
+        amount,
+        currency,
+        mode_of_payment,
+        party_type=party_type,
+        reference_date=nowdate(),
+        reference_no=child_doc.originator_conversation_id,
+        posting_date=nowdate(),
+        cost_center=erpnext.get_default_cost_center(company),
+        submit=0
+    )
+
+    payment_entry.append('references', {
+        'reference_doctype': child_doc.reference_doctype,
+        'reference_name': child_doc.record,
+        'allocated_amount': child_doc.amount
+    })
+
+    # if not payment_entry.docstatus:
+    #     payment_entry.insert()
+    #     payment_entry.submit()
+
+    frappe.msgprint(f'Payment Entry {payment_entry.name} created for {child_doc.reference_doctype} {child_doc.record}')
