@@ -8,6 +8,8 @@
  "engine": "InnoDB",
  "field_order": [
   "originator_conversation_id",
+  "column_break_jkda",
+  "payment_status",
   "section_break_erqv",
   "reference_doctype",
   "record",
@@ -15,7 +17,11 @@
   "column_break_guwr",
   "receiver_name",
   "partyb",
-  "amount"
+  "amount",
+  "section_break_ikdh",
+  "error_code",
+  "column_break_affc",
+  "error_description"
  ],
  "fields": [
   {
@@ -30,6 +36,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "columns": 1,
    "fieldname": "reference_doctype",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -37,6 +44,7 @@
    "options": "DocType"
   },
   {
+   "columns": 2,
    "fieldname": "record",
    "fieldtype": "Dynamic Link",
    "in_list_view": 1,
@@ -44,6 +52,7 @@
    "options": "reference_doctype"
   },
   {
+   "columns": 2,
    "fieldname": "record_amount",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -55,18 +64,21 @@
    "fieldtype": "Column Break"
   },
   {
+   "columns": 2,
    "fieldname": "receiver_name",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Receiver Name"
   },
   {
+   "columns": 1,
    "fieldname": "partyb",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Contacts"
   },
   {
+   "columns": 2,
    "fieldname": "amount",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -74,18 +86,48 @@
    "non_negative": 1,
    "precision": "2",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_jkda",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Not Initiated",
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "Not Initiated\nInitiated\nSuccess\nFailed"
+  },
+  {
+   "fieldname": "section_break_ikdh",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "error_code",
+   "fieldtype": "Data",
+   "label": "Error Code"
+  },
+  {
+   "fieldname": "column_break_affc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "error_description",
+   "fieldtype": "Data",
+   "label": "Error Description"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-20 09:22:40.196307",
+ "modified": "2025-05-05 22:10:35.809821",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Employee Payment Item",
  "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
