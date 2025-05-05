@@ -69,11 +69,15 @@ class MpesaB2CConnector(ConnectorBaseClass):
         if not self.authentication_token or datetime.now() >= self.expires_in:
             self.app_key = request_data.ConsumerKey
             self.app_secret = request_data.ConsumerSecret
-            self.authentication_token = self.authenticate()
-        saf_url = f"{self.base_url}/mpesa/b2c/v3/paymentrequest"
+            # self.authentication_token = self.authenticate()
+        # saf_url = f"{self.base_url}/mpesa/b2c/v3/paymentrequest"
+        saf_url = "http://192.168.1.48:8050/mpesa/b2c/v3/paymentrequest"
+        # callback_url = (
+        #     f"https://{urlparse(get_request_site_address(full_address=True)).hostname}"
+        #     "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.results_callback_url"
+        # )
         callback_url = (
-            f"https://{urlparse(get_request_site_address(full_address=True)).hostname}"
-            "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.results_callback_url"
+            "http://192.168.1.48:8001/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.results_callback_url"
         )
 
         payload_dict = {
@@ -125,21 +129,79 @@ class MpesaB2CConnector(ConnectorBaseClass):
 def results_callback_url(**kwargs) -> dict:
     """Handle the callback from MPesa API."""
     result = frappe._dict(kwargs["Result"])
+    originator_conversation_id = result.get("OriginatorConversationID")
     
     result_json = json.dumps(result)
-    if result.get("ResultCode") != 0:
-        update_integration_request(
-            result.get("OriginatorConversationID"),
-            "Failed",
-            output=result_json,
-            error=result.get("ResultDesc"),
-        )
-        frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
-    else:
-        print(str(result))
-        update_integration_request(
-            result.get("OriginatorConversationID"),
-            "Completed",
-            output=result_json,
-        )
+
+    try:
+        mpesa_b2c_payment_item = frappe.get_doc("Mpesa B2C Employee Payment Item", {"originator_conversation_id": originator_conversation_id})
+
+        if result.get("ResultCode") != 0:
+            update_integration_request(
+                originator_conversation_id,
+                "Failed",
+                output=result_json,
+                error=result.get("ResultDesc"),
+            )
+            frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
+
+            mpesa_b2c_payment_item.payment_status = "Failed"
+            mpesa_b2c_payment_item.error_code = result.get("errorCode")
+            mpesa_b2c_payment_item.error_message = result.get("ResultDesc") or result.get("errorMessage")
+
+        else:
+            update_integration_request(
+                originator_conversation_id,
+                "Completed",
+                output=result_json,
+            )
+
+            # TODO: create an Mpesa B2C Transactions Entry
+
+            mpesa_b2c_payment_item.payment_status = "Success"
+            mpesa_b2c_payment_item.save(ignore_permissions=True)
+
+            frappe.enqueue(
+                "",
+                queue="long",
+                timeout=600,
+                child_doc_name=mpesa_b2c_payment_item.name
+            )
+
+        mpesa_b2c_payment_item.save(ignore_permissions=True)
+        frappe.db.commit()
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Failed to update payment_status in callback")
+
     return "Success"
+
+
+def handle_successful_payment(parent_doc, child_doc):
+    """
+    Trigger follow-up accounting entries based on reference doctype.
+    This function will be enqueued and run in the background.
+    """
+
+    try:
+        match doc.reference_doctype:
+            case "Salary Slip":
+                create_journal_entry(parent_doc, child_doc) # TODO: create helper functions for this
+            case "Employee Advance" | "Expense Claim" | "Purchase Invoice":
+                create_payment_entry(parent_doc, child_doc) # TODO: create helper functions for this
+            case _:
+                frappe.log_error(
+                    f"Unsupported reference_doctype: {doc.reference_doctype}",
+                    "Payment Callback Handler"
+                )
+    except Exception as e:
+        frappe.log_error(f"Error handling payment for {doc.name}: {str(e)}", "Mpesa B2C Employee Payment Item")
+        frappe.db.set_value(
+            'Mpesa B2C Employee Payment Item', 
+            doc.name, 
+            {
+                "error_code": "500",
+                "error_description": str(e)
+            }
+        )
+        frappe.db.commit()

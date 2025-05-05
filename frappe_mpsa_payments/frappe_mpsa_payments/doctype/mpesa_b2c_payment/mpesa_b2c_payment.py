@@ -73,6 +73,8 @@ class MPesaB2CPayment(Document):
                     )
                 )
 
+                item.payment_status = "Initiated"
+
             frappe.msgprint(
                 "Payment Request Initiated.", title="Payment Request", indicator="green"
             )

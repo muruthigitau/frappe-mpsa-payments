@@ -96,7 +96,8 @@
    "fieldname": "payment_status",
    "fieldtype": "Select",
    "label": "Payment Status",
-   "options": "Not Initiated\nInitiated\nSuccess\nFailed"
+   "options": "Not Initiated\nInitiated\nSuccess\nFailed",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_ikdh",
@@ -105,7 +106,8 @@
   {
    "fieldname": "error_code",
    "fieldtype": "Data",
-   "label": "Error Code"
+   "label": "Error Code",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_affc",
@@ -114,13 +116,14 @@
   {
    "fieldname": "error_description",
    "fieldtype": "Data",
-   "label": "Error Description"
+   "label": "Error Description",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-05 22:10:35.809821",
+ "modified": "2025-05-05 22:31:27.365516",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Employee Payment Item",
