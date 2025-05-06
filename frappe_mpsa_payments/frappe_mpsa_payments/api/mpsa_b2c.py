@@ -228,28 +228,33 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
     mpesa_setting = parent_doc.get('mpesa_setting')
     mode_of_payment = frappe.db.get_value("Mode of Payment", f"Mpesa-{mpesa_setting}", "name")
 
-    payment_entry = create_payment_entry(
-        company,
-        party,
-        amount,
-        currency,
-        mode_of_payment,
-        party_type=party_type,
-        reference_date=nowdate(),
-        reference_no=child_doc.originator_conversation_id,
-        posting_date=nowdate(),
-        cost_center=erpnext.get_default_cost_center(company),
-        submit=0
-    )
+    current_user = frappe.session.user
+    frappe.set_user("Administrator")
 
-    payment_entry.append('references', {
-        'reference_doctype': child_doc.reference_doctype,
-        'reference_name': child_doc.record,
-        'allocated_amount': child_doc.amount
-    })
+    try:
+        payment_entry = create_payment_entry(
+            company,
+            party,
+            amount,
+            currency,
+            mode_of_payment,
+            party_type=party_type,
+            reference_date=nowdate(),
+            reference_no=child_doc.originator_conversation_id,
+            posting_date=nowdate(),
+            cost_center=erpnext.get_default_cost_center(company),
+            submit=0
+        )
 
-    # if not payment_entry.docstatus:
-    #     payment_entry.insert()
-    #     payment_entry.submit()
+        payment_entry.append('references', {
+            'reference_doctype': child_doc.reference_doctype,
+            'reference_name': child_doc.record,
+            'allocated_amount': child_doc.amount
+        })
 
-    frappe.msgprint(f'Payment Entry {payment_entry.name} created for {child_doc.reference_doctype} {child_doc.record}')
+    except Exception as e:
+
+        frappe.log_error("Error Creating Payment Entry", str(e))
+    
+    finally:
+        frappe.set_user(current_user)
