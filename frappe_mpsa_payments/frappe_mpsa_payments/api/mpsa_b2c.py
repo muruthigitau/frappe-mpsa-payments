@@ -165,14 +165,13 @@ def results_callback_url(**kwargs) -> dict:
             mpesa_b2c_payment_item.payment_status = "Success"
             mpesa_b2c_payment_item.save(ignore_permissions=True)
 
-            # frappe.enqueue(
-            #     "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
-            #     queue="long",
-            #     timeout=600,
-            #     parent_doc=mpesa_b2c_payment,
-            #     child_doc=mpesa_b2c_payment_item
-            # )
-            handle_successful_payment(mpesa_b2c_payment, mpesa_b2c_payment_item)
+            frappe.enqueue(
+                "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
+                queue="long",
+                timeout=600,
+                parent_doc=mpesa_b2c_payment,
+                child_doc=mpesa_b2c_payment_item
+            )
 
         mpesa_b2c_payment_item.save(ignore_permissions=True)
         frappe.db.commit()

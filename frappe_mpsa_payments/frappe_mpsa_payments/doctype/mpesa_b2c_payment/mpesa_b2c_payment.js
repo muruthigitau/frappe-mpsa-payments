@@ -53,34 +53,64 @@ frappe.ui.form.on("MPesa B2C Payment", {
     doctype_to_pay_against: function (frm) {
       frm.set_value("items", []);
       const doctype = frm.doc.doctype_to_pay_against;
+
+      // Dynamic filters based on doctype
+      const filterMap = {
+        "Purchase Invoice": {
+          outstanding_amount: [">", 0],
+        },
+        "Expense Claim": {
+          approval_status: "Approved",
+        },
+        "Salary Slip": {
+          status: "Submitted",
+        }
+      };
+
+      // Apply common filters
+      const filters = {
+        ...filterMap[doctype],
+        company: frm.doc.company,
+        docstatus: 1,
+        posting_date: ["between", [frm.doc.start_date, frm.doc.end_date]],
+      };
   
       // Fetch relevant records and set relevant fields in items table
       frappe.db
         .get_list(doctype, {
           fields: ["*"],
-          filters: {
-            creation: [">=", frm.doc.start_date, "<=", frm.doc.end_date]
-          },
+          filters: filters,
         })
         .then((response) => {
           if (!response.length) {
             throw new Error("No Data Fetched");
           } else {
+            if (doctype === "Employee Advance") {
+              response = response.filter(data => {
+                return (data.paid_amount || 0) < (data.advance_amount || 0);
+              });
+            }
+
             response.forEach(async (data) => {
               let recordData = {
                 reference_doctype: doctype,
                 record: data.name,
                 receiver_name: data.employee ?? data.supplier,
                 partyb: null,
-                record_amount:
-                  data.base_rounded_total ?? data.total_sanctioned_amount ?? data.advance_amount,
+                record_amount: (() => {
+                  if (doctype === "Employee Advance") {
+                    return (data.advance_amount || 0) - (data.paid_amount || 0);
+                  }
+                  return (
+                    data.base_rounded_total ?? data.total_sanctioned_amount ?? data.advance_amount
+                  );
+                })(),
+                  
               };
   
               // Apply fetching contact strategy according to document
               if (
-                doctype === "Salary Slip" ||
-                doctype === "Expense Claim" ||
-                doctype === "Employee Advance"
+                ["Salary Slip", "Expense Claim", "Employee Advance"].includes(doctype)
               ) {
                 const contact = await frappe.db.get_value(
                   "Employee",
