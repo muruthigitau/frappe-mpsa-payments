@@ -165,13 +165,14 @@ def results_callback_url(**kwargs) -> dict:
             mpesa_b2c_payment_item.payment_status = "Success"
             mpesa_b2c_payment_item.save(ignore_permissions=True)
 
-            frappe.enqueue(
-                "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
-                queue="long",
-                timeout=600,
-                parent_doc=mpesa_b2c_payment,
-                child_doc=mpesa_b2c_payment_item
-            )
+            # frappe.enqueue(
+            #     "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
+            #     queue="long",
+            #     timeout=600,
+            #     parent_doc=mpesa_b2c_payment,
+            #     child_doc=mpesa_b2c_payment_item
+            # )
+            handle_successful_payment(mpesa_b2c_payment, mpesa_b2c_payment_item)
 
         mpesa_b2c_payment_item.save(ignore_permissions=True)
         frappe.db.commit()
@@ -219,6 +220,7 @@ def create_journal_entry(parent_doc, child_doc):
 
 def creat_payment_entry_for_doc(parent_doc, child_doc):
     party_type = "Employee" if child_doc.reference_doctype in ["Employee Advance", "Expense Claim"] else "Supplier"
+    party_account = parent_doc.account_paid_to if parent_doc.doctype_to_pay_against == "Employee Advance" else None
     party = frappe.db.get_value(party_type, child_doc.receiver_name, "name")
     amount = child_doc.amount
 
@@ -232,6 +234,12 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
     frappe.set_user("Administrator")
 
     try:
+        references = [{
+            'reference_doctype': child_doc.reference_doctype,
+            'reference_name': child_doc.record,
+            'allocated_amount': child_doc.amount
+        }]
+
         payment_entry = create_payment_entry(
             company,
             party,
@@ -243,14 +251,10 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
             reference_no=child_doc.originator_conversation_id,
             posting_date=nowdate(),
             cost_center=erpnext.get_default_cost_center(company),
-            submit=0
+            submit=0,
+            references=references,
+            party_account=party_account
         )
-
-        payment_entry.append('references', {
-            'reference_doctype': child_doc.reference_doctype,
-            'reference_name': child_doc.record,
-            'allocated_amount': child_doc.amount
-        })
 
     except Exception as e:
 

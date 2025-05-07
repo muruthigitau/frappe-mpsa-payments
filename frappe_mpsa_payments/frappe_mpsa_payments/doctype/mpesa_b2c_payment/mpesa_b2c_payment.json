@@ -29,6 +29,7 @@
   "accounts_section",
   "account_paid_from",
   "column_break_nsjt",
+  "account_paid_to",
   "payment_status_and_errors_section",
   "status",
   "error_code",
@@ -217,12 +218,20 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\"",
+   "fieldname": "account_paid_to",
+   "fieldtype": "Link",
+   "label": "Account Paid To",
+   "mandatory_depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\"",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-06 01:46:36.988064",
+ "modified": "2025-05-06 22:13:51.735862",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",
