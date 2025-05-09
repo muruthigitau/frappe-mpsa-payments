@@ -52,29 +52,61 @@ class MPesaB2CPayment(Document):
             as_dict=True,
         )
 
-        if setting:
-            connector = MpesaB2CConnector()
+        if not setting:
+            error_msg = f"Mpesa Settings not found for payment gateway: {self.mpesa_setting}"
+            self.error = error_msg
+            app_logger.error(error_msg)
+            frappe.throw(error_msg, frappe.DoesNotExistError)
 
-            for item in self.items:
-                connector.make_b2c_payment_request(
-                    B2CRequestDefinition(
-                        Setting=setting.name,
-                        ConsumerKey=setting.consumer_key,
-                        ConsumerSecret=setting.get_password("consumer_secret"),
-                        OriginatorConversationID=item.originator_conversation_id,
-                        InitiatorName=setting.initiator_name,
-                        SecurityCredential=setting.security_credential,
-                        CommandID=self.commandid,
-                        Amount=item.amount,
-                        PartyA=setting.business_shortcode,  # TODO: Consider this
-                        PartyB=item.partyb,
-                        Remarks=self.remarks,
-                        Occassion=self.occassion,
-                    )
+        connector = MpesaB2CConnector(settings_name=setting.name)
+        any_errors = False
+
+        for item in self.items:
+            try:
+                request_data = B2CRequestDefinition(
+                    ConsumerKey=setting.consumer_key,
+                    ConsumerSecret=setting.get_password("consumer_secret"),
+                    OriginatorConversationID=item.originator_conversation_id,
+                    InitiatorName=setting.initiator_name,
+                    SecurityCredential=setting.security_credential,
+                    CommandID=self.commandid,
+                    Amount=item.amount,
+                    PartyA=setting.business_shortcode,  # TODO: Consider this
+                    PartyB=item.partyb,
+                    Remarks=self.remarks,
+                    Occassion=self.occassion,
+                )
+            
+                response = connector.make_b2c_payment_request(
+                    request_data=request_data,
+                    doctype=item.doctype,
+                    document_name=item.name
                 )
 
-                item.payment_status = "Initiated"
+                if response.get("ResponseCode") == "0":
+                    item.payment_status = "Initiated"
+                else:
+                    item.payment_status = "Failed"
+                    error_msg = response.get("ResultDesc", "Unknown error")
+                    item.error_description = error_msg
+                    any_errors = True
 
+            except Exception as e:
+                any_errors = True
+                item.payment_status = "Failed"
+                item.error_description = str(e)
+                error_msg = f"Error processing B2C payment {str(e)}"
+                self.error_description = f"{self.error}\n{error_msg}" if self.error else error_msg
+                app_logger.error(error_msg, exc_info=True)
+                frappe.log_error(error_msg, "MPesa B2C Payment Error")
+
+        if any_errors:
+            frappe.msgprint(
+                msg="Some B2C Payment Requests failed. Check item details.",
+                title="Payment Request Error",
+                indicator="red"
+            )
+        else:
             frappe.msgprint(
                 "Payment Request Initiated.", title="Payment Request", indicator="green"
             )

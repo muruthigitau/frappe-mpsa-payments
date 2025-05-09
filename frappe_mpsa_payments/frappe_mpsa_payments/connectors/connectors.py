@@ -127,7 +127,7 @@ class MpesaConnector(BaseMpesaConnector):
         headers.update(self._custom_headers)
         return headers
 
-    def make_remote_call(self, doctype=None, document_name=None, retrying=False):
+    def make_remote_call(self, doctype=None, document_name=None, retrying=False, skip_integration_request=False):
         if not all([self._endpoint, self._method, self._success_callback]):
             frappe.throw("Missing required parameters (endpoint, method, callbacks).", frappe.MandatoryError)
 
@@ -135,7 +135,7 @@ class MpesaConnector(BaseMpesaConnector):
         self._url = f"{self._base_url}/{self._endpoint.lstrip('/')}"
         self.doctype, self.document_name = doctype, document_name
 
-        if not retrying:
+        if not retrying and not skip_integration_request:
             reuse_existing = getattr(self, "_reuse_existing_integration_request", False)
             if reuse_existing:
                 existing_request = frappe.get_all(

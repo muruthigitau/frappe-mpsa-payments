@@ -75,7 +75,8 @@
    "fieldname": "partyb",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Contacts"
+   "label": "Contacts",
+   "reqd": 1
   },
   {
    "columns": 2,
@@ -123,7 +124,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-06 02:00:20.271299",
+ "modified": "2025-05-09 12:21:11.347114",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Employee Payment Item",
