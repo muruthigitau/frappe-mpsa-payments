@@ -4,13 +4,18 @@
 frappe.ui.form.on("MPesa B2C Payment", {
     onload: function (frm) {
       frm.set_query("mpesa_setting", function () {
+        
+        if (!frm.doc.company) return false;
+
         return {
           filters: {
             api_type: 'MPesa B2C (Business to Customer)',
+            company: frm.doc.company,
           }
         };
       });
     },
+    
     refresh: function (frm) {
       // Set filters for party type field
       frm.set_query("party_type", function () {
@@ -22,7 +27,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
       // Check if there are any failed entries
       let has_failed_items = frm.doc.items.some(item => item.payment_status === "Failed");
 
-      if (has_failed_items && frm.doc.docstatus === 0) {
+      if (has_failed_items && frm.doc.docstatus === 1) {
         frm.add_custom_button(__("Retry Failed Payments"), function() {
           frappe.confirm(
             'Retry failed payment entries?',
@@ -78,6 +83,15 @@ frappe.ui.form.on("MPesa B2C Payment", {
       frm.set_value("items", []);
       const doctype = frm.doc.doctype_to_pay_against;
 
+      if (doctype === "Employee Advance") {
+        frappe.db.get_value("Company", frm.doc.company, "default_employee_advance_account")
+          .then(response => {
+            if (response && response.message && response.message.default_employee_advance_account) {
+              frm.set_value("account_paid_to", response.default_employee_advance_account)
+            }
+          });
+      }
+
       // Dynamic filters based on doctype
       const filterMap = {
         "Purchase Invoice": {
@@ -85,6 +99,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
         },
         "Expense Claim": {
           approval_status: "Approved",
+          status: "Unpaid",
         },
         "Salary Slip": {
           status: "Submitted",
@@ -106,6 +121,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
           filters: filters,
         })
         .then((response) => {
+          console.log(response);
           if (!response.length) {
             throw new Error("No Data Fetched");
           } else {
@@ -113,6 +129,12 @@ frappe.ui.form.on("MPesa B2C Payment", {
               response = response.filter(data => {
                 return (data.paid_amount || 0) < (data.advance_amount || 0);
               });
+            }
+
+            else if (doctype === "Expense Claim") {
+              response = response.filter(data => {
+                return (data.total_amount_reimbursed || 0) < (data.total_claimed_amount || 0)
+              })
             }
 
             response.forEach(async (data) => {
@@ -124,6 +146,9 @@ frappe.ui.form.on("MPesa B2C Payment", {
                 record_amount: (() => {
                   if (doctype === "Employee Advance") {
                     return (data.advance_amount || 0) - (data.paid_amount || 0);
+                  }
+                  else if (doctype === "Expense Claim") {
+                    return (data.total_claimed_amount || 0) - (data.total_amount_reimbursed || 0);
                   }
                   return (
                     data.base_rounded_total ?? data.total_sanctioned_amount ?? data.advance_amount
@@ -171,6 +196,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
           }
         })
         .catch((error) => {
+          console.log(error);
           if (error.message === "No Data Fetched")
             frappe.msgprint({
               message: __(
@@ -184,7 +210,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
     mpesa_setting: function (frm) {
       frappe.db.get_value(
         "Company",
-        { name: frappe.boot.sysdefaults.company },
+        { name: frm.doc.company },
         ["abbr"],
         (companyAbbrResponse) => {
           frappe.db.get_value(

@@ -76,7 +76,7 @@ class MPesaB2CPayment(Document):
                 document_name=item.name
             )
 
-            if response.get("ResponseCode") == 0:
+            if response.get("ResponseCode") == "0":
                 item.payment_status = "Initiated"
             else:
                 item.payment_status = "Failed"
@@ -118,7 +118,7 @@ class MPesaB2CPayment(Document):
             for item in self.items:
                 item.validate()
 
-    def before_save(self) -> None:
+    def before_submit(self) -> None:
         """Initital payment trigger"""
         setting = self._get_mpesa_settings()
 

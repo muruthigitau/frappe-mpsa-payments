@@ -9,9 +9,9 @@
  "field_order": [
   "naming_series",
   "section_break_pujd",
-  "mpesa_setting",
-  "column_break_wwdi",
   "company",
+  "column_break_wwdi",
+  "mpesa_setting",
   "transaction_details_section",
   "commandid",
   "remarks",
@@ -51,6 +51,7 @@
    "label": "Associated Mpesa Setting"
   },
   {
+   "depends_on": "eval: doc.company",
    "fieldname": "mpesa_setting",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -141,6 +142,8 @@
    "label": "Employee Payments"
   },
   {
+   "allow_bulk_edit": 1,
+   "allow_on_submit": 1,
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Items",
@@ -231,7 +234,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-06 22:13:51.735862",
+ "modified": "2025-05-09 19:58:16.906227",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",
