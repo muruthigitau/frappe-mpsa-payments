@@ -51,11 +51,14 @@ def create_payment_entry(
 	amount,
 	currency,
 	mode_of_payment,
+	party_type="Customer",
 	reference_date=None,
 	reference_no=None,
 	posting_date=None,
 	cost_center=None,
 	submit=0,
+	party_account=None,
+	references=None,
 ):
 	"""
 	Create a payment entry for a given customer and company.
@@ -76,21 +79,29 @@ def create_payment_entry(
 		PaymentEntry: Newly created payment entry document.
 	"""
 	# TODO : need to have a better way to handle currency
-	date = nowdate() if not posting_date else posting_date
-	party_type = "Customer"
-	party_account = get_party_account(party_type, customer, company)
+	date = posting_date or nowdate()
+
+	party_account = party_account if party_account else get_party_account(party_type, customer, company)
+	if not party_account:
+		frappe.throw(
+			_(f"No party account found for {party_type} {customer} in company {company}. Please check the Party Account or the Company default settings.")
+		)
+
 	party_account_currency = get_account_currency(party_account)
+	
 	if party_account_currency != currency:
 		frappe.throw(
 			_(
 				"Currency is not correct, party account currency is {party_account_currency} and transaction currency is {currency}"
 			).format(party_account_currency=party_account_currency, currency=currency)
 		)
-	payment_type = "Receive"
+
+	payment_type = "Pay" if party_type in ["Employee", "Supplier"] else "Receive"
 
 	bank = get_bank_cash_account(company, mode_of_payment)
+	
 	company_currency = frappe.get_value("Company", company, "default_currency")
-	conversion_rate = get_exchange_rate(currency, company_currency, date, "for_selling")
+	conversion_rate = get_exchange_rate(currency, company_currency, date, "for_selling" if payment_type == "Receive" else "for_buying")
 	paid_amount, received_amount = set_paid_amount_and_received_amount(
 		party_account_currency, bank, amount, payment_type, None, conversion_rate
 	)
@@ -117,19 +128,29 @@ def create_payment_entry(
 	pe.letter_head = frappe.get_value("Company", company, "default_letter_head")
 	pe.reference_date = reference_date
 	pe.reference_no = reference_no
-	if pe.party_type in ["Customer", "Supplier"]:
+	if pe.party_type in ["Customer", "Supplier", "Employee"]:
 		bank_account = get_party_bank_account(pe.party_type, pe.party)
-		pe.set("bank_account", bank_account)
-		pe.set_bank_account_data()
+		if bank_account:
+			pe.set("bank_account", bank_account)
+			pe.set_bank_account_data()
 
 	pe.setup_party_account_field()
 	pe.set_missing_values()
+	pe.set_amounts()
 
-	if party_account and bank:
-		pe.set_amounts()
-	if submit:
-		pe.docstatus = 1
+	if references:
+		for ref in references:
+			pe.append("references", {
+				"reference_doctype": ref["reference_doctype"],
+				"reference_name": ref["reference_name"],
+				"allocated_amount": ref["allocated_amount"]
+			})
+
 	pe.insert(ignore_permissions=True)
+
+	if frappe.utils.cint(submit):
+		pe.submit()
+
 	return pe
 
 

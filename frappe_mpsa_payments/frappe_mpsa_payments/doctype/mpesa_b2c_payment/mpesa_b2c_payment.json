@@ -1,0 +1,260 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2023-10-30 11:38:30.870409",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "section_break_pujd",
+  "mpesa_setting",
+  "column_break_wwdi",
+  "company",
+  "transaction_details_section",
+  "commandid",
+  "remarks",
+  "column_break_jg71",
+  "amount",
+  "occassion",
+  "receiver_details_section",
+  "party_type",
+  "column_break_rc4l",
+  "start_date",
+  "end_date",
+  "doctype_to_pay_against",
+  "section_break_rrbq",
+  "items",
+  "accounts_section",
+  "account_paid_from",
+  "column_break_nsjt",
+  "account_paid_to",
+  "payment_status_and_errors_section",
+  "status",
+  "error_code",
+  "column_break_oy1c",
+  "error_description",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "MPESA-B2C-"
+  },
+  {
+   "fieldname": "section_break_pujd",
+   "fieldtype": "Section Break",
+   "label": "Associated Mpesa Setting"
+  },
+  {
+   "fieldname": "mpesa_setting",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Mpesa Setting",
+   "options": "Mpesa Settings",
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "transaction_details_section",
+   "fieldtype": "Section Break",
+   "label": "Transaction Details"
+  },
+  {
+   "fieldname": "commandid",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Command ID",
+   "no_copy": 1,
+   "options": "\nSalaryPayment\nBusinessPayment\nPromotionPayment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Data",
+   "label": "Remarks",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_jg71",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Amount"
+  },
+  {
+   "fieldname": "occassion",
+   "fieldtype": "Data",
+   "label": "Occassion"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "receiver_details_section",
+   "fieldtype": "Section Break",
+   "label": "Receiver Details"
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Link",
+   "label": "Party Type",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_rc4l",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.party_type;",
+   "fieldname": "start_date",
+   "fieldtype": "Datetime",
+   "label": "Start Date",
+   "mandatory_depends_on": "eval:doc.party_type;"
+  },
+  {
+   "depends_on": "eval:doc.party_type;",
+   "fieldname": "end_date",
+   "fieldtype": "Datetime",
+   "label": "End Date",
+   "mandatory_depends_on": "eval:doc.party_type;"
+  },
+  {
+   "fieldname": "doctype_to_pay_against",
+   "fieldtype": "Link",
+   "label": "Doctype To Pay Against",
+   "no_copy": 1,
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.party_type;",
+   "fieldname": "section_break_rrbq",
+   "fieldtype": "Section Break",
+   "label": "Employee Payments"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "MPesa B2C Employee Payment Item"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "accounts_section",
+   "fieldtype": "Section Break",
+   "label": "Accounts"
+  },
+  {
+   "depends_on": "eval:doc.party_type",
+   "fieldname": "account_paid_from",
+   "fieldtype": "Link",
+   "label": "Account Paid From",
+   "no_copy": 1,
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_nsjt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "payment_status_and_errors_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Status and Errors"
+  },
+  {
+   "default": "Not Initiated",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "\nNot Initiated\nPaid\nPending\nErrored\nTimed-Out",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.status === \"Errored\";",
+   "fieldname": "error_code",
+   "fieldtype": "Data",
+   "label": "Error Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_oy1c",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.status === \"Errored\";",
+   "fieldname": "error_description",
+   "fieldtype": "Data",
+   "label": "Error Description",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "MPesa B2C Payment",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wwdi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\"",
+   "fieldname": "account_paid_to",
+   "fieldtype": "Link",
+   "label": "Account Paid To",
+   "mandatory_depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\"",
+   "options": "Account"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-05-06 22:13:51.735862",
+ "modified_by": "Administrator",
+ "module": "Frappe Mpsa Payments",
+ "name": "MPesa B2C Payment",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1,
+ "track_views": 1
+}
