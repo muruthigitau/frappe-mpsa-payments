@@ -115,29 +115,31 @@ def results_callback_url(**kwargs) -> dict:
         mpesa_b2c_payment = frappe.get_doc(mpesa_b2c_payment_item.parenttype, mpesa_b2c_payment_item.parent)
 
         if result.get("ResultCode") != 0:
+            mpesa_b2c_payment_item.payment_status = "Failed"
+            mpesa_b2c_payment_item.error_code = result.get("errorCode")
+            mpesa_b2c_payment_item.error_message = result.get("ResultDesc") or result.get("errorMessage")
+            
             update_integration_request(
                 originator_conversation_id,
                 "Failed",
                 output=result_json,
-                error=result.get("ResultDesc"),
+                error=result.get("ResultDesc") or result.get("errorMessage"),
             )
             frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
 
-            mpesa_b2c_payment_item.payment_status = "Failed"
-            mpesa_b2c_payment_item.error_code = result.get("errorCode")
-            mpesa_b2c_payment_item.error_message = result.get("ResultDesc") or result.get("errorMessage")
 
         else:
+            # TODO: create an Mpesa B2C Transactions Entry
+
+            mpesa_b2c_payment_item.payment_status = "Success"
+            mpesa_b2c_payment_item.save(ignore_permissions=True)
+            
             update_integration_request(
                 originator_conversation_id,
                 "Completed",
                 output=result_json,
             )
 
-            # TODO: create an Mpesa B2C Transactions Entry
-
-            mpesa_b2c_payment_item.payment_status = "Success"
-            mpesa_b2c_payment_item.save(ignore_permissions=True)
 
             frappe.enqueue(
                 "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",

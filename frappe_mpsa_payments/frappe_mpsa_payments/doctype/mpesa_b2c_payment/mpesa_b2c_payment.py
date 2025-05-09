@@ -64,7 +64,6 @@ class MPesaB2CPayment(Document):
         """Handles a single B2C payment item"""
         try:
             if is_retry:
-                item.originator_conversation_id = self._generate_uuid_v4()
                 item.error_code = ""
                 item.error_description = ""
                 item.payment_status = "Not Initiated"
@@ -153,6 +152,10 @@ class MPesaB2CPayment(Document):
         for item in self.items:
             if item.payment_status != "Failed":
                 continue
+
+            item.originator_conversation_id = self._generate_uuid_v4()
+
+            item.save()
 
             success = self._process_payment_item(item, connector, setting, is_retry=True)
             if not success:
