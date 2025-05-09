@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe_mpsa_payments.frappe_mpsa_payments.api.payment_entry import create_payment_entry
+from frappe_mpsa_payments.frappe_mpsa_payments.api.payment_entry import create_payment_entry, get_outstanding_invoices, get_unallocated_payments, create_and_reconcile_payment_reconciliation
 
 class MpesaC2BPaymentRegister(Document):
     def before_insert(self):
@@ -52,7 +52,7 @@ class MpesaC2BPaymentRegister(Document):
             self.currency,
             self.mode_of_payment,
             self.posting_date,
-            
+
             self.name,
             self.posting_date,
             
@@ -61,3 +61,24 @@ class MpesaC2BPaymentRegister(Document):
         )
         return payment_entry.name
     
+    def on_submit(self):
+
+        try:
+            matching_invoice = frappe.get_value(
+                "Sales Invoice",
+                {"name": self.billrefnumber, "docstatus": 1, "company": self.company, "customer": self.customer, "outstanding_amount": (">", 0)},
+                "name"
+            )
+
+            if matching_invoice:
+                create_and_reconcile_payment_reconciliation(
+                    outstanding_invoices=[matching_invoice],
+                    customer=self.customer,
+                    company=self.company,
+                    payment_entries=[self.payment_entry]
+                )
+            
+            frappe.response["http_status_code"] = 200
+
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), str(e))

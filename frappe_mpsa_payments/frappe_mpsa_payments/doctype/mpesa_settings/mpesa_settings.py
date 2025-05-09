@@ -5,6 +5,7 @@
 import base64
 from json import dumps, loads
 from typing import Any
+from urllib.parse import urlparse
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -15,14 +16,23 @@ import frappe
 from frappe import _, get_single
 from frappe.integrations.utils import create_request_log
 from frappe.model.document import Document
-from frappe.utils import call_hook_method, fmt_money, get_request_site_address
+from frappe.utils import (
+    call_hook_method,
+    fmt_money,
+    get_request_site_address,
+    get_link_to_form,
+)
 from frappe.utils.file_manager import get_file_path
 
-from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE
-from ....utils.utils import erpnext_app_import_guard
+from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
+from ....utils.utils import erpnext_app_import_guard, create_payment_gateway_account
 from .mpesa_connector import MpesaConnector
 from .mpesa_custom_fields import create_custom_pos_fields
+from frappe_mpsa_payments.utils.encoding_initiator_password import (
+    generate_security_credential,
+)
 
+from ...api.m_pesa_api import get_account_balance
 
 class MpesaSettings(Document):
     supported_currencies = ["KES"]
@@ -62,6 +72,11 @@ class MpesaSettings(Document):
 
             self.security_credential = base64.b64encode(ciphertext).decode("utf-8")
 
+    @frappe.whitelist()
+    def get_payment_url(self, **kwargs) -> str:
+        """Return the payment URL"""
+        return "/all-products"
+
     def on_update(self) -> None:
         """On Update Hook"""
         from ....utils.utils import create_payment_gateway
@@ -74,17 +89,38 @@ class MpesaSettings(Document):
             settings="Mpesa Settings",
             controller=self.payment_gateway_name,
         )
-        call_hook_method(
-            "payment_gateway_enabled",
+        
+        # erpnext create_payment_gateway_account doesn't allow for company to be passed, ovveriden
+        # call_hook_method(
+        #     "payment_gateway_enabled",
+        #     gateway="Mpesa-" + self.payment_gateway_name,
+        #     payment_channel="Phone",
+        # )
+        create_payment_gateway_account(
             gateway="Mpesa-" + self.payment_gateway_name,
             payment_channel="Phone",
+            company=self.company,
         )
 
         # required to fetch the bank account details from the payment gateway account
         frappe.db.commit()  # nosemgrep
         create_mode_of_payment(
-            "Mpesa-" + self.payment_gateway_name, payment_type="Phone"
+            "Mpesa-" + self.payment_gateway_name, payment_type="Phone", company=self.company
         )
+        
+    def validate(self) -> None:   
+        if self.initiator_password and not self.security_credential:     
+            certs = frappe.get_single("Mpesa Public Key Certificate")
+            cert_url = ""
+            if self.sandbox:
+                cert_url = certs.sandbox_certificate
+            else:
+                cert_url = certs.production_certificate
+                
+            self.security_credential = generate_security_credential(
+                self.get_password("initiator_password", "") if self.initiator_password else "",
+                cert_url
+            )
 
     def request_for_payment(self, **kwargs) -> None:
         args = frappe._dict(kwargs)
@@ -97,9 +133,20 @@ class MpesaSettings(Document):
 
                 response = frappe._dict(get_payment_request_response_payload(amount))
             else:
-                response = frappe._dict(generate_stk_push(**args))
-
-            self.handle_api_response("CheckoutRequestID", args, response)
+                # payment_request = frappe.get_doc(args.get("reference_doctype"), args.get("reference_docname"))
+                stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
+                stk_request.update({
+                    "amount": args.get("request_amount", 0.0),
+                    "phone_number": args.get("phone_number") or args.get("sender", ""),
+                    "timestamp": frappe.utils.now(),
+                    "settings": args.payment_gateway[6:],
+                    "payment_gateway": args.get("payment_gateway"),
+                    "reference_doctype": args.get("reference_doctype"),
+                    "reference_name": args.get("reference_docname"),
+                })
+                stk_request.flags.ignore_permissions = True
+                stk_request.insert(ignore_permissions=True)
+                stk_request.submit()
 
     def split_request_amount_according_to_transaction_limit(
         self, args: frappe._dict
@@ -125,27 +172,19 @@ class MpesaSettings(Document):
 
     @frappe.whitelist()
     def get_account_balance_info(self) -> None:
-        payload = dict(
-            reference_doctype="Mpesa Settings",
-            reference_docname=self.name,
-            doc_details=vars(self),
-        )
-
         if frappe.flags.in_test:
             from .test_mpesa_settings import get_test_account_balance_response
 
-            response = frappe._dict(get_test_account_balance_response())
+            frappe._dict(get_test_account_balance_response())
         else:
-            response = frappe._dict(get_account_balance(payload))
-
-        self.handle_api_response("ConversationID", payload, response)
+            get_account_balance(self.name)
 
     def handle_api_response(
         self, global_id: str, request_dict: frappe._dict, response: frappe._dict
     ) -> None:
         """Response received from API calls returns a global identifier for each transaction, this code is returned during the callback."""
         # check error response
-        if response["requestId"]:
+        if "requestId" in response:
             req_name = response["requestId"]
             error = response
         else:
@@ -167,7 +206,7 @@ def generate_stk_push(**kwargs) -> str | Any:
     try:
         callback_url = (
             get_request_site_address(True)
-            + "/api/method/payments.payment_gateways.doctype.mpesa_settings.mpesa_settings.verify_transaction"
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.verify_transaction"
         )
 
         mpesa_settings = frappe.get_doc("Mpesa Settings", args.payment_gateway[6:])
@@ -184,8 +223,9 @@ def generate_stk_push(**kwargs) -> str | Any:
             app_key=mpesa_settings.consumer_key,
             app_secret=mpesa_settings.get_password("consumer_secret"),
         )
-
-        mobile_number = sanitize_mobile_number(args.sender)
+        mobile_number = sanitize_mobile_number(
+            args.phone_number if args.phone_number else args.sender
+        )
 
         response = connector.stk_push(
             business_shortcode=business_shortcode,
@@ -212,82 +252,6 @@ def generate_stk_push(**kwargs) -> str | Any:
 def sanitize_mobile_number(number: str) -> str:
     """Add country code and strip leading zeroes from the phone number."""
     return "254" + str(number).lstrip("0")
-
-
-@frappe.whitelist(allow_guest=True)
-def verify_transaction(**kwargs) -> None:
-    """Verify the transaction result received via callback from stk."""
-    transaction_response = frappe._dict(kwargs["Body"]["stkCallback"])
-
-    checkout_id = getattr(transaction_response, "CheckoutRequestID", "")
-    if not isinstance(checkout_id, str):
-        frappe.throw(_("Invalid Checkout Request ID"))
-
-    integration_request = frappe.get_doc("Integration Request", checkout_id)
-    transaction_data = frappe._dict(loads(integration_request.data))
-    total_paid = 0  # for multiple integration request made against a pos invoice
-    success = False  # for reporting successfull callback to point of sale ui
-
-    if transaction_response["ResultCode"] == 0:
-        if (
-            integration_request.reference_doctype
-            and integration_request.reference_docname
-        ):
-            try:
-                item_response = transaction_response["CallbackMetadata"]["Item"]
-                amount = fetch_param_value(item_response, "Amount", "Name")
-                mpesa_receipt = fetch_param_value(
-                    item_response, "MpesaReceiptNumber", "Name"
-                )
-                pr = frappe.get_doc(
-                    integration_request.reference_doctype,
-                    integration_request.reference_docname,
-                )
-
-                mpesa_receipts, completed_payments = (
-                    get_completed_integration_requests_info(
-                        integration_request.reference_doctype,
-                        integration_request.reference_docname,
-                        checkout_id,
-                    )
-                )
-
-                total_paid = amount + sum(completed_payments)
-                mpesa_receipts = ", ".join(mpesa_receipts + [mpesa_receipt])
-
-                if total_paid >= pr.grand_total:
-                    pr.run_method("on_payment_authorized", "Completed")
-                    success = True
-
-                frappe.db.set_value(
-                    "POS Invoice",
-                    pr.reference_name,
-                    "mpesa_receipt_number",
-                    mpesa_receipts,
-                )
-                integration_request.handle_success(transaction_response)
-            except Exception:
-                integration_request.handle_failure(transaction_response)
-                frappe.log_error("Mpesa: Failed to verify transaction")
-
-    else:
-        integration_request.handle_failure(transaction_response)
-
-    frappe.publish_realtime(
-        event="process_phone_payment",
-        doctype="POS Invoice",
-        docname=transaction_data.payment_reference,
-        user=integration_request.owner,
-        message={
-            "amount": total_paid,
-            "success": success,
-            "failure_message": (
-                transaction_response["ResultDesc"]
-                if transaction_response["ResultCode"] != 0
-                else ""
-            ),
-        },
-    )
 
 
 def get_completed_integration_requests_info(
@@ -318,40 +282,6 @@ def get_completed_integration_requests_info(
 
     return mpesa_receipts, completed_payments
 
-
-def get_account_balance(request_payload: dict) -> str | dict | None:
-    """Call account balance API to send the request to the Mpesa Servers."""
-    try:
-        mpesa_settings = frappe.get_doc(
-            "Mpesa Settings", request_payload.get("reference_docname")
-        )
-        env = "production" if not mpesa_settings.sandbox else "sandbox"
-        connector = MpesaConnector(
-            env=env,
-            app_key=mpesa_settings.consumer_key,
-            app_secret=mpesa_settings.get_password("consumer_secret"),
-        )
-
-        callback_url = (
-            get_request_site_address(True)
-            + "/api/method/payments.payment_gateways.doctype.mpesa_settings.mpesa_settings.process_balance_info"
-        )
-
-        response = connector.get_balance(
-            mpesa_settings.initiator_name,
-            mpesa_settings.security_credential,
-            mpesa_settings.till_number,
-            4,
-            mpesa_settings.name,
-            callback_url,
-            callback_url,
-        )
-        return response
-    except Exception:
-        frappe.log_error("Mpesa: Failed to get account balance")
-        frappe.throw(
-            _("Please check your configuration and try again"), title=_("Error")
-        )
 
 
 @frappe.whitelist(allow_guest=True)
@@ -430,7 +360,7 @@ def fetch_param_value(response: dict, key: str, key_field: str) -> str | None:
             return param["Value"]
 
 
-def create_mode_of_payment(gateway: str, payment_type: str = "General") -> Document:
+def create_mode_of_payment(gateway: str, payment_type: str = "General", company: str = None) -> Document:
     with erpnext_app_import_guard():
         from erpnext import get_default_company
 
@@ -449,7 +379,7 @@ def create_mode_of_payment(gateway: str, payment_type: str = "General") -> Docum
                 "accounts": [
                     {
                         "doctype": "Mode of Payment Account",
-                        "company": get_default_company(),
+                        "company": company or get_default_company(),
                         "default_account": payment_gateway_account,
                     }
                 ],
@@ -460,3 +390,136 @@ def create_mode_of_payment(gateway: str, payment_type: str = "General") -> Docum
         return mode_of_payment
 
     return frappe.get_doc("Mode of Payment", mode_of_payment)
+
+
+@frappe.whitelist()
+def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
+
+    try:
+
+        settings = frappe.get_doc("Mpesa Settings", mpesa_settings)
+
+        site_address = get_request_site_address(True)
+        parsed_url = urlparse(site_address)
+        site_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
+
+        queue_timeout_url = (
+            site_url
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout"
+        )
+        result_url = (
+            site_url
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_transaction_status_result"
+        )
+
+        integration_request = frappe.get_doc({
+            "doctype": "Integration Request",
+            "is_remote_request": 1,
+            "integration_request_service": "Mpesa Transaction Status",
+            "reference_doctype": "Mpesa C2B Payment Register",
+            "status": "Queued",
+            "data": dumps({
+                "mpesa_settings": mpesa_settings,
+                "transaction_id": transaction_id,
+                "remarks": remarks,
+                "queue_timeout_url": queue_timeout_url,
+                "result_url": result_url
+            }),
+            "method": "POST"
+        }).insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        frappe.enqueue(
+            "frappe_mpsa_payments.frappe_mpsa_payments.doctype.mpesa_settings.mpesa_settings.process_transaction_status",
+            queue="short",
+            timeout=300,
+            job_id=f"mpesa_status_{integration_request.name}",
+            integration_request_name=integration_request.name,
+            deduplicate=True
+        )
+
+        frappe.publish_realtime(
+            event="mpesa_transaction_status",
+            message={"status": "queued", "message": _("Transaction status check queued for processing")},
+            user=frappe.session.user
+        )
+        return {"status": "queued", "message": "Transaction status check queued"}
+
+    except Exception as e:
+        frappe.log_error(title="Mpesa Transaction Status Queue Error", message=str(e))
+        return {"status": "error", "message": str(e)}
+
+
+def process_transaction_status(integration_request_name):
+    """Process the Mpesa transaction status check in the background"""
+    try:
+
+        integration_request = frappe.get_doc("Integration Request", integration_request_name)
+        data = loads(integration_request.data)
+
+        mpesa_settings = data["mpesa_settings"]
+        transaction_id = data["transaction_id"]
+        remarks = data["remarks"]
+        queue_timeout_url = data["queue_timeout_url"]
+        result_url = data["result_url"]
+
+        settings = frappe.get_doc("Mpesa Settings", mpesa_settings)
+
+        # Initialize Mpesa Connector
+        connector = MpesaConnector(
+            env="production" if not settings.sandbox else "sandbox",
+            app_key=settings.consumer_key,
+            app_secret=settings.get_password("consumer_secret"),
+        )
+
+        response = connector.transaction_status(
+            initiator=settings.initiator_name,
+            security_credential=settings.security_credential,
+            transaction_id=transaction_id,
+            party_a=settings.business_shortcode if not settings.sandbox else settings.till_number,
+            identifier_type=4,  # Organization Short Code
+            remarks=remarks,
+            occasion="",
+            queue_timeout_url=queue_timeout_url,
+            result_url=result_url,
+        )
+
+        if response.get("ResponseCode") == "0":
+            integration_request.status = "Completed"
+            integration_request.output = dumps(response)
+            integration_request.save(ignore_permissions=True)
+            frappe.db.commit()
+
+            frappe.publish_realtime(
+                event="mpesa_transaction_status",
+                message={
+                    "status": "success",
+                    "message": f"Transaction Status: {response.get('ResponseDescription')}"
+                },
+                user=frappe.session.user
+            )
+        else:
+            error_msg = f"{response.get('errorCode', 'Unknown')}: {response.get('errorMessage', 'Unknown error')}"
+            integration_request.status = "Failed"
+            integration_request.output = error_msg
+            integration_request.save(ignore_permissions=True)
+            frappe.db.commit()
+
+            frappe.publish_realtime(
+                event="mpesa_transaction_status",
+                message={"status": "error", "message": error_msg},
+                user=frappe.session.user
+            )
+
+    except Exception as e:
+        integration_request.status = "Failed"
+        integration_request.output = str(e)
+        integration_request.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        frappe.log_error(title="Mpesa Transaction Status Process Error", message=str(e))
+        frappe.publish_realtime(
+            event="mpesa_transaction_status",
+            message={"status": "error", "message": f"Error checking status: {str(e)}"},
+            user=frappe.session.user
+        )

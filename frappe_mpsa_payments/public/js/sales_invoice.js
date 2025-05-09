@@ -125,4 +125,22 @@ frappe.ui.form.on("Sales Invoice", {
       },
     });
   },
+
+  insert_payment_entry: function(frm) {
+    frappe.call({
+        method: 'frappe.client.insert',
+        args: {
+            doc: {
+                doctype: 'Payment Entry',
+                payment_type: 'Receive',
+                party_type: 'Customer',
+                party: frm.doc.customer,
+                paid_to: 'Cash',
+                reference_no: payment_response['MpesaReceiptNumber'],
+                amount: frm.doc.grand_total,
+                
+            }
+        }
+    })
+  }
 });

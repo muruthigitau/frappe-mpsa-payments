@@ -1,174 +1,333 @@
 {
-  "actions": [],
-  "autoname": "field:payment_gateway_name",
-  "creation": "2024-07-04 09:03:02.080734",
-  "doctype": "DocType",
-  "editable_grid": 1,
-  "engine": "InnoDB",
-  "field_order": [
-    "payment_gateway_name",
-    "api_type",
-    "column_break_nhvr",
-    "sandbox",
-    "section_break_lkry",
-    "initiator_name",
-    "consumer_key",
-    "consumer_secret",
-    "security_credential",
-    "transaction_limit",
-    "column_break_4",
-    "till_number",
-    "business_shortcode",
-    "online_passkey",
-    "get_account_balance",
-    "account_balance"
-  ],
-  "fields": [
-    {
-      "fieldname": "payment_gateway_name",
-      "fieldtype": "Data",
-      "label": "Payment Gateway Name",
-      "reqd": 1,
-      "unique": 1
-    },
-    {
-      "fieldname": "consumer_key",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "label": "Consumer Key",
-      "reqd": 1
-    },
-    {
-      "fieldname": "consumer_secret",
-      "fieldtype": "Password",
-      "in_list_view": 1,
-      "label": "Consumer Secret",
-      "reqd": 1
-    },
-    {
-      "fieldname": "initiator_name",
-      "fieldtype": "Data",
-      "label": "Initiator Name"
-    },
-    {
-      "fieldname": "till_number",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "label": "Till Number",
-      "reqd": 1
-    },
-    {
-      "default": "150000",
-      "fieldname": "transaction_limit",
-      "fieldtype": "Float",
-      "label": "Transaction Limit",
-      "non_negative": 1
-    },
-    {
-      "default": "0",
-      "fieldname": "sandbox",
-      "fieldtype": "Check",
-      "label": "Sandbox"
-    },
-    {
-      "fieldname": "column_break_4",
-      "fieldtype": "Column Break"
-    },
-    {
-      "depends_on": "eval:(doc.sandbox==0)",
-      "fieldname": "business_shortcode",
-      "fieldtype": "Data",
-      "label": "Business Shortcode",
-      "mandatory_depends_on": "eval:(doc.sandbox==0)"
-    },
-    {
-      "fieldname": "online_passkey",
-      "fieldtype": "Password",
-      "label": " Online PassKey",
-      "reqd": 1
-    },
-    {
-      "fieldname": "security_credential",
-      "fieldtype": "Small Text",
-      "label": "Security Credential",
-      "mandatory_depends_on": "eval:(doc.api_type === \"MPesa B2C (Business to Customer)\");"
-    },
-    {
-      "fieldname": "get_account_balance",
-      "fieldtype": "Button",
-      "label": "Get Account Balance"
-    },
-    {
-      "fieldname": "account_balance",
-      "fieldtype": "Long Text",
-      "hidden": 1,
-      "label": "Account Balance",
-      "read_only": 1
-    },
-    {
-      "default": "MPesa Express",
-      "fieldname": "api_type",
-      "fieldtype": "Select",
-      "label": "API Type",
-      "options": "\nMPesa Express\nMPesa C2B (Customer to Business)\nMPesa B2C (Business to Customer)",
-      "reqd": 1
-    },
-    {
-      "fieldname": "column_break_nhvr",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "section_break_lkry",
-      "fieldtype": "Section Break"
-    }
-  ],
-  "links": [],
-  "modified": "2024-07-09 14:27:46.525919",
-  "modified_by": "Administrator",
-  "module": "Frappe Mpsa Payments",
-  "name": "Mpesa Settings",
-  "naming_rule": "By fieldname",
-  "owner": "Administrator",
-  "permissions": [
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-    },
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "Accounts Manager",
-      "share": 1,
-      "write": 1
-    },
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "Accounts User",
-      "share": 1,
-      "write": 1
-    }
-  ],
-  "sort_field": "modified",
-  "sort_order": "DESC",
-  "states": [],
-  "track_changes": 1
+ "actions": [],
+ "autoname": "field:payment_gateway_name",
+ "creation": "2024-07-04 09:03:02.080734",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "payment_gateway_name",
+  "api_type",
+  "company",
+  "column_break_nhvr",
+  "sandbox",
+  "paybill_type",
+  "section_break_rrgz",
+  "column_break_uspo",
+  "get_account_balance",
+  "check_transaction_status",
+  "column_break_gtyp",
+  "auto_create_sales_invoice",
+  "section_break_lkry",
+  "consumer_key",
+  "consumer_secret",
+  "security_credential",
+  "column_break_4",
+  "business_shortcode",
+  "till_number",
+  "online_passkey",
+  "transaction_limit",
+  "initiator_name",
+  "initiator_password",
+  "balance_details_section",
+  "utility_account",
+  "working_account",
+  "merchant_account",
+  "column_break_erio",
+  "charges_paid_account",
+  "airtime_purchase_account",
+  "loan_disbursement_account",
+  "column_break_mcmq",
+  "organization_settlement_account",
+  "advanced_deduction_account",
+  "savings_deduction_account",
+  "token_details_section",
+  "access_token",
+  "column_break_bcac",
+  "expires_in",
+  "column_break_ppbt",
+  "token_expiry"
+ ],
+ "fields": [
+  {
+   "fieldname": "payment_gateway_name",
+   "fieldtype": "Data",
+   "label": "Payment Gateway Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "consumer_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Consumer Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "consumer_secret",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Consumer Secret",
+   "reqd": 1
+  },
+  {
+   "fieldname": "initiator_name",
+   "fieldtype": "Data",
+   "label": "Initiator Name"
+  },
+  {
+   "default": "150000",
+   "fieldname": "transaction_limit",
+   "fieldtype": "Float",
+   "label": "Transaction Limit",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "sandbox",
+   "fieldtype": "Check",
+   "label": "Sandbox"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:(doc.sandbox==0)",
+   "fieldname": "business_shortcode",
+   "fieldtype": "Data",
+   "label": "Business Shortcode",
+   "mandatory_depends_on": "eval:(doc.sandbox==0)"
+  },
+  {
+   "fieldname": "online_passkey",
+   "fieldtype": "Password",
+   "label": " Online PassKey",
+   "reqd": 1
+  },
+  {
+   "fieldname": "security_credential",
+   "fieldtype": "Small Text",
+   "label": "Security Credential"
+  },
+  {
+   "fieldname": "get_account_balance",
+   "fieldtype": "Button",
+   "label": "Get Account Balance"
+  },
+  {
+   "default": "MPesa Express",
+   "fieldname": "api_type",
+   "fieldtype": "Select",
+   "label": "API Type",
+   "options": "\nMPesa Express\nMPesa C2B (Customer to Business)\nMPesa B2C (Business to Customer)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_nhvr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_lkry",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "check_transaction_status",
+   "fieldtype": "Button",
+   "label": "Check Transaction Status"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "token_details_section",
+   "fieldtype": "Section Break",
+   "label": "Token Details"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Data",
+   "label": "Access Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_bcac",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "expires_in",
+   "fieldtype": "Int",
+   "label": "Expires In",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ppbt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "token_expiry",
+   "fieldtype": "Datetime",
+   "label": "Token Expiry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paybill_type",
+   "fieldtype": "Select",
+   "label": "Paybill Type",
+   "options": "\nBuy Goods\nPay Bill",
+   "reqd": 1
+  },
+  {
+   "fieldname": "initiator_password",
+   "fieldtype": "Password",
+   "label": "Initiator Password"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "balance_details_section",
+   "fieldtype": "Section Break",
+   "label": "Balance Details"
+  },
+  {
+   "fieldname": "working_account",
+   "fieldtype": "Currency",
+   "label": "Working Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "utility_account",
+   "fieldtype": "Currency",
+   "label": "Utility Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_erio",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "charges_paid_account",
+   "fieldtype": "Currency",
+   "label": "Charges Paid Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "organization_settlement_account",
+   "fieldtype": "Currency",
+   "label": "Organization Settlement Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "loan_disbursement_account",
+   "fieldtype": "Currency",
+   "label": "Loan Disbursement Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "merchant_account",
+   "fieldtype": "Currency",
+   "label": "Merchant Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "airtime_purchase_account",
+   "fieldtype": "Currency",
+   "label": "Airtime Purchase Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "advanced_deduction_account",
+   "fieldtype": "Currency",
+   "label": "Advanced Deduction Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "savings_deduction_account",
+   "fieldtype": "Currency",
+   "label": "Savings Deduction Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_mcmq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "depends_on": "eval:doc.paybill_type == \"Buy Goods\"",
+   "fieldname": "till_number",
+   "fieldtype": "Data",
+   "label": "Till Number",
+   "mandatory_depends_on": "eval:doc.paybill_type == \"Buy Goods\""
+  },
+  {
+   "fieldname": "section_break_rrgz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_create_sales_invoice",
+   "fieldtype": "Check",
+   "label": "Auto Create Sales Invoice"
+  },
+  {
+   "fieldname": "column_break_uspo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_gtyp",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "links": [],
+ "modified": "2025-04-14 19:41:37.448446",
+ "modified_by": "Administrator",
+ "module": "Frappe Mpsa Payments",
+ "name": "Mpesa Settings",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
 }

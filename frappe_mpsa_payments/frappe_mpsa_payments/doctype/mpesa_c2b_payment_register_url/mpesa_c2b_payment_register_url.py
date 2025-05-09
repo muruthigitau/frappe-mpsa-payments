@@ -6,6 +6,8 @@ import frappe, requests
 from frappe.model.document import Document
 from frappe.utils import get_request_site_address
 from frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api import get_token
+from ..mpesa_settings.mpesa_connector import MpesaConnector
+
 
 class MpesaC2BPaymentRegisterURL(Document):
     def validate(self):
