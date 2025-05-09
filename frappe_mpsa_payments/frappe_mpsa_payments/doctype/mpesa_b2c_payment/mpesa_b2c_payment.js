@@ -18,6 +18,31 @@ frappe.ui.form.on("MPesa B2C Payment", {
           filters: [["DocType", "name", "in", ["Employee", "Supplier"]]],
         };
       });
+
+      // Check if there are any failed entries
+      let has_failed_items = frm.doc.items.some(item => item.payment_status === "Failed");
+
+      if (has_failed_items && frm.doc.docstatus === 0) {
+        frm.add_custom_button(__("Retry Failed Payments"), function() {
+          frappe.confirm(
+            'Retry failed payment entries?',
+            function() {
+              frappe.call({
+                method: 'frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.retry_failed_payments',
+                args: {
+                  payment_name: frm.doc.name
+                },
+                callback: function(r) {
+                  if (r.message) {
+                    frappe.msgprint(r.message);
+                    frm.reload_doc();
+                  }
+                }
+              });
+            }
+          );
+        });
+      }
     },
     commandid: function (frm) {
       frm.set_value("party_type", "");
