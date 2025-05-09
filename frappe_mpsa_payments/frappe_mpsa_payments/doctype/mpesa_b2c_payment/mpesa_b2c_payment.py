@@ -11,8 +11,13 @@ from ....utils.definitions import B2CRequestDefinition
 from .. import app_logger
 from ..custom_exceptions import InformationMismatchError
 
+import uuid
+
 class MPesaB2CPayment(Document):
     """MPesa B2C Payment Class"""
+
+    def _generate_uuid_v4(self):
+        return str(uuid.uuid4())
 
     def _get_mpesa_settings(self) -> Document:
         """ Fetch and validate Mpesa Settings for the Payment Gateway."""
@@ -59,6 +64,7 @@ class MPesaB2CPayment(Document):
         """Handles a single B2C payment item"""
         try:
             if is_retry:
+                item.originator_conversation_id = self._generate_uuid_v4()
                 item.error_code = ""
                 item.error_description = ""
                 item.payment_status = "Not Initiated"
@@ -136,6 +142,7 @@ class MPesaB2CPayment(Document):
                 "Payment Request Initiated.", title="Payment Request", indicator="green"
             )
 
+    @frappe.whitelist()
     def retry_failed_payments(self) -> None:
         """Retry only failed payments"""
         setting = self._get_mpesa_settings()
@@ -148,7 +155,7 @@ class MPesaB2CPayment(Document):
                 continue
 
             success = self._process_payment_item(item, connector, setting, is_retry=True)
-            if not sucess:
+            if not success:
                 any_errors = True
 
         if any_errors:

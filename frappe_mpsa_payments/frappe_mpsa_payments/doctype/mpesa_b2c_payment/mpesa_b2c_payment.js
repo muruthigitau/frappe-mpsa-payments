@@ -28,10 +28,9 @@ frappe.ui.form.on("MPesa B2C Payment", {
             'Retry failed payment entries?',
             function() {
               frappe.call({
-                method: 'frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.retry_failed_payments',
-                args: {
-                  payment_name: frm.doc.name
-                },
+                method: 'retry_failed_payments',
+                doc: frm.doc,
+                args: {},
                 callback: function(r) {
                   if (r.message) {
                     frappe.msgprint(r.message);
