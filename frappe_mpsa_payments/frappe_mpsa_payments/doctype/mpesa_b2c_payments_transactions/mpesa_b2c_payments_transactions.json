@@ -8,17 +8,21 @@
  "engine": "InnoDB",
  "field_order": [
   "b2c_payment_name",
+  "column_break_kzal",
+  "b2c_payment_item_name",
   "section_break_ovxt",
   "transaction_id",
   "receiver_public_name",
   "charges_paid_acct_avlbl_funds",
   "utility_acct_avlbl_funds",
-  "account_paid_from",
   "column_break_iset",
   "transaction_amount",
   "recipient_is_registered_customer",
   "working_acct_avlbl_funds",
   "transaction_completed_datetime",
+  "section_break_uhtx",
+  "account_paid_from",
+  "column_break_hrtm",
   "account_paid_to"
  ],
  "fields": [
@@ -113,13 +117,31 @@
    "fieldtype": "Link",
    "label": "Account Paid To",
    "options": "Account",
-   "read_only": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_kzal",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "b2c_payment_item_name",
+   "fieldtype": "Link",
+   "label": "B2C Payment Item Name",
+   "options": "MPesa B2C Employee Payment Item",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_uhtx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_hrtm",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-11-20 09:25:32.143114",
+ "modified": "2025-05-09 22:03:21.887784",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payments Transactions",
@@ -139,6 +161,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

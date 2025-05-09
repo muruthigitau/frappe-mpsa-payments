@@ -5,8 +5,9 @@ from urllib.parse import urlparse
 
 import frappe
 import erpnext
+from frappe.model.document import Document
 from frappe.integrations.utils import create_request_log
-from frappe.utils import get_request_site_address, nowdate
+from frappe.utils import get_request_site_address, nowdate, get_datetime
 from frappe.utils.password import get_decrypted_password
 import json
 from ...utils.definitions import B2CRequestDefinition
@@ -129,7 +130,7 @@ def results_callback_url(**kwargs) -> dict:
 
 
         else:
-            # TODO: create an Mpesa B2C Transactions Entry
+            create_mpesa_transaction_entry(result, mpesa_b2c_payment, mpesa_b2c_payment_item)
 
             mpesa_b2c_payment_item.payment_status = "Success"
             mpesa_b2c_payment_item.save(ignore_permissions=True)
@@ -187,6 +188,52 @@ def handle_successful_payment(parent_doc, child_doc):
             }
         )
         frappe.db.commit()
+
+
+def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_payment_item_doc: Document):
+    """
+    Store a successful B2C transaction callback into MPesa B2C Payments Transactions.
+    :param result: Dictionary parsed from Safaricom's B2C callback (Success).
+    :param b2c_payment_doc: The parent MPesa B2C Payment document.
+    :param b2c_payment_item_doc: The item/transaction with a successful response.
+    """
+
+    try:
+        transaction_data = result.get("ResultParameters", {}).get("ResultParameter", [])
+        param_dict = {p["Key"]: p["Value"] for p in transaction_data}
+
+        transaction_id = result.get("TransactionID")
+        receiver_public_name = param_dict.get("ReceiverPartyPublicName")
+        transaction_amount = float(param_dict.get("TransactionAmount", 0.0)) 
+        transaction_completed_datetime = param_dict.get("TransactionCompletedDateTime")
+        recipient_is_registered_customer = param_dict.get("B2CRecipientIsRegisteredCustomer")
+        working_acct_avlbl_funds = param_dict.get("B2CWorkingAccountAvailableFunds")
+        charges_paid = float(param_dict.get("B2CChargesPaidAccountAvailableFunds", 0.0))
+        utility_funds = float(param_dict.get("B2CUtilityAccountAvailableFunds", 0.0))
+
+        account_paid_from = b2c_payment_doc.account_paid_from
+
+        if frappe.db.exists("MPesa B2C Payments Transactions", transaction_id):
+            frappe.throw(f"Transaction with ID {transaction_id} already exists.")
+
+        doc = frappe.new_doc("MPesa B2C Payments Transactions")
+        doc.b2c_payment_name = b2c_payment_doc.name
+        doc.b2c_payment_item_name = b2c_payment_item_doc.name
+        doc.transaction_id = transaction_id
+        doc.transaction_amount = transaction_amount
+        doc.receiver_public_name = receiver_public_name
+        doc.recipient_is_registered_customer = recipient_is_registered_customer
+        doc.charges_paid_acct_avlbl_funds = charges_paid
+        doc.working_acct_avlbl_funds = working_acct_avlbl_funds
+        doc.utility_acct_avlbl_funds = utility_funds
+        doc.transaction_completed_datetime = get_datetime(transaction_completed_datetime)
+        doc.account_paid_from = account_paid_from
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "B2C Payment Transaction Save Failed")
 
 
 def create_journal_entry(parent_doc, child_doc):
