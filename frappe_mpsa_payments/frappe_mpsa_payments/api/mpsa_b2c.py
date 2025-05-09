@@ -49,7 +49,7 @@ class MpesaB2CConnector(MpesaConnector):
             existing_request = frappe.get_doc("Integration Request", request_data.OriginatorConversationID)
             if existing_request.status in ["Completed", "Failed"]:
                 frappe.throw(
-                    f"Integration Request with OriginatorConversationID {request_data.originator_conversation_id} already exists."
+                    f"Integration Request with OriginatorConversationID {request_data.OriginatorConversationID} already exists."
                 )
                 self.integration_request = existing_request
 
@@ -68,7 +68,7 @@ class MpesaB2CConnector(MpesaConnector):
                 )
             except frappe.exceptions.DuplicateEntryError:
                 frappe.throw(
-                    f"Integration Request with OriginatorConversationID {request_data.originator_conversation_id} already exists."
+                    f"Integration Request with OriginatorConversationID {request_data.OriginatorConversationID} already exists."
                 )
 
         def success_callback(response, **kwargs):
@@ -82,7 +82,7 @@ class MpesaB2CConnector(MpesaConnector):
 
         def error_callback(response, **kwargs):
             """Handle B2C error response."""
-            error_msg = f"B2C Request failed: {response.get('ResultDesc', 'Unknown error')}"
+            error_msg = f"B2C Request failed: {response.get('errorMessage', 'Unknown error')}"
 
             update_integration_request(
                 kwargs["integration_request"].name,

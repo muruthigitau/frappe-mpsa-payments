@@ -87,7 +87,8 @@ class MPesaB2CPayment(Document):
                     item.payment_status = "Initiated"
                 else:
                     item.payment_status = "Failed"
-                    error_msg = response.get("ResultDesc", "Unknown error")
+                    error_msg = response.get("errorMessage", "Unknown error")
+                    item.error_code = response.get("errorCode")
                     item.error_description = error_msg
                     any_errors = True
 
