@@ -256,7 +256,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-10 08:54:53.340629",
+ "modified": "2025-05-10 09:48:33.528912",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",

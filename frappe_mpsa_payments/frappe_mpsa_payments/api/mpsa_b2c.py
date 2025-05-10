@@ -237,7 +237,39 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
 
 
 def create_journal_entry(parent_doc, child_doc):
-    pass
+    """ Create Journal Entry for Salary Slip after successful B2C payment."""
+
+    try:
+        salary_slip = frappe.get_doc("Salary Slip", child_doc.record)
+        if not salary_slip:
+            frappe.log_error(f"Salary slip not found")
+
+        payroll_payable_account = parent_doc.account_paid_to
+        if not payroll_payable_account:
+            frappe.log_error(f"Payroll Payable Account is not set")
+
+        journal_entry = frappe.new_doc("Journal Entry")
+        journal_entry.voucher_type = "Journal Entry"
+        journal_entry.posting_date = nowdate()
+
+        journal_entry.append("accounts", {
+            "account": parent_doc.account_paid_from,
+            "debit_in_account_currency": child_doc.amount
+        })
+
+        journal_entry.append("accounts", {
+            "account": payroll_payable_account,
+            "credit_in_account_currency": child_doc.amount,
+            "party_type": "Employee",
+            "party": child_doc.receiver_name,
+        })
+
+        journal_entry.insert(ignore_permissions=True)
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Failed to create Journal Entry")
+
+        
 
 def creat_payment_entry_for_doc(parent_doc, child_doc):
     party_type = "Employee" if child_doc.reference_doctype in ["Employee Advance", "Expense Claim"] else "Supplier"

@@ -14,6 +14,12 @@ frappe.ui.form.on("MPesa B2C Payment", {
           }
         };
       });
+
+      setTimeout(() => {
+        const button_field = frm.fields_dict.fetch_entries;
+        const $btn = button_field.$wrapper.find('.btn');
+        $btn.removeClass('btn-xs').addClass('btn-sm btn-block text-left');
+      }, 150)
     },
     
     refresh: function (frm) {
