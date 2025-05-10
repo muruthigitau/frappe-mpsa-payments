@@ -165,4 +165,68 @@ class MPesaB2CPayment(Document):
             frappe.msgprint("Some retries failed. Please review the payment items.", indicator="orange")
         else:
             frappe.msgprint("All failed payments retried successfully.", indicator="green")
+
+    @frappe.whitelist()
+    def fetch_entries(self, docname, party_type, party, doctype_to_pay_against, start_date, end_date):
+
+        filters = {
+            "docstatus": 1,
+            "company": self.company,
+            "posting_date": ["between", [start_date, end_date]]
+        }
+
+        if party_type == "Employee" and party:
+            filters["employee"] = party
+        elif party_type == "Supplier" and party:
+            filters["supplier"] = party
+
+        match doctype_to_pay_against:
+            case "Expense Claim":
+                filters.update({"approval_status": "Approved", "status": "Unpaid"})
+            case "Purchase Invoice":
+                filters.update({"outstanding_amount": [">", 0]})
+            case "Payment Entry":
+                return
+
+        entries = frappe.db.get_all(doctype_to_pay_against, filters=filters, fields=["*"])
+
+        if doctype_to_pay_against == "Employee Advance":
+            entries = [
+                entry for entry in entries
+                if (entry.paid_amount or 0) < (entry.advance_amount or 0)
+            ]
+
+        if not entries:
+            frappe.msgprint("No entries found for the selected filters.", title="No entries", indicator="green")
+
+        items = []
+        for entry in entries:
+            item = {
+                "reference_doctype": doctype_to_pay_against,
+                "record": entry.name,
+                "receiver_name": entry.get("employee") or entry.get("supplier"),
+                "record_amount": self.compute_payable_amount(entry, doctype_to_pay_against),
+                "partyb": self.get_party_phone(entry, party_type)
+            }
+            items.append(item)
+
+        return items
+
+    def compute_payable_amount(self, entry, doctype):
+        match doctype:
+            case "Employee Advance":
+                return (entry.advance_amount or 0) - (entry.paid_amount or 0)
+            case "Expense Claim":
+                return (entry.total_claimed_amount or 0) - (entry.total_amount_reimbursed or 0)
+        return entry.get("base_rounded_total") or entry.get("rounded_total") or 0
+
+    def get_party_phone(self, entry, party_type):
+        if party_type == "Employee":
+            return frappe.db.get_value("Employee", entry.employee, "cell_number")
+        elif party_type == "Supplier":
+            contact = frappe.db.get_all("Contact", filters={"link_name": entry.supplier}, fields=["phone", "mobile_no"])
+            if contact:
+                return contact[0].get("phone") or contact[0].get("mobile_no")
+        return ""
+
         

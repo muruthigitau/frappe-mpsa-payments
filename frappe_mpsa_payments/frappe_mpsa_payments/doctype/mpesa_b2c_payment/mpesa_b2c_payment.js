@@ -80,133 +80,54 @@ frappe.ui.form.on("MPesa B2C Payment", {
       }
     },
     doctype_to_pay_against: function (frm) {
-      frm.set_value("items", []);
       const doctype = frm.doc.doctype_to_pay_against;
-
-      if (doctype === "Employee Advance") {
-        frappe.db.get_value("Company", frm.doc.company, "default_employee_advance_account")
-          .then(response => {
-            if (response && response.message && response.message.default_employee_advance_account) {
-              frm.set_value("account_paid_to", response.default_employee_advance_account)
-            }
-          });
-      }
-
-      // Dynamic filters based on doctype
-      const filterMap = {
-        "Purchase Invoice": {
-          outstanding_amount: [">", 0],
-        },
-        "Expense Claim": {
-          approval_status: "Approved",
-          status: "Unpaid",
-        },
-        "Salary Slip": {
-          status: "Submitted",
-        }
+      const company = frm.doc.company;
+      
+      const accountFieldMap = {
+        "Employee Advance": "default_employee_advance_account",
+        "Salary Slip": "default_payroll_payable_account"
       };
 
-      // Apply common filters
-      const filters = {
-        ...filterMap[doctype],
-        company: frm.doc.company,
-        docstatus: 1,
-        posting_date: ["between", [frm.doc.start_date, frm.doc.end_date]],
-      };
-  
-      // Fetch relevant records and set relevant fields in items table
-      frappe.db
-        .get_list(doctype, {
-          fields: ["*"],
-          filters: filters,
-        })
-        .then((response) => {
-          console.log(response);
-          if (!response.length) {
-            throw new Error("No Data Fetched");
-          } else {
-            if (doctype === "Employee Advance") {
-              response = response.filter(data => {
-                return (data.paid_amount || 0) < (data.advance_amount || 0);
-              });
-            }
-
-            else if (doctype === "Expense Claim") {
-              response = response.filter(data => {
-                return (data.total_amount_reimbursed || 0) < (data.total_claimed_amount || 0)
-              })
-            }
-
-            response.forEach(async (data) => {
-              let recordData = {
-                reference_doctype: doctype,
-                record: data.name,
-                receiver_name: data.employee ?? data.supplier,
-                partyb: null,
-                record_amount: (() => {
-                  if (doctype === "Employee Advance") {
-                    return (data.advance_amount || 0) - (data.paid_amount || 0);
-                  }
-                  else if (doctype === "Expense Claim") {
-                    return (data.total_claimed_amount || 0) - (data.total_amount_reimbursed || 0);
-                  }
-                  return (
-                    data.base_rounded_total ?? data.total_sanctioned_amount ?? data.advance_amount
-                  );
-                })(),
-                  
-              };
-  
-              // Apply fetching contact strategy according to document
-              if (
-                ["Salary Slip", "Expense Claim", "Employee Advance"].includes(doctype)
-              ) {
-                const contact = await frappe.db.get_value(
-                  "Employee",
-                  { name: data.employee ?? null },
-                  ["cell_number"]
-                );
-  
-                if (contact) {
-                  recordData = {
-                    ...recordData,
-                    partyb: contact.message?.cell_number,
-                  };
-                }
-              } else if (doctype === "Purchase Invoice") {
-                const contact = await frappe.db.get_value(
-                  "Contact",
-                  { name: ["like", `%${data.supplier}%`] },
-                  ["*"]
-                );
-  
-                if (contact) {
-                  recordData = {
-                    ...recordData,
-                    partyb: contact.message?.phone ?? contact.message?.mobile_no,
-                  };
-                }
-              }
-  
-              // Update fields of child table with filtered data
-              const row = frm.add_child("items");
-              frappe.model.set_value(row.doctype, row.name, recordData);
-              cur_frm.refresh_fields("items");
-            });
+      const accountField = accountFieldMap[doctype];
+      
+      frappe.db.get_value("Company", company, accountField)
+        .then(response => {
+          const account = response.message ? response.message[accountField] : null;
+          if (account) {
+            frm.set_value("account_paid_to", account);
           }
         })
-        .catch((error) => {
-          console.log(error);
-          if (error.message === "No Data Fetched")
-            frappe.msgprint({
-              message: __(
-                `No records fetched for doctype <b>${doctype}</b> with the <b>date filters specified</b>`
-              ),
-              indicator: "red",
-              title: "No Data Fetched",
-            });
-        });
     },
+
+    fetch_entries(frm) {
+      if (!frm.doc.party_type || !frm.doc.doctype_to_pay_against) {
+        frappe.msgprint("Please select Party Type and Doctype to Pay Against");
+        return;
+      }
+
+      frappe.call({
+        method: "fetch_entries",
+        doc: frm.doc,
+        args: {
+          docname: frm.doc.name,
+          party_type: frm.doc.party_type,
+          party: frm.doc.party || null,
+          doctype_to_pay_against: frm.doc.doctype_to_pay_against,
+          start_date: frm.doc.start_date,
+          end_date: frm.doc.end_date,
+        },
+        callback: function(r) {
+          if (r.message) {
+            frm.clear_table("items");
+            (r.message || []).forEach(row => {
+              const child = frm.add_child("items", row);
+            });
+            frm.refresh_fields("items");
+          }
+        }
+      });
+    },
+
     mpesa_setting: function (frm) {
       frappe.db.get_value(
         "Company",

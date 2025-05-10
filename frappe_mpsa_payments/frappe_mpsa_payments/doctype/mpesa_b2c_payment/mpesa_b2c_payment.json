@@ -20,11 +20,14 @@
   "occassion",
   "receiver_details_section",
   "party_type",
+  "party",
+  "party_name",
   "column_break_rc4l",
   "start_date",
   "end_date",
   "doctype_to_pay_against",
   "section_break_rrbq",
+  "fetch_entries",
   "items",
   "accounts_section",
   "account_paid_from",
@@ -223,18 +226,37 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\"",
+   "depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\" || doc.doctype_to_pay_against === \"Salary Slip\"",
    "fieldname": "account_paid_to",
    "fieldtype": "Link",
    "label": "Account Paid To",
-   "mandatory_depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\"",
+   "mandatory_depends_on": "eval: doc.doctype_to_pay_against === \"Employee Advance\" || doc.doctype_to_pay_against === \"Salary Slip\"",
    "options": "Account"
+  },
+  {
+   "depends_on": "eval: doc.party_type",
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "party_type"
+  },
+  {
+   "depends_on": "eval: doc.party_type",
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "label": "Party Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fetch_entries",
+   "fieldtype": "Button",
+   "label": "Fetch Entries"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-09 19:58:16.906227",
+ "modified": "2025-05-10 08:54:53.340629",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",
