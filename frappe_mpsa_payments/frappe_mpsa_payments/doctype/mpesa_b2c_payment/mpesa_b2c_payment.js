@@ -66,7 +66,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
       // Check if there are any failed entries
       let has_failed_items = frm.doc.items.some(item => item.payment_status === "Failed");
 
-      if (has_failed_items && frm.doc.docstatus === 0) {
+      if (has_failed_items && frm.doc.docstatus === 1) {
         frm.add_custom_button(__("Retry Failed Payments"), function() {
           frappe.confirm(
             'Retry failed payment entries?',
