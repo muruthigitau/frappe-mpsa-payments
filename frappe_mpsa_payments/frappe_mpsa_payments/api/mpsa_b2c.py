@@ -128,6 +128,7 @@ def results_callback_url(**kwargs) -> dict:
             )
             frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
 
+            publish_b2c_payment_update(mpesa_b2c_payment.name, mpesa_b2c_payment_item.idx, mpesa_b2c_payment_item.receiver_name, mpesa_b2c_payment_item.amount, "Failed")
 
         else:
             create_mpesa_transaction_entry(result, mpesa_b2c_payment, mpesa_b2c_payment_item)
@@ -141,6 +142,7 @@ def results_callback_url(**kwargs) -> dict:
                 output=result_json,
             )
 
+            publish_b2c_payment_update(mpesa_b2c_payment.name, mpesa_b2c_payment_item.idx, mpesa_b2c_payment_item.receiver_name, mpesa_b2c_payment_item.amount, "Success")
 
             frappe.enqueue(
                 "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
@@ -315,3 +317,22 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
     
     finally:
         frappe.set_user(current_user)
+
+def publish_b2c_payment_update(
+    payment_docname: str, 
+    row_number: int, 
+    receiver_name: str,
+    amount: float,
+    status: str,
+    ):
+    """Broadcast B2C payment status update to the client side via real-time event."""       
+    frappe.publish_realtime(
+        "b2c_payment_update",
+        {
+            "docname": payment_docname,
+            "row_number": row_number,
+            "receiver_name": receiver_name,
+            "amount": amount,
+            "status": status,
+        }
+    )

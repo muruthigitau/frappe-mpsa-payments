@@ -20,6 +20,39 @@ frappe.ui.form.on("MPesa B2C Payment", {
         const $btn = button_field.$wrapper.find('.btn');
         $btn.removeClass('btn-xs').addClass('btn-sm btn-block text-left');
       }, 150)
+      
+      // Prevent duplicate realtime listeners
+      if (!frm._b2c_listener_bound) {
+        frm._b2c_listener_bound = true;
+        
+        frappe.realtime.on('b2c_payment_update', (data) => {
+          
+          const { docname, row_number, receiver_name, amount, status } = data;
+        
+          if (frm && frm.doc.name === docname) {
+            const color = status === "Success" ? "green" : (status === "Failed" ? "red": "orange");
+
+            const details = `
+              <div>
+                <b>Row:</b> ${row_number}
+                ${receiver_name ? `<b>Receiver:</b> ${receiver_name}` : ""}
+                ${amount ? `<b>Amount:</b> KES ${flt(amount).toLocaleString()}` : ""}
+                <b>Status:</b> ${status}
+              </div>
+            `;
+
+            frappe.msgprint({
+              title: `MPesa Payment: ${status}`,
+              indicator: color,
+              message: details,
+            });
+        
+            frm.reload_doc().then(() => {
+              frm.refresh_fields("items");
+            });
+          }
+        });
+      }
     },
     
     refresh: function (frm) {
@@ -33,7 +66,7 @@ frappe.ui.form.on("MPesa B2C Payment", {
       // Check if there are any failed entries
       let has_failed_items = frm.doc.items.some(item => item.payment_status === "Failed");
 
-      if (has_failed_items && frm.doc.docstatus === 1) {
+      if (has_failed_items && frm.doc.docstatus === 0) {
         frm.add_custom_button(__("Retry Failed Payments"), function() {
           frappe.confirm(
             'Retry failed payment entries?',
