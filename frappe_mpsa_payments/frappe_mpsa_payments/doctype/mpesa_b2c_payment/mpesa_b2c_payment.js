@@ -95,6 +95,8 @@ frappe.ui.form.on("MPesa B2C Payment", {
       };
 
       const accountField = accountFieldMap[doctype];
+
+      if (!accountField) return;
       
       frappe.db.get_value("Company", company, accountField)
         .then(response => {

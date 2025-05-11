@@ -131,6 +131,7 @@
    "mandatory_depends_on": "eval:doc.party_type;"
   },
   {
+   "depends_on": "eval:doc.party_type;",
    "fieldname": "doctype_to_pay_against",
    "fieldtype": "Link",
    "label": "Doctype To Pay Against",
@@ -139,7 +140,7 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.party_type;",
+   "depends_on": "eval:doc.doctype_to_pay_against;",
    "fieldname": "section_break_rrbq",
    "fieldtype": "Section Break",
    "label": "Employee Payments"
@@ -256,7 +257,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-10 09:48:33.528912",
+ "modified": "2025-05-11 12:02:59.228728",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "MPesa B2C Payment",
