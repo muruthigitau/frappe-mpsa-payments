@@ -32,6 +32,9 @@ class MpesaC2BPaymentRegister(Document):
             self.company = register_url_list[0].company
             self.mode_of_payment = register_url_list[0].mode_of_payment
 
+        if self.billrefnumber and not self.customer:
+            self._find_customer_from_billref(self.billrefnumber)        
+
     def before_submit(self):
         if not self.transamount:
             frappe.throw(_("Trans Amount is required"))
@@ -64,11 +67,25 @@ class MpesaC2BPaymentRegister(Document):
     def on_submit(self):
 
         try:
-            matching_invoice = frappe.get_value(
-                "Sales Invoice",
-                {"name": self.billrefnumber, "docstatus": 1, "company": self.company, "customer": self.customer, "outstanding_amount": (">", 0)},
-                "name"
-            )
+            auto_reconcile = frappe.db.get_value("Mpesa Settings", {"businessshortcode": self.businessshortcode}, "auto_reconcile_c2b")
+
+            if not auto_reconcile:
+                return
+
+            matching_invoice = None
+            if self.billrefnumber:
+
+                matching_invoice = frappe.get_value(
+                    "Sales Invoice",
+                    {
+                        "name": self.billrefnumber, 
+                        "docstatus": 1, 
+                        "company": self.company, 
+                        "customer": self.customer, 
+                        "outstanding_amount": (">", 0)
+                    },
+                    "name"
+                )
 
             if matching_invoice:
                 create_and_reconcile_payment_reconciliation(
@@ -77,8 +94,45 @@ class MpesaC2BPaymentRegister(Document):
                     company=self.company,
                     payment_entries=[self.payment_entry]
                 )
+
+            else:
+                outstanding_invoices = get_outstanding_invoices(
+                    customer=self.customer,
+                    company = self.company
+                )
+
+                if outstanding_invoices:
+                    create_and_reconcile_payment_reconciliation(
+                        outstanding_invoices=outstanding_invoices,
+                        customer=self.customer,
+                        company=self.company,
+                        payment_entries=[self.payment_entry]
+                    )
             
             frappe.response["http_status_code"] = 200
 
         except Exception as e:
-            frappe.log_error(frappe.get_traceback(), str(e))
+            frappe.log_error(frappe.get_traceback(), f"C2B Reconciliation Error: {str(e)}")
+
+    def _find_customer_from_billref(self, billrefnumber: str) -> str | None:
+
+        if not billrefnumber:
+            return
+
+        customer_from_invoice = frappe.get_value(
+            "Sales Invoice",
+            {"name": billrefnumber, "docstatus": 1},
+            "customer"
+        )
+
+        if customer_from_invoice:
+            self.customer = customer_from_invoice
+            return
+
+        customer = frappe.get_value(
+            "Customer",
+            {"name": billrefnumber},
+            "name"
+        )    
+        if customer:
+            self.customer = customer
