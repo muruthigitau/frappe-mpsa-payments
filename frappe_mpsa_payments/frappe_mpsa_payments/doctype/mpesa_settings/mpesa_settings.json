@@ -18,6 +18,7 @@
   "check_transaction_status",
   "column_break_gtyp",
   "auto_create_sales_invoice",
+  "auto_reconcile_c2b",
   "section_break_lkry",
   "consumer_key",
   "consumer_secret",
@@ -278,10 +279,16 @@
   {
    "fieldname": "column_break_gtyp",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_reconcile_c2b",
+   "fieldtype": "Check",
+   "label": "Auto Reconcile C2B Payments"
   }
  ],
  "links": [],
- "modified": "2025-04-14 19:41:37.448446",
+ "modified": "2025-05-19 16:30:08.068824",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",
