@@ -112,13 +112,11 @@ def results_callback_url(**kwargs) -> dict:
     result_json = json.dumps(result)
 
     try:
-        mpesa_b2c_payment_item = frappe.get_doc("MPesa B2C Employee Payment Item", {"originator_conversation_id": originator_conversation_id})
-        mpesa_b2c_payment = frappe.get_doc(mpesa_b2c_payment_item.parenttype, mpesa_b2c_payment_item.parent)
+        b2c_payment_disburesement_reference = frappe.get_doc("B2C Payment Disbursement Reference", {"originator_conversation_id": originator_conversation_id})
+        b2c_payment_disburesement = frappe.get_doc(b2c_payment_disburesement_reference.parenttype, b2c_payment_disburesement_reference.parent)
 
         if result.get("ResultCode") != 0:
-            mpesa_b2c_payment_item.payment_status = "Failed"
-            mpesa_b2c_payment_item.error_code = result.get("errorCode")
-            mpesa_b2c_payment_item.error_message = result.get("ResultDesc") or result.get("errorMessage")
+            b2c_payment_disburesement_reference.payment_status = "Failed"
             
             update_integration_request(
                 originator_conversation_id,
@@ -128,13 +126,13 @@ def results_callback_url(**kwargs) -> dict:
             )
             frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
 
-            publish_b2c_payment_update(mpesa_b2c_payment.name, mpesa_b2c_payment_item.idx, mpesa_b2c_payment_item.receiver_name, mpesa_b2c_payment_item.amount, "Failed")
+            publish_b2c_payment_update(b2c_payment_disburesement.name, b2c_payment_disburesement_reference.idx, b2c_payment_disburesement_reference.party, b2c_payment_disburesement_reference.allocated_amount, "Failed")
 
         else:
-            create_mpesa_transaction_entry(result, mpesa_b2c_payment, mpesa_b2c_payment_item)
+            create_mpesa_transaction_entry(result, b2c_payment_disburesement, b2c_payment_disburesement_reference)
 
-            mpesa_b2c_payment_item.payment_status = "Success"
-            mpesa_b2c_payment_item.save(ignore_permissions=True)
+            b2c_payment_disburesement_reference.payment_status = "Paid"
+            b2c_payment_disburesement_reference.save(ignore_permissions=True)
             
             update_integration_request(
                 originator_conversation_id,
@@ -142,17 +140,17 @@ def results_callback_url(**kwargs) -> dict:
                 output=result_json,
             )
 
-            publish_b2c_payment_update(mpesa_b2c_payment.name, mpesa_b2c_payment_item.idx, mpesa_b2c_payment_item.receiver_name, mpesa_b2c_payment_item.amount, "Success")
+            publish_b2c_payment_update(b2c_payment_disburesement.name, b2c_payment_disburesement_reference.idx, b2c_payment_disburesement_reference.party, b2c_payment_disburesement_reference.allocated_amount, "Paid")
 
             frappe.enqueue(
                 "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
                 queue="long",
                 timeout=600,
-                parent_doc=mpesa_b2c_payment,
-                child_doc=mpesa_b2c_payment_item
+                parent_doc=b2c_payment_disburesement,
+                child_doc=b2c_payment_disburesement_reference
             )
 
-        mpesa_b2c_payment_item.save(ignore_permissions=True)
+        b2c_payment_disburesement_reference.save(ignore_permissions=True)
         frappe.db.commit()
 
     except Exception:
@@ -170,9 +168,9 @@ def handle_successful_payment(parent_doc, child_doc):
     try:
         match child_doc.reference_doctype:
             case "Salary Slip":
-                create_journal_entry(parent_doc, child_doc) # TODO: create helper functions for this
+                create_journal_entry(parent_doc, child_doc)
             case "Employee Advance" | "Expense Claim" | "Purchase Invoice":
-                creat_payment_entry_for_doc(parent_doc, child_doc) # TODO: create helper functions for this
+                creat_payment_entry_for_doc(parent_doc, child_doc)
             case _:
                 frappe.log_error(
                     f"Unsupported reference_doctype: {child_doc.reference_doctype}",
@@ -180,24 +178,15 @@ def handle_successful_payment(parent_doc, child_doc):
                 )
     except Exception as e:
         error_msg = f"Error handling payment for {child_doc.name}: {str(e)}"
-        frappe.log_error(frappe.get_traceback(), "MPesa B2C Employee Payment Item")
-        frappe.db.set_value(
-            'MPesa B2C Employee Payment Item', 
-            child_doc.name, 
-            {
-                "error_code": "500",
-                "error_description": str(e)
-            }
-        )
-        frappe.db.commit()
+        frappe.log_error(frappe.get_traceback(), "B2C Payment Disbursement Reference")
 
 
-def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_payment_item_doc: Document):
+def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_payment_doc_ref: Document):
     """
     Store a successful B2C transaction callback into MPesa B2C Payments Transactions.
     :param result: Dictionary parsed from Safaricom's B2C callback (Success).
-    :param b2c_payment_doc: The parent MPesa B2C Payment document.
-    :param b2c_payment_item_doc: The item/transaction with a successful response.
+    :param b2c_payment_doc: The parent B2C Payment Disbursement document.
+    :param b2c_payment_doc_ref: The item/transaction with a successful response.
     """
 
     try:
@@ -220,7 +209,7 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
 
         doc = frappe.new_doc("MPesa B2C Payments Transactions")
         doc.b2c_payment_name = b2c_payment_doc.name
-        doc.b2c_payment_item_name = b2c_payment_item_doc.name
+        doc.b2c_payment_item_name = b2c_payment_doc_ref.name
         doc.transaction_id = transaction_id
         doc.transaction_amount = transaction_amount
         doc.receiver_public_name = receiver_public_name
@@ -242,11 +231,11 @@ def create_journal_entry(parent_doc, child_doc):
     """ Create Journal Entry for Salary Slip after successful B2C payment."""
 
     try:
-        salary_slip = frappe.get_doc("Salary Slip", child_doc.record)
+        salary_slip = frappe.get_doc("Salary Slip", child_doc.reference_name)
         if not salary_slip:
             frappe.log_error(f"Salary slip not found")
 
-        payroll_payable_account = parent_doc.account_paid_to
+        payroll_payable_account = parent_doc.paid_to
         if not payroll_payable_account:
             frappe.log_error(f"Payroll Payable Account is not set")
 
@@ -255,15 +244,15 @@ def create_journal_entry(parent_doc, child_doc):
         journal_entry.posting_date = nowdate()
 
         journal_entry.append("accounts", {
-            "account": parent_doc.account_paid_from,
-            "debit_in_account_currency": child_doc.amount
+            "account": parent_doc.paid_from,
+            "debit_in_account_currency": child_doc.allocated_amount
         })
 
         journal_entry.append("accounts", {
             "account": payroll_payable_account,
-            "credit_in_account_currency": child_doc.amount,
-            "party_type": "Employee",
-            "party": child_doc.receiver_name,
+            "credit_in_account_currency": child_doc.allocated_amount,
+            "party_type": child_doc.party_type,
+            "party": child_doc.party,
         })
 
         journal_entry.insert(ignore_permissions=True)
@@ -274,16 +263,15 @@ def create_journal_entry(parent_doc, child_doc):
         
 
 def creat_payment_entry_for_doc(parent_doc, child_doc):
-    party_type = "Employee" if child_doc.reference_doctype in ["Employee Advance", "Expense Claim"] else "Supplier"
-    party_account = parent_doc.account_paid_to if parent_doc.doctype_to_pay_against == "Employee Advance" else None
-    party = frappe.db.get_value(party_type, child_doc.receiver_name, "name")
-    amount = child_doc.amount
+    party_type = child_doc.party_type
+    party_account = parent_doc.paid_to
+    party = frappe.db.get_value(party_type, child_doc.party, "name")
+    amount = child_doc.allocated_amount
 
     company = parent_doc.company
     currency = frappe.db.get_value('Company', company, 'default_currency')
 
-    mpesa_setting = parent_doc.get('mpesa_setting')
-    mode_of_payment = frappe.db.get_value("Mode of Payment", f"Mpesa-{mpesa_setting}", "name")
+    mode_of_payment = parent_doc.mode_of_payment
 
     current_user = frappe.session.user
     frappe.set_user("Administrator")
@@ -291,8 +279,8 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
     try:
         references = [{
             'reference_doctype': child_doc.reference_doctype,
-            'reference_name': child_doc.record,
-            'allocated_amount': child_doc.amount
+            'reference_name': child_doc.reference_name,
+            'allocated_amount': child_doc.allocated_amount
         }]
 
         payment_entry = create_payment_entry(
@@ -321,8 +309,8 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
 def publish_b2c_payment_update(
     payment_docname: str, 
     row_number: int, 
-    receiver_name: str,
-    amount: float,
+    party: str,
+    allocated_amount: float,
     status: str,
     ):
     """Broadcast B2C payment status update to the client side via real-time event."""       
@@ -331,8 +319,8 @@ def publish_b2c_payment_update(
         {
             "docname": payment_docname,
             "row_number": row_number,
-            "receiver_name": receiver_name,
-            "amount": amount,
+            "party": party,
+            "amount": allocated_amount,
             "status": status,
         }
     )
