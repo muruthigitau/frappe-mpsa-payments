@@ -67,7 +67,7 @@ class MpesaC2BPaymentRegister(Document):
     def on_submit(self):
 
         try:
-            auto_reconcile = frappe.db.get_value("Mpesa Settings", {"businessshortcode": self.businessshortcode}, "auto_reconcile_c2b")
+            auto_reconcile = frappe.db.get_value("Mpesa Settings", {"business_shortcode": self.businessshortcode}, "auto_reconcile_c2b")
 
             if not auto_reconcile:
                 return
