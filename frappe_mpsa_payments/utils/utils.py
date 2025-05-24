@@ -145,3 +145,14 @@ def build_callback_url(endpoint: str) -> str:
         base_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
 
     return f"{base_url}/api/method/{endpoint}"
+
+@frappe.whitelist()
+def get_mode_of_payment_account(mode_of_payment: str, company: str) -> str:
+	return frappe.db.get_value(
+		"Mode of Payment Account",
+		{
+			"parent": mode_of_payment,
+			"company": company
+		},
+		"default_account"
+	)

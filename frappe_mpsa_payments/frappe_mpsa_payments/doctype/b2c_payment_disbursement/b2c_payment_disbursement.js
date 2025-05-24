@@ -203,6 +203,27 @@ frappe.ui.form.on("B2C Payment Disbursement", {
     company: function (frm) {
       frm.set_value("company_currency", frappe.get_doc(":Company", frm.doc.company)?.default_currency);
     },
+
+    mode_of_payment: function(frm) {
+      if (frm.doc.mode_of_payment) {
+          frappe.call({
+              method: "frappe_mpsa_payments.utils.utils.get_mode_of_payment_account",
+              args: {
+                  mode_of_payment: frm.doc.mode_of_payment,
+                  company: frm.doc.company
+              },
+              callback: function(r) {
+                  if (r.message ) {
+                      frm.set_value("paid_from", r.message);
+                  } else {
+                      frm.set_value("paid_from", null);
+                  }
+              }
+          });
+      } else {
+          frm.set_value("paid_from", null);
+      }
+    },
   
     party_type: function (frm) {
       frm.set_value("transaction_to_pay_against", null);
@@ -214,11 +235,16 @@ frappe.ui.form.on("B2C Payment Disbursement", {
     transaction_to_pay_against: function (frm) {
       const doctype = frm.doc.transaction_to_pay_against;
       const company = frm.doc.company;
-      if (!doctype) return;
+      if (!doctype) {
+        frm.set_value("paid_to", null);
+        return;
+      }
       
       const accountFieldMap = {
         "Employee Advance": "default_employee_advance_account",
         "Salary Slip": "default_payroll_payable_account",
+        "Purchase Invoice": "default_payable_account",
+        "Purchase Order": "default_payable_account"
       };
 
       const accountField = accountFieldMap[doctype];

@@ -103,7 +103,7 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.paid_amount;",
+   "depends_on": "eval:doc.paid_to;",
    "fieldname": "section_break_rrbq",
    "fieldtype": "Section Break",
    "label": "Reference"
@@ -267,12 +267,12 @@
    "fieldname": "paid_amount",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Paid Amount",
-   "reqd": 1
+   "label": "Paid Amount"
   },
   {
    "fieldname": "source_exchange_rate",
    "fieldtype": "Float",
+   "hidden": 1,
    "label": "Source Exchange Rate",
    "precision": "9",
    "print_hide": 1
@@ -284,11 +284,11 @@
   {
    "fieldname": "base_paid_amount",
    "fieldtype": "Currency",
+   "hidden": 1,
    "label": "Paid Amount (KES)",
    "options": "KES",
    "print_hide": 1,
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "target_exchange_rate",
@@ -329,7 +329,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-24 15:06:34.116391",
+ "modified": "2025-05-24 18:55:55.824906",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",
