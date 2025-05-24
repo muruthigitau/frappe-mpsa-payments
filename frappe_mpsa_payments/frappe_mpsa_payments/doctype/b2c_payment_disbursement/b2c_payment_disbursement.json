@@ -293,6 +293,7 @@
   {
    "fieldname": "target_exchange_rate",
    "fieldtype": "Float",
+   "hidden": 1,
    "label": "Target Exchange Rate",
    "precision": "9",
    "print_hide": 1
@@ -328,7 +329,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-17 08:31:36.899076",
+ "modified": "2025-05-24 15:06:34.116391",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",

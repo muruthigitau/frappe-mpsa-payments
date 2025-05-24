@@ -18,6 +18,7 @@ from ...api.mpsa_b2c import MpesaB2CConnector
 from ....utils.definitions import B2CRequestDefinition
 from .. import app_logger
 from ..custom_exceptions import InformationMismatchError
+from .config import DOCTYPE_CONFIGS, DoctypeConfig
 
 
 class B2CPaymentDisbursement(Document):
@@ -235,77 +236,41 @@ class B2CPaymentDisbursement(Document):
         Returns:
             List of outstanding reference documents
         """
+
         args = args.get("args", args) if isinstance(args, dict) else args
-
-
-        # Configuration for different document types
-        DOCTYPE_CONFIG = {
-            "Employee Advance": {
-                "fields": ["name", "posting_date", "employee", "currency", "advance_amount", 
-                        "paid_amount", "pending_amount", "claimed_amount"],
-                "date_field": "posting_date",
-                "additional_filters": {}
-            },
-            "Expense Claim": {
-                "fields": ["name", "posting_date", "employee", "grand_total", 
-                        "total_claimed_amount", "total_amount_reimbursed"],
-                "date_field": "posting_date",
-                "additional_filters": {"approval_status": "Approved", "status": "Unpaid"}
-            },
-            "Purchase Invoice": {
-                "use_erpnext_function": True,
-                "date_field": "posting_date",
-                "additional_filters": {}
-            },
-            "Purchase Order": {
-                "use_erpnext_function": True,
-                "date_field": "transaction_date",
-                "additional_filters": {}
-            },
-            "Salary Slip": {
-                "fields": ["name", "posting_date", "employee", "net_pay", "currency", "journal_entry"],
-                "date_field": "posting_date",
-                "additional_filters": {}
-            }
-        }
-
         doctype = args["transaction_to_pay_against"]
-        config = DOCTYPE_CONFIG.get(doctype)
-        if not config:
-            frappe.throw(_("Invalid transaction type"))
-
+        config = self._get_doctype_config(doctype)
         filters = self._build_filters(args, config)
-
         entries = self._fetch_entries(doctype, config, args, filters)
-
-        references = self._populate_references(entries, args, doctype, config["date_field"])
+        return self._populate_references(entries, args, doctype, config.date_field)
         
-        return references
 
-    def _build_filters(self, args: Dict, config: Dict) -> Dict:
+    def _get_doctype_config(self, doctype: str) -> DoctypeConfig:
+        """
+        Retrieve configuration for the specified doctype.
+
+        Args:
+            doctype: Document type name.
+
+        Returns:
+            DoctypeConfig object for the given doctype.
+        """
+        if not (config := DOCTYPE_CONFIGS.get(doctype)):
+            frappe.throw("Invalid transaction type")
+        return config
+
+    def _build_filters(self, args: Dict, config: DoctypeConfig) -> Dict:
         """Build database query filters."""
         filters = {
             "docstatus": 1,
             "company": args["company"],
-            **config["additional_filters"]
+            **config.additional_filters
         }
-
-        date_field = config["date_field"]
         
-        if from_date := args.get("from_posting_date"):
-            filters[date_field] = [">=", from_date]
-        if to_date := args.get("to_posting_date"):
-            filters[date_field] = ["<=", to_date]
-        if from_date and to_date:
-            filters[date_field] = ["between", [from_date, to_date]]
+        self._add_date_filter(filters, config.date_field, args.get("from_posting_date"), args.get("to_posting_date"))
 
         due_date_field = "due_date" if args["transaction_to_pay_against"] == "Purchase Invoice" else "schedule_date"
-        if from_due_date := args.get("from_due_date"):
-            filters[due_date_field] = [">=", from_due_date]
-        if to_due_date := args.get("to_due_date"):
-            filters[due_date_field] = ["<=", to_due_date]
-        if from_due_date and to_due_date:
-            filters[due_date_field] = ["between", [from_date, to_date]]
+        self._add_date_filter(filters, due_date_field, args.get("from_due_date"), args.get("to_due_date"))
 
         if greater_than := args.get("outstanding_amt_greater_than"):
             filters["outstanding_amount"] = [">", greater_than]
@@ -317,88 +282,123 @@ class B2CPaymentDisbursement(Document):
 
         return filters
 
-    def _fetch_entries(self, doctype: str, config: Dict, args: Dict, filters: Dict) -> List[Dict]:
-        """Fetch documents from database."""
-        if config.get("use_erpnext_function"):
-            party_type = args.get("party_type")
-            company = args.get("company")
-            party = args.get("party")
+    def _add_date_filter(self, filters: Dict, field: str, from_date: Optional[str], to_date: Optional[str]) -> None:
+        """
+        Add date range filter to filters dictionary.
 
-            if party:
-                parties = [party]
-            else:
-                # If not party is provided get all parties (Supplier)
-                parties = frappe.get_all(party_type, filters={"disabled": 0}, pluck="name")
-            
-            all_entries = []
+        Args:
+            filters: Dictionary to update with date filters.
+            field: Field name for the date filter.
+            from_date: Start date for the filter.
+            to_date: End date for the filter.
+        """
 
-            for party in parties:
-                # Validate party_account or derive it
-                try:
-                    accounts = get_party_account(
-                        party_type,
-                        party,
-                        company,
-                        include_advance=args.get("book_advance_payments_in_separate_party_account", False)
-                    )
-                    if isinstance(accounts, list):
-                        party_account = accounts[0]
-                    else:
-                        party_account = accounts
-                    if not party_account:
-                        continue
+        if from_date and to_date:
+            filters[field] = ["between", [from_date, to_date]]
+        elif from_date:
+            filters[field] = [">=", from_date]
+        elif to_date:
+            filters[field] = ["<=", to_date]
 
-                    erpnext_args = {
-                        "party_type": party_type,
-                        "party": party,
-                        "company": company,
-                        "party_account": party_account,
-                        "get_outstanding_invoices": doctype == "Purchase Invoice",
-                        "get_orders_to_be_billed": doctype == "Purchase Order",
-                        "from_posting_date": args.get("from_posting_date"),
-                        "to_posting_date": args.get("to_posting_date"),
-                        "from_due_date": args.get("from_due_date"),
-                        "to_due_date": args.get("to_due_date"),
-                        "outstanding_amt_greater_than": args.get("outstanding_amt_greater_than"),
-                        "outstanding_amt_less_than": args.get("outstanding_amt_less_than"),
-                        "book_advance_payments_in_separate_party_account": args.get("book_advance_payments_in_separate_party_account", False)
-                    }
-
-                    entries = original_get_outstanding_reference_documents(erpnext_args)
-                    entries = [e for e in entries if e["voucher_type"] == doctype]
-                    # Inject party and party_type into each entry
-                    for entry in entries:
-                        entry["party"] = party
-                        entry["party_type"] = party_type
-                    all_entries.extend(entries)
-
-                except Exception as e:
-                    frappe.log_error(f"Failed fetching for {party_type} {party}: {str(e)}")
-            return all_entries
-    
-        else:
-            try:
-                entries = frappe.db.get_all(
-                    doctype,
-                    filters=filters,
-                    fields=config.get("fields", []),
-                    order_by=f"{config['date_field']} asc",
-                    limit=1000
-                )
-            except Exception as e:
-                frappe.log_error(f"Error fetching {doctype}: {str(e)}")
-                frappe.msgprint(
-                    _(f"Failed to fetch {doctype} references"),
-                    title=_("Error"),
-                    indicator="red"
-                )
-                return []
-            
-            if doctype == "Employee Advance":
-                entries = [e for e in entries if (e.paid_amount or 0) < (e.advance_amount or 0)]
+    def _fetch_entries(self, doctype: str, config: DoctypeConfig, args: Dict, filters: Dict) -> List[Dict]:
+        """
+        Fetch documents from database.
         
-            return entries
+        Args:
+            doctype: Document type to fetch.
+            config: Doctype configuration.
+            args: Filter parameters.
+            filters: Database query filters
 
+        Returns:
+            List of document entries.
+        """
+        if config.use_erpnext_function:
+            return self._fetch_erpnext_entries(doctype, args)
+            
+        try:
+            entries = frappe.db.get_all(
+                doctype,
+                filters=filters,
+                fields=config.get("fields", []),
+                order_by=f"{config['date_field']} asc",
+                limit=1000
+            )
+        except Exception as e:
+            frappe.log_error(f"Error fetching {doctype}: {str(e)}")
+            frappe.msgprint(
+                _(f"Failed to fetch {doctype} references"),
+                title=_("Error"),
+                indicator="red"
+            )
+            return []
+        
+        if doctype == "Employee Advance":
+            entries = [e for e in entries if (e.paid_amount or 0) < (e.advance_amount or 0)]
+    
+        return entries
+
+    def _fetch_erpnext_entries(self, doctype: str, args: Dict) -> List[Dict]:
+        """
+        Fetch entries using ERPNext's function for specific doctypes.
+
+        Args:
+            doctype: Document type to fetch.
+            args: Filter parameters.
+
+        Returns:
+            List of document entries.
+        """
+        party_type = args.get("party_type")
+        company = args.get("company")
+        party = args.get("party")
+        parties = [party] if party else frappe.get_all(party_type, filters={"disabled": 0}, pluck="name")
+        
+        # Batch fetch party accounts
+        party_accounts = {}
+        for p in parties:
+            try:
+                accounts = get_party_account(
+                    party_type, p, company,
+                    include_advance=args.get("book_advance_payments_in_separate_party_account", False)
+                )
+                party_accounts[p] = accounts[0] if isinstance(accounts, list) else accounts
+            except Exception as e:
+                app_logger.error(f"Failed fetching account for {party_type} {p}: {str(e)}")
+        
+        all_entries = []
+        for party in parties:
+            if not (party_account := party_accounts.get(party)):
+                continue
+            
+            erpnext_args = {
+                "party_type": party_type,
+                "party": party,
+                "company": company,
+                "party_account": party_account,
+                "get_outstanding_invoices": doctype == "Purchase Invoice",
+                "get_orders_to_be_billed": doctype == "Purchase Order",
+                "from_posting_date": args.get("from_posting_date"),
+                "to_posting_date": args.get("to_posting_date"),
+                "from_due_date": args.get("from_due_date"),
+                "to_due_date": args.get("to_due_date"),
+                "outstanding_amt_greater_than": args.get("outstanding_amt_greater_than"),
+                "outstanding_amt_less_than": args.get("outstanding_amt_less_than"),
+                "book_advance_payments_in_separate_party_account": args.get("book_advance_payments_in_separate_party_account", False)
+            }
+
+            try:
+                entries = original_get_outstanding_reference_documents(erpnext_args)
+                entries = [e for e in entries if e["voucher_type"] == doctype]
+                for entry in entries:
+                    entry["party"] = party
+                    entry["party_type"] = party_type
+                all_entries.extend(entries)
+            except Exception as e:
+                app_logger.error(f"Failed fetching for {party_type} {party}: {str(e)}")
+        
+        return all_entries
+    
     def _populate_references(self, entries: List[Dict], args: Dict, doctype: str, date_field: str) -> List[Dict]:
         """Process entries and populate the references child table."""
         if not entries:
@@ -407,19 +407,17 @@ class B2CPaymentDisbursement(Document):
         # Clear existing references
         self.set("references", [])
         references = []
+        config = self._get_doctype_config(doctype)
 
         for entry in entries:
-            payable_amount = self._compute_payable_amount(entry, doctype)
+            payable_amount = config.payable_amount_calc(entry)
             if payable_amount <= 0:
                 app_logger.info(f"Skipping entry due to zero or negative payable amount: {entry}")
                 continue
 
-            # Handle party field for ERPNext entries
-            party = entry.get("party") or entry.get("employee") or entry.get("supplier")
-            party_type = entry.get("party_type") or args.get("party_type")
-            if not party or not party_type:
-                app_logger.info(f"Skipping entry due to missing party or party_type: {entry}")
+            if not (party_info := self._extract_party_info(entry, args)):
                 continue
+            party, party_type = party_info["party"], party_info["party_type"]            
 
             # Get phone number (required field)
             partyb = self.get_party_phone(entry, party_type)
@@ -427,16 +425,20 @@ class B2CPaymentDisbursement(Document):
                 app_logger.info(f"Skipping entry due to missing phone number for {party}: {entry}")
                 continue
 
+            currency = entry.get("currency") or self.company_currency
+            if not entry.get("currency"):
+                app_logger.warning(f"Currency not found for {doctype} {entry.get('name')}")
+
             reference = {
                 "reference_doctype": doctype,
                 "reference_name": entry.get("voucher_no") or entry.get("name"),
                 "party_type": party_type,
                 "party": party,
                 "due_date": entry.get("due_date") or entry.get("schedule_date"),
-                "total_amount": self._get_invoice_amount(entry, doctype),
+                "total_amount": self._get_invoice_amount(entry, config),
                 "outstanding_amount": payable_amount,
                 "allocated_amount": 0,
-                "currency": entry.get("currency") or self.company_currency,
+                "currency":currency,
                 "exchange_rate": self._get_exchange_rate(entry, doctype),
                 "partyb": partyb,
                 "payment_status": "Not Initiated",
@@ -460,31 +462,30 @@ class B2CPaymentDisbursement(Document):
 
         return references
 
-    def _compute_payable_amount(self, entry: Dict, doctype: str) -> float:
-        """Calculate payable amount for a document."""
-        PAYABLE_AMOUNT_CALC = {
-            "Employee Advance": lambda e: (e.advance_amount or 0) - (e.paid_amount or 0),
-            "Expense Claim": lambda e: (e.total_claimed_amount or 0) - (e.total_amount_reimbursed or 0),
-            "Purchase Invoice": lambda e: e.get("outstanding_amount", 0),
-            "Purchase Order": lambda e: e.get("outstanding_amount", 0)
-        }
-        
-        return PAYABLE_AMOUNT_CALC.get(doctype, lambda e: (
-            e.get("base_rounded_total") or e.get("rounded_total") or e.get("outstanding_amount") or 0
-        ))(entry)
+    def _extract_party_info(self, entry: Dict, args: Dict) -> Optional[Dict]:
+        """Extract party and party_type from entry or args."""
 
-    def _get_invoice_amount(self, entry: Dict, doctype: str) -> float:
-        """Calculate invoice amount based on document type."""
-        INVOICE_AMOUNT_FIELD = {
-            "Expense Claim": "total_claimed_amount",
-            "Salary Slip": "net_pay",
-            "Employee Advance": "advance_amount",
-            "Purchase Invoice": "invoice_amount",
-            "Purchase Order": "invoice_amount"
-        }
+        party = entry.get("party") or entry.get("employee") or entry.get("supplier")
+        party_type = entry.get("party_type") or args.get("party_type")
         
-        field = INVOICE_AMOUNT_FIELD.get(doctype, "grand_total")
-        return entry.get(field, 0)
+        if not party or not party_type:
+            app_logger.info(f"Skipping entry due to missing party or party_type: {entry}")
+            return None
+        
+        return {"party": party, "party_type": party_type}
+
+    def _get_invoice_amount(self, entry: Dict, config: DoctypeConfig) -> float:
+        """
+        Calculate invoice amount based on document type.
+
+        Args:
+            entry: Document entry.
+            config: Doctype configuration.
+
+        Returns:
+            Invoice amount.
+        """
+        return entry.get(config.invoice_amount_field, 0)
 
     def _get_exchange_rate(self, entry: Dict, doctype: str) -> float:
         """Calculate exchange rate for the document."""
