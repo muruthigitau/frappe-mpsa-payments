@@ -56,14 +56,11 @@ class B2CPaymentDisbursement(Document):
 
     def on_update(self) -> None:
         """Update overall status based on payment references"""
-        print("Why am I not being called?")
         if not self.references:
             self.status = "Not Initiated"
             return
         
         statuses = [ref.payment_status for ref in self.references]
-
-        print(statuses)
 
         if all(status == "Paid" for status in statuses):
             self.status = "Paid"
@@ -348,7 +345,6 @@ class B2CPaymentDisbursement(Document):
                         party_account = accounts[0]
                     else:
                         party_account = accounts
-                    frappe.log_error("Party Account", f"{party}: {party_account}")
                     if not party_account:
                         continue
 
@@ -378,7 +374,6 @@ class B2CPaymentDisbursement(Document):
 
                 except Exception as e:
                     frappe.log_error(f"Failed fetching for {party_type} {party}: {str(e)}")
-            print(all_entries)
             return all_entries
     
         else:
