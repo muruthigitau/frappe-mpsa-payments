@@ -301,13 +301,13 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       if (frm.doc.paid_amount) {
         frm.set_value("base_paid_amount", flt(frm.doc.paid_amount) * flt(frm.doc.source_exchange_rate));
         frm.events.calculate_paid_amount_kes(frm);
-        frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+        // frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
       }
       frm.set_df_property("source_exchange_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
     },
 
     target_exchange_rate: function (frm) {
-      frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+      // frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
       frm.set_df_property("source_exchange_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
     },
 
@@ -316,7 +316,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         frm.set_value("base_paid_amount", flt(frm.doc.paid_amount) * flt(frm.doc.source_exchange_rate));
       }
       frm.events.calculate_paid_amount_kes(frm);
-      frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+      // frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
     },
 
     calculate_paid_amount_kes: function (frm) {
@@ -344,6 +344,14 @@ frappe.ui.form.on("B2C Payment Disbursement", {
     get_outstanding_references: function (frm, get_references) {
       const today = frappe.datetime.get_today();
       let fields = [
+        { fieldtype: "Section Break", label: __("Party") },
+        {
+          fieldtype: "Link",
+          label: __("Party"),
+          fieldname: "party",
+          options: frm.doc.party_type,
+          
+        },
         { fieldtype: "Section Break", label: __("Posting Date") },
         {
           fieldtype: "Date",
@@ -397,28 +405,28 @@ frappe.ui.form.on("B2C Payment Disbursement", {
     },
 
     validate_filters_data: function (frm, filters) {
-      const fields = {
-        "Posting Date": ["from_posting_date", "to_posting_date"],
-        // "Due Date": ["from_due_date", "to_due_date"],
-        // "Advance Amount": ["from_posting_date", "to_posting_date"],
-      };
+      // const fields = {
+      //   "Posting Date": ["from_posting_date", "to_posting_date"],
+      //   // "Due Date": ["from_due_date", "to_due_date"],
+      //   // "Advance Amount": ["from_posting_date", "to_posting_date"],
+      // };
 
-      for (let key in fields) {
-        let from_field = fields[key][0];
-        let to_field = fields[key][1];
+      // for (let key in fields) {
+      //   let from_field = fields[key][0];
+      //   let to_field = fields[key][1];
 
-        if (filters[from_field] && !filters[to_field]) {
-          frappe.throw(__("Error: {0} is mandatory field", [to_field.replace(/_/g, " ")]));
-        } else if (filters[from_field] && filters[from_field] > filters[to_field]) {
-          frappe.throw(
-            __("{0}: {1} must be less than {2}", [
-              key,
-              from_field.replace(/_/g, " "),
-              to_field.replace(/_/g, " "),
-            ])
-          );
-        }
-      }
+      //   if (filters[from_field] && !filters[to_field]) {
+      //     frappe.throw(__("Error: {0} is mandatory field", [to_field.replace(/_/g, " ")]));
+      //   } else if (filters[from_field] && filters[from_field] > filters[to_field]) {
+      //     frappe.throw(
+      //       __("{0}: {1} must be less than {2}", [
+      //         key,
+      //         from_field.replace(/_/g, " "),
+      //         to_field.replace(/_/g, " "),
+      //       ])
+      //     );
+      //   }
+      // }
     },
 
     get_outstanding_documents: function (frm, filters) {
@@ -432,6 +440,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         party_account: frm.doc.paid_to,
         party_type: frm.doc.party_type,
         transaction_to_pay_against: frm.doc.transaction_to_pay_against,
+        party: filters.party,
         from_posting_date: filters.from_posting_date,
         to_posting_date: filters.to_posting_date,
         from_due_date: filters.from_due_date,
@@ -448,24 +457,13 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         args: args ,
         callback: function (r) {
           if (r.message) {
-            console.log(r.message);
-            $.each(r.message, function (i, d) {
-              if (frm.doc.transaction_to_pay_against === d.voucher_type) {
-                let c = frm.add_child("references");
-                c.reference_doctype = d.voucher_type;
-                c.reference_name = d.voucher_no;
-                c.party_type = frm.doc.party_type;
-                c.party = d.party;
-                c.due_date = d.due_date;
-                c.total_amount = d.invoice_amount;
-                c.outstanding_amount = d.outstanding_amount;
-                c.allocated_amount = d.allocated_amount || 0;
-                c.partyb = d.partyb;
-                c.exchage_rate = d.exchage_rate;
-              }
-            });
+            frm.refresh_field("references");
+            frappe.msgprint({
+              message: __("References populated successfully"),
+              title: __("Success"),
+              indicator: "green"
+            })
           }
-          frm.refresh_field("references");
         },
       });
     },
