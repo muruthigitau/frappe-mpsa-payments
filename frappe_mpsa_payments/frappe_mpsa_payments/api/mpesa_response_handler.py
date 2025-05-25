@@ -1,4 +1,4 @@
-from ...utils.doctype_names import MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
+from ...utils.doctype_names import MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE, MPESA_DISBURSEMENT_REQUEST_DOCTYPE
 import frappe
 from frappe.utils import now_datetime
 
@@ -107,4 +107,39 @@ def stk_push_on_success(response: dict, payload: dict, document_name: str, **kwa
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), f"STK Push Success Error for {document_name}")
+        raise
+
+
+
+def b2c_disbursement_on_success(response: dict, payload: dict, document_name: str, **kwargs) -> None:
+    try:
+        fields = {
+            "originator_conversation_id": response.get("OriginatorConversationID", ""),
+            "conversation_id": response.get("ConversationID", ""),
+            "response_code": response.get("ResponseCode", ""),
+            "response_description": response.get("ResponseDescription", ""),
+            "timestamp": now_datetime(),
+            "settings": kwargs.get("settings_name", ""),
+        }
+
+        doctype = kwargs.get("doctype", "")
+
+        if doctype == MPESA_DISBURSEMENT_REQUEST_DOCTYPE:
+            for key, value in fields.items():
+                frappe.db.set_value(MPESA_DISBURSEMENT_REQUEST_DOCTYPE, document_name, key, value)
+            frappe.logger().info(f"Mpesa Disbursement updated for {document_name}")
+        else:
+            doc = frappe.new_doc(MPESA_DISBURSEMENT_REQUEST_DOCTYPE)
+            for key, value in fields.items():
+                setattr(doc, key, value)
+            doc.insert(ignore_permissions=True)
+            frappe.logger().info(f"Mpesa Disbursement created for {document_name} with ID {doc.name}")
+
+        frappe.db.commit()
+
+        frappe.publish_realtime(event='refresh_form', doctype=MPESA_DISBURSEMENT_REQUEST_DOCTYPE, docname=document_name)
+
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), f"Disbursement Success Error for {document_name}")
         raise

@@ -24,7 +24,7 @@ from frappe.utils import (
 )
 from frappe.utils.file_manager import get_file_path
 
-from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
+from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_DISBURSEMENT_REQUEST_DOCTYPE
 from ....utils.utils import erpnext_app_import_guard, create_payment_gateway_account
 from .mpesa_connector import MpesaConnector
 from .mpesa_custom_fields import create_custom_pos_fields
@@ -128,25 +128,43 @@ class MpesaSettings(Document):
 
         for i, amount in enumerate(request_amounts):
             args.request_amount = amount
+            print(f"Processing request {i + 1} with amount: {amount}")
+            print(f"Reference Doctype: {args.reference_doctype}, Reference Docname: {args.reference_docname}")
             if frappe.flags.in_test:
                 from .test_mpesa_settings import get_payment_request_response_payload
 
                 response = frappe._dict(get_payment_request_response_payload(amount))
             else:
                 # payment_request = frappe.get_doc(args.get("reference_doctype"), args.get("reference_docname"))
-                stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
-                stk_request.update({
-                    "amount": args.get("request_amount", 0.0),
-                    "phone_number": args.get("phone_number") or args.get("sender", ""),
-                    "timestamp": frappe.utils.now(),
-                    "settings": args.payment_gateway[6:],
-                    "payment_gateway": args.get("payment_gateway"),
-                    "reference_doctype": args.get("reference_doctype"),
-                    "reference_name": args.get("reference_docname"),
-                })
-                stk_request.flags.ignore_permissions = True
-                stk_request.insert(ignore_permissions=True)
-                stk_request.submit()
+                req = frappe.get_doc("Payment Request", args.get("reference_docname"))
+                if req.payment_request_type == "Inward":
+                    stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
+                    stk_request.update({
+                        "amount": args.get("request_amount", 0.0),
+                        "phone_number": args.get("phone_number") or args.get("sender", ""),
+                        "timestamp": frappe.utils.now(),
+                        "settings": args.payment_gateway[6:],
+                        "payment_gateway": args.get("payment_gateway"),
+                        "reference_doctype": args.get("reference_doctype"),
+                        "reference_name": args.get("reference_docname"),
+                    })
+                    stk_request.flags.ignore_permissions = True
+                    stk_request.insert(ignore_permissions=True)
+                    stk_request.submit()
+                elif req.payment_request_type == "Outward":
+                    disbursement_request = frappe.new_doc(MPESA_DISBURSEMENT_REQUEST_DOCTYPE)
+                    disbursement_request.update({
+                        "amount": args.get("request_amount", 0.0),
+                        "phone_number": args.get("phone_number") or args.get("sender", ""),
+                        "timestamp": frappe.utils.now(),
+                        "settings": args.payment_gateway[6:],
+                        "payment_gateway": args.get("payment_gateway"),
+                        "reference_doctype": args.get("reference_doctype"),
+                        "reference_name": args.get("reference_docname"),
+                    })
+                    disbursement_request.flags.ignore_permissions = True
+                    disbursement_request.insert(ignore_permissions=True)
+                    disbursement_request.submit()
 
     def split_request_amount_according_to_transaction_limit(
         self, args: frappe._dict
