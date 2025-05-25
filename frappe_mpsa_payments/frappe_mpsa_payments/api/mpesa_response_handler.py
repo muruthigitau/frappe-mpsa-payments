@@ -10,6 +10,7 @@ def balance_query_on_success(response: dict, document_name: str, **kwargs) -> No
         
 def transaction_status_on_success(response: dict, document_name: str, **kwargs) -> None:
     try:
+        frappe.flags.ignore_permissions = True
         result_code = response.get("ResultCode")
         result_desc = response.get("ResultDesc")
         merchant_request_id = response.get("MerchantRequestID")
@@ -31,8 +32,16 @@ def transaction_status_on_success(response: dict, document_name: str, **kwargs) 
             except Exception:
                 frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {document_name}")
             
-            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-                payment_request.make_invoice()
+            try:
+                if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+                    from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+                    si = make_sales_invoice(payment_request.reference_name, ignore_permissions=True)
+                    si.allocate_advances_automatically = True
+                    si = si.insert(ignore_permissions=True)
+                    si.submit()
+                    
+            except Exception:
+                frappe.log_error(frappe.get_traceback(), f"Sales Invoice Creation Error: {checkout_request_id}")
                 
             frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 

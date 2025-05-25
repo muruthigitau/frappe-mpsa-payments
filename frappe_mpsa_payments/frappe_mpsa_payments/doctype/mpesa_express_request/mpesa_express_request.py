@@ -14,6 +14,9 @@ class MpesaExpressRequest(Document):
             )
 
     def on_submit(self):
+        self.send_stk_push()
+        
+    def send_stk_push(self):
         args = {
             "document_name": self.name,
             "payment_gateway": self.payment_gateway,
@@ -28,5 +31,5 @@ class MpesaExpressRequest(Document):
             initiate_stk_push(**args)
 
         except Exception as e:
-            frappe.log_error(frappe.get_traceback(), "STK Push on Submit Error")
+            frappe.log_error(frappe.get_traceback(), "STK Push Error")
             frappe.throw(f"Failed to initiate STK push: {str(e)}")

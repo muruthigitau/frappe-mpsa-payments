@@ -151,22 +151,19 @@ class MpesaSettings(Document):
     def split_request_amount_according_to_transaction_limit(
         self, args: frappe._dict
     ) -> list:
-        request_amount = args.request_amount
-        if request_amount > self.transaction_limit:
+        request_amount = float(args.request_amount)
+        transaction_limit = float(self.transaction_limit)
+        if request_amount > transaction_limit:
             # make multiple requests
             request_amounts = []
-            requests_to_be_made = frappe.utils.ceil(
-                request_amount / self.transaction_limit
-            )  # 480/150 = ceil(3.2) = 4
+            requests_to_be_made = int(frappe.utils.ceil(request_amount / transaction_limit))
             for i in range(requests_to_be_made):
-                amount = self.transaction_limit
+                amount = transaction_limit
                 if i == requests_to_be_made - 1:
-                    amount = request_amount - (
-                        self.transaction_limit * i
-                    )  # for 4th request, 480 - (150 * 3) = 30
-                request_amounts.append(amount)
+                    amount = request_amount - (transaction_limit * i)
+                request_amounts.append(float(amount))
         else:
-            request_amounts = [request_amount]
+            request_amounts = [float(request_amount)]
 
         return request_amounts
 

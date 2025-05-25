@@ -301,6 +301,8 @@ def initiate_stk_push(**args) -> any:
 @frappe.whitelist(allow_guest=True)
 def stk_push_callback(**kwargs) -> None:
     """Verify the transaction result received via callback from STK."""
+    
+    frappe.flags.ignore_permissions = True
 
     transaction_response = frappe._dict(kwargs["Body"]["stkCallback"])
 
@@ -325,8 +327,16 @@ def stk_push_callback(**kwargs) -> None:
             payment_request.create_payment_entry()
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
-        if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-            payment_request.make_invoice()
+        try:
+            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+                from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+                si = make_sales_invoice(payment_request.reference_name, ignore_permissions=True)
+                si.allocate_advances_automatically = True
+                si = si.insert(ignore_permissions=True)
+                si.submit()
+                
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), f"Sales Invoice Creation Error: {checkout_request_id}")
             
         frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
