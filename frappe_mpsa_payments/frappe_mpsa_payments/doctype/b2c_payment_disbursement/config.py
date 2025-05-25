@@ -45,7 +45,7 @@ DOCTYPE_CONFIGS = {
         invoice_amount_field="invoice_amount"
     ),
     "Salary Slip": DoctypeConfig(
-        fields=["name", "posting_date", "employee", "net_pay", "currency", "journal_entry"],
+        fields=["name", "posting_date", "employee", "net_pay", "currency", "journal_entry", "base_rounded_total"],
         date_field="posting_date",
         additional_filters={},
         payable_amount_calc=lambda e: e.get("base_rounded_total") or e.get("rounded_total") or e.get("outstanding_amount") or 0,

@@ -202,8 +202,6 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
         charges_paid = float(param_dict.get("B2CChargesPaidAccountAvailableFunds", 0.0))
         utility_funds = float(param_dict.get("B2CUtilityAccountAvailableFunds", 0.0))
 
-        account_paid_from = b2c_payment_doc.account_paid_from
-
         if frappe.db.exists("MPesa B2C Payments Transactions", transaction_id):
             frappe.throw(f"Transaction with ID {transaction_id} already exists.")
 
@@ -218,7 +216,8 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
         doc.working_acct_avlbl_funds = working_acct_avlbl_funds
         doc.utility_acct_avlbl_funds = utility_funds
         doc.transaction_completed_datetime = get_datetime(transaction_completed_datetime)
-        doc.account_paid_from = account_paid_from
+        doc.account_paid_from = b2c_payment_doc.paid_to
+        doc.account_paid_to = b2c_payment_doc.paid_to
 
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -245,12 +244,12 @@ def create_journal_entry(parent_doc, child_doc):
 
         journal_entry.append("accounts", {
             "account": parent_doc.paid_from,
-            "debit_in_account_currency": child_doc.allocated_amount
+            "credit_in_account_currency": child_doc.allocated_amount
         })
 
         journal_entry.append("accounts", {
             "account": payroll_payable_account,
-            "credit_in_account_currency": child_doc.allocated_amount,
+            "debit_in_account_currency": child_doc.allocated_amount,
             "party_type": child_doc.party_type,
             "party": child_doc.party,
         })

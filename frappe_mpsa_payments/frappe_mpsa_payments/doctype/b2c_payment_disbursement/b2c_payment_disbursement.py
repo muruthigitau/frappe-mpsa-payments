@@ -315,17 +315,17 @@ class B2CPaymentDisbursement(Document):
         """
         if config.use_erpnext_function:
             return self._fetch_erpnext_entries(doctype, args)
-            
+
         try:
             entries = frappe.db.get_all(
                 doctype,
                 filters=filters,
-                fields=config.get("fields", []),
-                order_by=f"{config['date_field']} asc",
+                fields=config.fields or [],
+                order_by=f"{config.date_field} asc",
                 limit=1000
             )
         except Exception as e:
-            frappe.log_error(f"Error fetching {doctype}: {str(e)}")
+            frappe.log_error(f"Error fetching {doctype}: {str(e)}", "Error Fetching Entries")
             frappe.msgprint(
                 _(f"Failed to fetch {doctype} references"),
                 title=_("Error"),
@@ -416,14 +416,14 @@ class B2CPaymentDisbursement(Document):
                 continue
 
             if not (party_info := self._extract_party_info(entry, args)):
-                continue
+                frappe.log_error(title="Skipping Entry", message=f"Skipping entry due to missing party or party_type: {entry}")
+
             party, party_type = party_info["party"], party_info["party_type"]            
 
             # Get phone number (required field)
             partyb = self.get_party_phone(entry, party_type)
             if not partyb:
-                app_logger.info(f"Skipping entry due to missing phone number for {party}: {entry}")
-                continue
+                frappe.log_error(title=f"Missing Phone - {party}"[:140], message=f"Skipping entry due to missing phone number for {party}: {entry}", )
 
             currency = entry.get("currency") or self.company_currency
             if not entry.get("currency"):
@@ -467,6 +467,7 @@ class B2CPaymentDisbursement(Document):
 
         party = entry.get("party") or entry.get("employee") or entry.get("supplier")
         party_type = entry.get("party_type") or args.get("party_type")
+        print(party, party_type)
         
         if not party or not party_type:
             app_logger.info(f"Skipping entry due to missing party or party_type: {entry}")
