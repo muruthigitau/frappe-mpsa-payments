@@ -146,8 +146,8 @@ def results_callback_url(**kwargs) -> dict:
                 "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
                 queue="long",
                 timeout=600,
-                parent_doc=b2c_payment_disburesement,
-                child_doc=b2c_payment_disburesement_reference
+                b2c_disbursement=b2c_payment_disburesement,
+                b2c_disbursement_ref=b2c_payment_disburesement_reference
             )
 
         b2c_payment_disburesement_reference.save(ignore_permissions=True)
@@ -159,34 +159,34 @@ def results_callback_url(**kwargs) -> dict:
     return "Success"
 
 
-def handle_successful_payment(parent_doc, child_doc):
+def handle_successful_payment(b2c_disbursement, b2c_disbursement_ref):
     """
     Trigger follow-up accounting entries based on reference doctype.
     This function will be enqueued and run in the background.
     """
 
     try:
-        match child_doc.reference_doctype:
+        match b2c_disbursement_ref.reference_doctype:
             case "Salary Slip":
-                create_journal_entry(parent_doc, child_doc)
+                create_journal_entry(b2c_disbursement, b2c_disbursement_ref)
             case "Employee Advance" | "Expense Claim" | "Purchase Invoice":
-                creat_payment_entry_for_doc(parent_doc, child_doc)
+                creat_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref)
             case _:
                 frappe.log_error(
-                    f"Unsupported reference_doctype: {child_doc.reference_doctype}",
+                    f"Unsupported reference_doctype: {b2c_disbursement_ref.reference_doctype}",
                     "Payment Callback Handler"
                 )
     except Exception as e:
-        error_msg = f"Error handling payment for {child_doc.name}: {str(e)}"
+        error_msg = f"Error handling payment for {b2c_disbursement_ref.name}: {str(e)}"
         frappe.log_error(frappe.get_traceback(), "B2C Payment Disbursement Reference")
 
 
-def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_payment_doc_ref: Document):
+def create_mpesa_transaction_entry(result: dict, b2c_disbursement: Document, b2c_disbursement_ref: Document):
     """
     Store a successful B2C transaction callback into MPesa B2C Payments Transactions.
     :param result: Dictionary parsed from Safaricom's B2C callback (Success).
-    :param b2c_payment_doc: The parent B2C Payment Disbursement document.
-    :param b2c_payment_doc_ref: The item/transaction with a successful response.
+    :param b2c_disbursement: The parent B2C Payment Disbursement document.
+    :param b2c_disbursement_ref: The item/transaction with a successful response.
     """
 
     try:
@@ -206,8 +206,8 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
             frappe.throw(f"Transaction with ID {transaction_id} already exists.")
 
         doc = frappe.new_doc("MPesa B2C Payments Transactions")
-        doc.b2c_payment_name = b2c_payment_doc.name
-        doc.b2c_payment_item_name = b2c_payment_doc_ref.name
+        doc.b2c_payment_name = b2c_disbursement.name
+        doc.b2c_payment_item_name = b2c_disbursement_ref.name
         doc.transaction_id = transaction_id
         doc.transaction_amount = transaction_amount
         doc.receiver_public_name = receiver_public_name
@@ -216,8 +216,8 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
         doc.working_acct_avlbl_funds = working_acct_avlbl_funds
         doc.utility_acct_avlbl_funds = utility_funds
         doc.transaction_completed_datetime = get_datetime(transaction_completed_datetime)
-        doc.account_paid_from = b2c_payment_doc.paid_to
-        doc.account_paid_to = b2c_payment_doc.paid_to
+        doc.account_paid_from = b2c_disbursement.paid_to
+        doc.account_paid_to = b2c_disbursement.paid_to
 
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
@@ -226,32 +226,35 @@ def create_mpesa_transaction_entry(result: dict, b2c_payment_doc: Document, b2c_
         frappe.log_error(frappe.get_traceback(), "B2C Payment Transaction Save Failed")
 
 
-def create_journal_entry(parent_doc, child_doc):
+def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
     """ Create Journal Entry for Salary Slip after successful B2C payment."""
 
     try:
-        salary_slip = frappe.get_doc("Salary Slip", child_doc.reference_name)
+        salary_slip = frappe.get_doc("Salary Slip", b2c_disbursement_ref.reference_name)
         if not salary_slip:
-            frappe.log_error(f"Salary slip not found")
+            frappe.log_error(f"Salary slip {} not found")
 
-        payroll_payable_account = parent_doc.paid_to
-        if not payroll_payable_account:
-            frappe.log_error(f"Payroll Payable Account is not set")
+        if not b2c_disbursement.paid_from:
+            frappe.throw("Paid From account not is set in B2C Payment Disbursement")
+        if not b2c_disbursement.paid_to:
+            frappe.log_error(f"Paid To Account is not set in B2C Payment Disbursement")
 
         journal_entry = frappe.new_doc("Journal Entry")
-        journal_entry.voucher_type = "Journal Entry"
+        journal_entry.voucher_type = "Bank Entry"
         journal_entry.posting_date = nowdate()
+        journal_entry.company = b2c_disbursement.company
+        journal_entry.user_remark = f"B2C Payment Disbursed for Salary Slip {salary_slip.name}"
 
         journal_entry.append("accounts", {
-            "account": parent_doc.paid_from,
-            "credit_in_account_currency": child_doc.allocated_amount
+            "account": b2c_disbursement.paid_from,
+            "credit_in_account_currency": b2c_disbursement_ref.allocated_amount
         })
 
         journal_entry.append("accounts", {
-            "account": payroll_payable_account,
-            "debit_in_account_currency": child_doc.allocated_amount,
-            "party_type": child_doc.party_type,
-            "party": child_doc.party,
+            "account": b2c_disbursement.paid_to,
+            "debit_in_account_currency": b2c_disbursement_ref.allocated_amount,
+            "party_type": b2c_disbursement_ref.party_type,
+            "party": b2c_disbursement_ref.party,
         })
 
         journal_entry.insert(ignore_permissions=True)
@@ -261,25 +264,25 @@ def create_journal_entry(parent_doc, child_doc):
 
         
 
-def creat_payment_entry_for_doc(parent_doc, child_doc):
-    party_type = child_doc.party_type
-    party_account = parent_doc.paid_to
-    party = frappe.db.get_value(party_type, child_doc.party, "name")
-    amount = child_doc.allocated_amount
+def creat_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
+    party_type = b2c_disbursement_ref.party_type
+    party_account = b2c_disbursement.paid_to
+    party = frappe.db.get_value(party_type, b2c_disbursement_ref.party, "name")
+    amount = b2c_disbursement_ref.allocated_amount
 
-    company = parent_doc.company
+    company = b2c_disbursement.company
     currency = frappe.db.get_value('Company', company, 'default_currency')
 
-    mode_of_payment = parent_doc.mode_of_payment
+    mode_of_payment = b2c_disbursement.mode_of_payment
 
     current_user = frappe.session.user
     frappe.set_user("Administrator")
 
     try:
         references = [{
-            'reference_doctype': child_doc.reference_doctype,
-            'reference_name': child_doc.reference_name,
-            'allocated_amount': child_doc.allocated_amount
+            'reference_doctype': b2c_disbursement_ref.reference_doctype,
+            'reference_name': b2c_disbursement_ref.reference_name,
+            'allocated_amount': b2c_disbursement_ref.allocated_amount
         }]
 
         payment_entry = create_payment_entry(
@@ -290,7 +293,7 @@ def creat_payment_entry_for_doc(parent_doc, child_doc):
             mode_of_payment,
             party_type=party_type,
             reference_date=nowdate(),
-            reference_no=child_doc.originator_conversation_id,
+            reference_no=b2c_disbursement_ref.originator_conversation_id,
             posting_date=nowdate(),
             cost_center=erpnext.get_default_cost_center(company),
             submit=0,

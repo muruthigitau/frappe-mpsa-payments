@@ -335,6 +335,13 @@ class B2CPaymentDisbursement(Document):
         
         if doctype == "Employee Advance":
             entries = [e for e in entries if (e.paid_amount or 0) < (e.advance_amount or 0)]
+
+        if not entries:
+            frappe.msgprint(
+                _(f"No outstanding references found for the set filters"),
+                title=_("No References"),
+                indicator="blue"
+            )
     
         return entries
 
@@ -467,7 +474,6 @@ class B2CPaymentDisbursement(Document):
 
         party = entry.get("party") or entry.get("employee") or entry.get("supplier")
         party_type = entry.get("party_type") or args.get("party_type")
-        print(party, party_type)
         
         if not party or not party_type:
             app_logger.info(f"Skipping entry due to missing party or party_type: {entry}")
