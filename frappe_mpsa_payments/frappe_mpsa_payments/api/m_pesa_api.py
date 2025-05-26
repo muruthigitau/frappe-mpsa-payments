@@ -8,8 +8,8 @@ import datetime
 import json
 import time
 from .process_request import process_request
-from .mpesa_response_handler import stk_push_on_success, transaction_status_on_success, balance_query_on_success
-from ...utils.doctype_names import MPESA_SETTINGS_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
+from .mpesa_response_handler import stk_push_on_success, transaction_status_on_success, balance_query_on_success, b2c_disbursement_on_success
+from ...utils.doctype_names import MPESA_SETTINGS_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_DISBURSEMENT_REQUEST_DOCTYPE
 from typing import Any
 from frappe_mpsa_payments.utils.encoding_initiator_password import (
     generate_security_credential,
@@ -301,6 +301,8 @@ def initiate_stk_push(**args) -> any:
 @frappe.whitelist(allow_guest=True)
 def stk_push_callback(**kwargs) -> None:
     """Verify the transaction result received via callback from STK."""
+    
+    frappe.flags.ignore_permissions = True
 
     transaction_response = frappe._dict(kwargs["Body"]["stkCallback"])
 
@@ -325,8 +327,16 @@ def stk_push_callback(**kwargs) -> None:
             payment_request.create_payment_entry()
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
-        if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-            payment_request.make_invoice()
+        try:
+            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+                from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+                si = make_sales_invoice(payment_request.reference_name, ignore_permissions=True)
+                si.allocate_advances_automatically = True
+                si = si.insert(ignore_permissions=True)
+                si.submit()
+                
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), f"Sales Invoice Creation Error: {checkout_request_id}")
             
         frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
@@ -774,3 +784,172 @@ def verify_transaction(**kwargs) -> None:
             ),
         },
     )
+
+
+@frappe.whitelist()
+def initiate_b2c_disbursement(**args) -> dict:
+    """Initiate M-Pesa B2C payment disbursement."""
+    
+    if len(args) == 1 and "args" in args:
+        try:
+            parsed_args = json.loads(args.get("args"))
+            args = frappe._dict(parsed_args) if isinstance(parsed_args, dict) else args
+        except json.JSONDecodeError:
+            frappe.log_error(_("Failed to decode JSON arguments"))
+    else:
+        args = frappe._dict(args)
+
+    required_fields = ["payment_gateway", "phone_number", "request_amount", "command_id"]
+    missing_fields = [field for field in required_fields if not args.get(field)]
+    if missing_fields:
+        frappe.throw(_("Missing required fields: {0}").format(", ".join(missing_fields)))
+
+    try:
+        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, args.payment_gateway[6:])
+        certs = frappe.get_single("Mpesa Public Key Certificate")
+        cert_url = ""
+        
+        if mpesa_settings.sandbox:
+            cert_url = certs.sandbox_certificate
+        else:
+            cert_url = certs.production_certificate
+            
+        security_credential = generate_security_credential(
+            mpesa_settings.get_password("initiator_password", "") if mpesa_settings.initiator_password else "",
+            cert_url
+        )
+
+        payload = {
+            "OriginatorConversationID": generate_unique_conversation_id(),
+            "InitiatorName": mpesa_settings.initiator_name,
+            "SecurityCredential": mpesa_settings.get_password("security_credential") or security_credential, 
+            "CommandID": args.command_id,  
+            "Amount": args.request_amount,
+            "PartyA": mpesa_settings.business_shortcode,
+            "PartyB": sanitize_mobile_number(args.phone_number),
+            "Remarks": args.get("remarks", "Payment disbursement"),
+            "QueueTimeOutURL": build_callback_url(
+                "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout"
+            ),
+            "ResultURL": build_callback_url(
+                "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.b2c_result_callback"
+            ),
+            "Occassion": args.get("occassion", "")
+        }
+
+        endpoint = "/mpesa/b2c/v3/paymentrequest"
+        
+        response = process_request(
+            endpoint=endpoint,
+            method="POST",
+            payload=payload,
+            success_callback=b2c_disbursement_on_success,
+            request_description="M-Pesa B2C Disbursement",
+            doctype=args.get("doctype", "MPESA Settings"),
+            document_name=args.get("document_name", mpesa_settings.name),
+            settings_name=mpesa_settings.name,
+        )
+        
+        return response
+
+    except Exception as e:
+        frappe.log_error(_("B2C Disbursement Failed: {0}").format(str(e)))
+        frappe.throw(_("Failed to initiate B2C payment: {0}").format(str(e)))
+        
+
+@frappe.whitelist(allow_guest=True)
+def b2c_result_callback(**kwargs) -> None:
+    """Process B2C disbursement result callback from M-Pesa."""
+    
+    frappe.flags.ignore_permissions = True
+    
+    try:
+        result_data = frappe._dict(kwargs.get("Result", {}))
+        
+        originator_conversation_id = result_data.get("OriginatorConversationID")
+        result_code = result_data.get("ResultCode")
+        result_desc = result_data.get("ResultDesc")
+        transaction_id = result_data.get("TransactionID")
+        
+        if not originator_conversation_id:
+            frappe.log_error(_("Missing OriginatorConversationID in callback"))
+            return
+
+        transaction_details = {}
+        result_parameters = result_data.get("ResultParameters", {}).get("ResultParameter", [])
+        
+        for param in result_parameters:
+            key = param.get("Key")
+            value = param.get("Value")
+            if key and value is not None:
+                transaction_details[key] = value
+
+        status = "Completed" if result_code == 0 else "Failed"
+
+        request_doc = frappe.get_doc(
+           MPESA_DISBURSEMENT_REQUEST_DOCTYPE, 
+            {"originator_conversation_id": originator_conversation_id}
+        )
+
+        transaction_completed_date_time = transaction_details.get("TransactionCompletedDateTime")
+        frappe_transaction_date = None
+        if transaction_completed_date_time:
+            try:
+                dt = datetime.datetime.strptime(transaction_completed_date_time, "%d.%m.%Y %H:%M:%S")
+                frappe_transaction_date = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                frappe_transaction_date = None
+
+        update_fields = {
+            "status": status,
+            "result_code": result_code,
+            "result_desc": result_desc,
+            "transaction_id": transaction_id,
+            "amount": transaction_details.get("TransactionAmount"),
+            "transaction_receipt": transaction_details.get("TransactionReceipt"),
+            "receiver_name": transaction_details.get("ReceiverPartyPublicName"),
+            "transaction_completed_date_time": frappe_transaction_date,
+            "recipient_is_registered": 1 if transaction_details.get("B2CRecipientIsRegisteredCustomer") == "Y" else 0,
+        }
+
+        request_doc.db_set(update_fields)
+        request_doc.reload()
+        
+        frappe.publish_realtime(
+            event="refresh_form",
+            doctype="MPESA Disbursement Request",
+            docname=request_doc.name,
+            message={"status": status}
+        )
+
+    except Exception as e:
+        frappe.log_error(
+            title="B2C Callback Processing Error",
+            message=f"Error processing B2C callback: {str(e)}\n\nCallback Data: {frappe.as_json(kwargs)}"
+        )
+        raise e
+    
+@frappe.whitelist()
+def disburse_b2c(name: str) -> None:
+    """Disburse B2C payment by updating the request document."""
+    try:
+        request_doc = frappe.get_doc(MPESA_DISBURSEMENT_REQUEST_DOCTYPE, name)
+        request_doc.make_disbursement()
+        
+        frappe.publish_realtime(
+            event="refresh_form",
+            doctype=MPESA_DISBURSEMENT_REQUEST_DOCTYPE,
+            docname=name,
+            message={"status": "Disbursed"}
+        )
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), f"B2C Disbursement Error for {name}")
+        raise e
+  
+# Helper functions
+def generate_unique_conversation_id():
+    """Generate unique conversation ID in format: TIMESTAMP-UUID"""
+    import uuid
+    return f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}-{str(uuid.uuid4())}"
+

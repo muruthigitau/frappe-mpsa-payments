@@ -3,10 +3,10 @@
 
 import frappe
 from frappe.model.document import Document
-from ...api.m_pesa_api import initiate_stk_push  # Import the stk push function
+from ...api.m_pesa_api import initiate_b2c_disbursement  
 
 
-class MpesaExpressRequest(Document):
+class MpesaB2CDisbursementRequest(Document):
     def validate(self):
         if self.settings:
             self.payment_gateway = frappe.db.get_value(
@@ -14,9 +14,9 @@ class MpesaExpressRequest(Document):
             )
 
     def on_submit(self):
-        self.send_stk_push()
+        self.make_disbursement()
         
-    def send_stk_push(self):
+    def make_disbursement(self):
         args = {
             "document_name": self.name,
             "payment_gateway": self.payment_gateway,
@@ -25,10 +25,11 @@ class MpesaExpressRequest(Document):
             "doctype": self.doctype, 
             "document_name": self.name,
             "reference_name": self.reference_name,
+            "command_id": self.command_id,
         }
 
         try:
-            initiate_stk_push(**args)
+            initiate_b2c_disbursement(**args)
 
         except Exception as e:
             frappe.log_error(frappe.get_traceback(), "STK Push Error")
