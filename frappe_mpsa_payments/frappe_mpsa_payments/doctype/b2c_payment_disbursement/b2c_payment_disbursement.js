@@ -375,7 +375,34 @@ frappe.ui.form.on("B2C Payment Disbursement", {
           label: __("Party"),
           fieldname: "party",
           options: frm.doc.party_type,
-          
+          get_query: () => {
+            const party_type = frm.doc.party_type;
+            let filters = {};
+
+            if (party_type === "Employee") {
+              filters.status = "Active";
+            } else if (party_type === "Supplier") {
+              filters.disabled = 0;
+            }
+
+            return { filters };
+          }
+        },
+        { fieldtype: "Column Break" },
+        {
+          fieldtype: "Link",
+          label: __("Payroll Entry"),
+          fieldname: "payroll_entry",
+          options: "Payroll Entry",
+          hidden: 1,
+          depends_on: () => frm.doc.transaction_to_pay_against === "Salary Slip",
+          get_query: () => {
+            return {
+              filters: {
+                docstatus: 1
+              }
+            };
+          }
         },
         { fieldtype: "Section Break", label: __("Posting Date") },
         {
@@ -430,28 +457,28 @@ frappe.ui.form.on("B2C Payment Disbursement", {
     },
 
     validate_filters_data: function (frm, filters) {
-      // const fields = {
-      //   "Posting Date": ["from_posting_date", "to_posting_date"],
-      //   // "Due Date": ["from_due_date", "to_due_date"],
-      //   // "Advance Amount": ["from_posting_date", "to_posting_date"],
-      // };
+      const fields = {
+        "Posting Date": ["from_posting_date", "to_posting_date"],
+        "Due Date": ["from_due_date", "to_due_date"],
+        "Outstanding Amount": ["outstanding_amt_greater_than", "outstanding_amt_less_than"]
+      };
 
-      // for (let key in fields) {
-      //   let from_field = fields[key][0];
-      //   let to_field = fields[key][1];
+      for (let key in fields) {
+        let from_field = fields[key][0];
+        let to_field = fields[key][1];
 
-      //   if (filters[from_field] && !filters[to_field]) {
-      //     frappe.throw(__("Error: {0} is mandatory field", [to_field.replace(/_/g, " ")]));
-      //   } else if (filters[from_field] && filters[from_field] > filters[to_field]) {
-      //     frappe.throw(
-      //       __("{0}: {1} must be less than {2}", [
-      //         key,
-      //         from_field.replace(/_/g, " "),
-      //         to_field.replace(/_/g, " "),
-      //       ])
-      //     );
-      //   }
-      // }
+        if (filters[from_field] && !filters[to_field]) {
+          frappe.throw(__("Error: {0} is mandatory field", [to_field.replace(/_/g, " ")]));
+        } else if (filters[from_field] && filters[from_field] > filters[to_field]) {
+          frappe.throw(
+            __("{0}: {1} must be less than {2}", [
+              key,
+              from_field.replace(/_/g, " "),
+              to_field.replace(/_/g, " "),
+            ])
+          );
+        }
+      }
     },
 
     get_outstanding_documents: function (frm, filters) {
