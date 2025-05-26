@@ -32,7 +32,7 @@ class B2CPaymentDisbursement(Document):
         self.validate_party_type()
         for ref in self.references:
             ref.validate()
-        self.validate_amounts()
+        self.validate_reference_doctypes()
 
     def before_save(self) -> None:
         """Set missing values before saving."""
@@ -75,7 +75,7 @@ class B2CPaymentDisbursement(Document):
             self.status = "Not Initiated"
 
     def validate_mandatory_fields(self) -> None:
-        mandatory_fields = ["company", "posting_date", "party_type", "paid_from", "paid_to", "paid_amount"]
+        mandatory_fields = ["company", "posting_date", "party_type", "paid_from", "paid_to"]
         for field in mandatory_fields:
             if not self.get(field):
                 frappe.throw(f"Field {self.meta.get_label(field)} is mandatory.")
@@ -105,6 +105,13 @@ class B2CPaymentDisbursement(Document):
         total_allocated = sum(flt(row.allocated_amount) for row in self.references)
         if flt(total_allocated) != flt(self.paid_amount):
             frappe.throw(f"Total allocated amount {total_allocated} must equal Paid Amount {self.paid_amount}")
+
+    def validate_reference_doctypes(self) -> None:
+        for ref in self.references:
+            if ref.reference_doctype != self.transaction_to_pay_against:
+                frappe.throw(
+                    f"Reference doctype '{ref.reference_doctype}' does not match '{self.transaction_to_pay_against}' for row {ref.idx}."
+                )
 
     def set_missing_values(self):
         if not self.company_currency:
@@ -266,6 +273,9 @@ class B2CPaymentDisbursement(Document):
             "company": args["company"],
             **config.additional_filters
         }
+
+        if args.get("party"):
+            filters["employee"] = args["party"]
         
         self._add_date_filter(filters, config.date_field, args.get("from_posting_date"), args.get("to_posting_date"))
 

@@ -6,6 +6,7 @@ import re
 from uuid import uuid4
 
 import frappe
+from frappe.utils import flt
 from frappe.model.document import Document
 
 
@@ -22,20 +23,19 @@ class B2CPaymentDisbursementReference(Document):
                 title="Validation Error"
             )
 
-        if self.allocated_amount:
-            if self.allocated_amount < 10:
-                frappe.throw(
-                    "Allocated Amount cannot be less than Kshs. 10",
-                    frappe.ValidationError,
-                    title="Validation Error",
-                )
+        if self.allocated_amount is not None and flt(self.allocated_amount) < 10:
+            frappe.throw(
+                "Allocated Amount cannot be less than Kshs. 10",
+                frappe.ValidationError,
+                title="Validation Error",
+            )
 
-            if self.outstanding_amount and (self.allocated_amount > self.outstanding_amount or not self.outstanding_amount):
-                frappe.throw(
-                    "Allocated Amount cannot be greater than Outstanding Amount",
-                    frappe.ValidationError,
-                    title="Validation Error",
-                )
+        if self.outstanding_amount and (self.allocated_amount > self.outstanding_amount or not self.outstanding_amount):
+            frappe.throw(
+                "Allocated Amount cannot be greater than Outstanding Amount",
+                frappe.ValidationError,
+                title="Validation Error",
+            )
 
         if self.partyb:
             mobile_no = sanitise_phone_number(self.partyb)

@@ -232,7 +232,7 @@ def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
     try:
         salary_slip = frappe.get_doc("Salary Slip", b2c_disbursement_ref.reference_name)
         if not salary_slip:
-            frappe.log_error(f"Salary slip {} not found")
+            frappe.log_error(f"Salary slip {salary_slip.name} not found")
 
         if not b2c_disbursement.paid_from:
             frappe.throw("Paid From account not is set in B2C Payment Disbursement")

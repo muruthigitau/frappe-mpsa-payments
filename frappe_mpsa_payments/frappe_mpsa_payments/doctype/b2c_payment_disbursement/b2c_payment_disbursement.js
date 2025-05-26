@@ -178,12 +178,6 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       if (!frm.doc.party_type) {
         frappe.throw({ message: __("Please select Party Type."), title: __("Mandatory")});
       }
-      if (!frm.doc.paid_amount) {
-        frappe.throw({ message: __("Paid Amount is required."), title: __("Mandatory")});
-      }
-      if (!frm.doc.base_paid_amount) {
-        frappe.throw({ message: __("Paid Amount (KES) is required for M-Pesa."), title: __("Mandatory")});
-      }
       if (!frm.doc.references.length) {
         frappe.throw({ message: __("At least one reference is required."), title: __("Mandatory")});
       }
@@ -235,6 +229,10 @@ frappe.ui.form.on("B2C Payment Disbursement", {
     transaction_to_pay_against: function (frm) {
       const doctype = frm.doc.transaction_to_pay_against;
       const company = frm.doc.company;
+
+      frm.clear_table("references");
+      frm.refresh_field("references");
+
       if (!doctype) {
         frm.set_value("paid_to", null);
         return;
@@ -243,6 +241,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       const accountFieldMap = {
         "Employee Advance": "default_employee_advance_account",
         "Salary Slip": "default_payroll_payable_account",
+        "Expense Claim": "default_expense_claim_payable_account",
         "Purchase Invoice": "default_payable_account",
         "Purchase Order": "default_payable_account"
       };
