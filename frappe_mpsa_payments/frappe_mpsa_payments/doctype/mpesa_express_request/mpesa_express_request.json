@@ -195,13 +195,8 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [
-  {
-   "link_doctype": "Integration Request",
-   "link_fieldname": "reference_docname"
-  }
- ],
- "modified": "2025-05-25 12:32:46.340024",
+ "links": [],
+ "modified": "2025-03-26 20:48:37.486569",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Express Request",
