@@ -326,13 +326,13 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       if (frm.doc.paid_amount) {
         frm.set_value("base_paid_amount", flt(frm.doc.paid_amount) * flt(frm.doc.source_exchange_rate));
         frm.events.calculate_paid_amount_kes(frm);
-        // frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+        frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
       }
       frm.set_df_property("source_exchange_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
     },
 
     target_exchange_rate: function (frm) {
-      // frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+      frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
       frm.set_df_property("source_exchange_rate", "read_only", erpnext.stale_rate_allowed() ? 0 : 1);
     },
 
@@ -341,7 +341,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         frm.set_value("base_paid_amount", flt(frm.doc.paid_amount) * flt(frm.doc.source_exchange_rate));
       }
       frm.events.calculate_paid_amount_kes(frm);
-      // frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+      frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
     },
 
     calculate_paid_amount_kes: function (frm) {
@@ -483,11 +483,15 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         callback: function (r) {
           if (r.message) {
             frm.refresh_field("references");
-            frappe.msgprint({
-              message: __("References populated successfully"),
-              title: __("Success"),
-              indicator: "green"
-            })
+            if (frappe.flags.allocate_payment_amount) {
+              frm.events.allocate_party_amount_against_ref_docs(frm, frm.doc.paid_amount);
+            } else {
+              frappe.msgprint({
+                message: __("References populated successfully"),
+                title: __("Success"),
+                indicator: "green"
+              })
+            }
           }
         },
       });
@@ -527,6 +531,36 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         },
       });
     },
+    allocate_party_amount_against_ref_docs: function(frm, paid_amount) {
+      if (!frm.doc.references || !frm.doc.references.length) {
+          return;
+      }
+
+      frappe.call({
+          method: "allocate_amount_to_references",
+          doc: frm.doc,
+          args: {
+              paid_amount: paid_amount || frm.doc.paid_amount,
+              paid_amount_change: 1,
+              allocate_payment_amount: frappe.flags.allocate_payment_amount || 1
+          },
+          callback: function(r) {
+              frm.refresh_field("references");
+              frappe.msgprint({
+                  message: __("References populated and allocated successfully"),
+                  title: __("Success"),
+                  indicator: "green"
+              });
+          },
+          error: function(r) {
+              frappe.msgprint({
+                  message: __("Error allocating amounts: " + r.message),
+                  title: __("Error"),
+                  indicator: "red"
+              });
+          }
+      });
+    }
   });
 
 function generateUUIDv4() {

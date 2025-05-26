@@ -530,3 +530,46 @@ class B2CPaymentDisbursement(Document):
             return contact[0].get("phone") or contact[0].get("mobile_no") or "" if contact else ""
         
         return ""
+
+    @frappe.whitelist()
+    def allocate_amount_to_references(self, paid_amount, paid_amount_change=0, allocate_payment_amount=None):
+        if not self.references:
+            return
+
+        allocate_payment_amount = allocate_payment_amount if allocate_payment_amount is not None else frappe.flags.allocate_payment_amount or False
+
+        if not allocate_payment_amount:
+            for ref in self.references:
+                ref.allocated_amount = 0
+            return
+        
+        precision = self.precision("paid_amount")
+        total_positive_outstanding = 0
+        total_negative_outstanding = 0
+        paid_amount = flt(paid_amount, precision)
+
+        for ref in self.references:
+            outstanding_amount = flt(ref.outstanding_amount, precision)
+            if outstanding_amount > 0:
+                total_positive_outstanding += outstanding_amount
+            else:
+                total_negative_outstanding -= abs(outstanding_amount)
+
+        allocated_positive_outstanding = 0
+        allocated_negative_outstanding = 0
+
+        if total_positive_outstanding > paid_amount:
+            remaining_outstanding = flt(total_positive_outstanding - paid_amount, precision)
+            allocated_negative_outstanding = min(remaining_outstanding, total_negative_outstanding)
+        allocated_positive_outstanding = paid_amount + allocated_negative_outstanding
+
+        for ref in self.references:
+            outstanding_amount = flt(ref.outstanding_amount, precision)
+            if outstanding_amount > 0 and allocated_positive_outstanding >= 0:
+                ref.allocated_amount = min(allocated_positive_outstanding, outstanding_amount)
+                allocated_positive_outstanding = flt(allocated_positive_outstanding - ref.allocated_amount, precision)
+            elif outstanding_amount < 0 and allocated_negative_outstanding > 0:
+                ref.allocated_amount = min(allocated_negative_outstanding, abs(outstanding_amount)) * -1
+                allocated_negative_outstanding = flt(allocated_negative_outstanding - abs(ref.allocated_amount), precision)
+            else:
+                ref.allocated_amount = 0
