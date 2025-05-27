@@ -26,6 +26,7 @@ def transaction_status_on_success(response: dict, document_name: str, **kwargs) 
 
         # Only proceed if the new status is "Completed" and it's a change from the current status
         if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
+            frappe.set_user("Administrator")
             payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
             try:
                 payment_request.create_payment_entry()

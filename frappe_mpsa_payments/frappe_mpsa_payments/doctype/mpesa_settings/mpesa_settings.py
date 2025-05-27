@@ -128,8 +128,6 @@ class MpesaSettings(Document):
 
         for i, amount in enumerate(request_amounts):
             args.request_amount = amount
-            print(f"Processing request {i + 1} with amount: {amount}")
-            print(f"Reference Doctype: {args.reference_doctype}, Reference Docname: {args.reference_docname}")
             if frappe.flags.in_test:
                 from .test_mpesa_settings import get_payment_request_response_payload
 
