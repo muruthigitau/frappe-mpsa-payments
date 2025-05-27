@@ -322,6 +322,7 @@ def stk_push_callback(**kwargs) -> None:
     settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
 
     if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
+        frappe.set_user("Administrator")
         payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
         try:
             payment_request.create_payment_entry()
