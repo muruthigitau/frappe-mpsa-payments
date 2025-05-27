@@ -1,6 +1,6 @@
 ## 📲 Frappe Mpesa Payments
 
-*Frappe Mpesa Payments* is a custom [Frappe](https://frappe.io/framework) application that integrates [Safaricom's Daraja API](https://developer.safaricom.co.ke/), it is built to extend [ERPNext](https://frappe.io/erpnext) enabling seamless mobile money functionality directly within ERP workflow.
+**Frappe Mpesa Payments** is a custom [Frappe](https://frappe.io/framework) application that integrates [Safaricom's Daraja API](https://developer.safaricom.co.ke/), it is built to extend [ERPNext](https://frappe.io/erpnext) enabling seamless mobile money functionality directly within ERP workflow.
 ---
 
 ## 🚀 Project Overview
