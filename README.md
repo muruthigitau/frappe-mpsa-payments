@@ -1,6 +1,6 @@
 ## 📲 Frappe Mpesa Payments
 
-**Frappe Mpesa Payments** is a custom [Frappe](https://frappe.io/framework) application that integrates [Safaricom's Daraja API](https://developer.safaricom.co.ke/), it is built to extend [ERPNext](https://frappe.io/erpnext) enabling seamless mobile money functionality directly within ERP workflow.
+**Frappe Mpesa Payments** is a custom [Frappe](https://frappe.io/framework) application that integrates [Safaricom's Daraja API](https://developer.safaricom.co.ke/). It is built to extend [ERPNext](https://frappe.io/erpnext) enabling seamless mobile money functionality directly within ERP workflow.
 ---
 
 ## 🚀 Project Overview
@@ -14,11 +14,32 @@ This app was built to enable Kenyan businesses to automate and streamline paymen
 - ✅ **Transaction Status (Query status of payment)**
 
 ### Use Cases:
-- Trigger STK push from Sales Invoices, Sales Order or POS transaction.
-- Collect payments from customers and reconcile with invoices.
-- Disburse salaries and supplier payments.
-- Query transaction status for failed/delayed payments.
-- Log and audit incoming/outgoing C2B and B2C transactions.
+#### 1. Mpesa Express (STK Push)
+  - Request payment from Sales Invoices, Sales Order from the customer.
+  ![mpesa_express_sales_order_and_invoice](https://github.com/user-attachments/assets/59129a80-d1f7-4638-9658-2c5dd48e30ff)
+  - POS (Point of Sale)
+  ![mpesa_express_pos](https://github.com/user-attachments/assets/16ed5cf0-89fe-44fe-aa05-16ee2d265add)
+  - Webshop (E-Commerce)
+  ![mpesa_express_webshop](https://github.com/user-attachments/assets/d56b053e-3ad8-4965-8587-a090484b445b)
+
+
+#### 2. C2B (Customer to Business)
+  - Recieve payments from customers in real-time and reconcile with invoices.
+  ![mpesa_c2b_sales_invoice](https://github.com/user-attachments/assets/ce7fdc6e-4e4a-44f1-a759-e411ac99f13a)
+
+#### 3. B2C (Business to Customer)
+  -  Disburse payments to suppliers to pay for Purchase Invoices and Purchase Orders
+  ![b2c_disbursement_purchase_order_and_invoice](https://github.com/user-attachments/assets/b37f03a9-da9b-4a31-a6a2-90c30938062d)
+  - Disburse money to your employees
+    - Expense claims
+     ![b2c_disbursement_expense_claim](https://github.com/user-attachments/assets/4eda92c2-b8b3-4784-9260-d91cf9de99db)
+    - Employee Advances
+    ![b2c_disbursement_employee_advance](https://github.com/user-attachments/assets/7875b2ad-ad36-4f06-8ff5-7a10a98e349b)
+    - Salary 
+    ![b2c_disbursement_salary_slip](https://github.com/user-attachments/assets/8207bf8e-ac72-4d43-a627-0e5a1e452d92)
+
+#### 4. Query transaction status for failed/delayed payments.
+#### 5. Log and audit incoming/outgoing C2B and B2C transactions.
 
 ---
 
