@@ -1,6 +1,6 @@
 frappe.ui.form.on("Sales Invoice", {
   refresh(frm) {
-    if (frm.doc.is_pos) {
+    if (frm.doc.is_pos || frm.doc.docstatus === 0) {
       frm.add_custom_button(
         __("Initiate STK Push"),
         function () {
