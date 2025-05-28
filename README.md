@@ -44,7 +44,37 @@ This app was built to enable Kenyan businesses to automate and streamline paymen
 ---
 
 ## Table of Contents
+- [📲 Frappe Mpesa Payments](#-frappe-mpesa-payments)
+- [🚀 Project Overview](#-project-overview)
+  - [Supported APIs:](#supported-apis)
+  - [Use Cases:](#use-cases)
+    - [1. Mpesa Express (STK Push)](#1-mpesa-express-stk-push)
+    - [2. C2B (Customer to Business)](#2-c2b-customer-to-business)
+    - [3. B2C (Business to Customer)](#3-b2c-business-to-customer)
+    - [4. Query transaction status for failed/delayed payments.](#4-query-transaction-status-for-faileddelayed-payments)
+    - [5. Log and audit incoming/outgoing C2B and B2C transactions.](#5-log-and-audit-incomingoutgoing-c2b-and-b2c-transactions)
+- [Table of Contents](#table-of-contents)
+- [🔑 Features](#-features)
+- [🛠️ Installation](#️-installation)
+  - [Managed Hosting](#managed-hosting)
+  - [Self Hosting](#self-hosting)
+- [⚙️ Configuration](#️-configuration)
+- [🤵🏿 Usage Guide](#-usage-guide)
+  - [1. 🔁 Trigger STK Push (Mpesa Express)](#1--trigger-stk-push-mpesa-express)
+  - [2. 📥 Receive C2B Payments](#2--receive-c2b-payments)
+    - [Notes:](#notes)
+    - [FAQs: What happens when Registration Fails?](#faqs-what-happens-when-registration-fails)
+  - [3. 💸 Disburse B2C Payments (Business to Customer)](#3--disburse-b2c-payments-business-to-customer)
+    - [🧾Accounting Entries](#accounting-entries)
+    - [Use Cases](#use-cases-1)
+  - [4. 🔍 Reconcile Payments](#4--reconcile-payments)
+  - [5. ❓Query Transaction Status](#5-query-transaction-status)
+    - [Use Cases:](#use-cases-2)
+- [Key DocTypes](#key-doctypes)
+- [🔐 Security](#-security)
+- [🛠️ Troubleshooting](#️-troubleshooting)
 
+---
 
 ## 🔑 Features
 - **STK Push (Mpesa Express):** Trigger an STK push from Payment Requests.
