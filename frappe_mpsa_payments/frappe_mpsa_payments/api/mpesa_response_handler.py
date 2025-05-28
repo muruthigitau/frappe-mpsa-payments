@@ -10,6 +10,9 @@ def balance_query_on_success(response: dict, document_name: str, **kwargs) -> No
         
 def transaction_status_on_success(response: dict, document_name: str, **kwargs) -> None:
     try:
+        
+        frappe.set_user("Administrator")
+        
         result_code = response.get("ResultCode")
         result_desc = response.get("ResultDesc")
         merchant_request_id = response.get("MerchantRequestID")
@@ -18,22 +21,26 @@ def transaction_status_on_success(response: dict, document_name: str, **kwargs) 
         response_description = response.get("ResponseDescription")
         status = "Completed" if result_code == "0" else "Failed"
 
-        # Fetch the current status from the database
         request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, document_name)
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
         
-
-        # Only proceed if the new status is "Completed" and it's a change from the current status
         if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
             payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
             try:
                 payment_request.create_payment_entry()
             except Exception:
-                frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {document_name}")
-            
-            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-                payment_request.make_invoice()
-                
+                frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
+            try:
+                if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+                    from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+                    si = make_sales_invoice(payment_request.reference_name, ignore_permissions=True)
+                    si.allocate_advances_automatically = True
+                    si = si.insert(ignore_permissions=True)
+                    si.submit()
+                    
+            except Exception:
+                frappe.log_error(frappe.get_traceback(), f"Sales Invoice Creation Error: {checkout_request_id}") 
+       
             frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
         # Update the database record
