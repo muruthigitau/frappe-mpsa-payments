@@ -24,7 +24,7 @@ This app was built to enable Kenyan businesses to automate and streamline paymen
 
 
 #### 2. C2B (Customer to Business)
-  - Recieve payments from customers in real-time and reconcile with invoices.
+  - Receive payments from customers in real-time and reconcile with invoices.
   ![mpesa_c2b_sales_invoice](https://github.com/user-attachments/assets/ce7fdc6e-4e4a-44f1-a759-e411ac99f13a)
 
 #### 3. B2C (Business to Customer)
@@ -180,10 +180,9 @@ C2B (Customer to Business) integration enables your system to receive and log in
 --TODO: Insert GIF Here
 
 #### Notes:
-- **Smart Matching Logic:**
-  - If Customer uses a **Sales Invoice** their **Customer** name as the **Account Number** when making the payment Daraja API will send this information as `BillRefNumber` in the callback.
-  - If this information matches a Customer/Invoice in the system, the **Customer** field is automatically filled.
-  - This allows auto-reconciliation of the invoice and the payment.
+- **Smart Matching Logic:**  
+  - If Customer inputs a Sales Invoice Number or Customer Name that exists in your ERPNext instance, as the Account Number when making a Paybill payment, Daraja API will send this information as BillRefNumber in the callback.
+  - If this information matches a Customer Name/Invoice Number in the system, then the Customer field is automatically filled in the Mpesa Payment Register. 
 - **Auto-Reconciliaton Logic:**
   - In the **Mpesa Settings** there is an option **Auto Reconcile C2B Payments**.
   - If this is checked then once you submit the Mpesa Payment Record it will try to match an invoice if no invoice is found then a reconciliation of the customer's outstanding invoices will be performed automatically using FIFO logic.
