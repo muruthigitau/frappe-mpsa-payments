@@ -784,3 +784,30 @@ def verify_transaction(**kwargs) -> None:
             ),
         },
     )
+
+
+@frappe.whitelist()
+def initiate_invoice_stk_push(invoice=None, phone_number=None, amount=None, payment_gateway=None, type="Sales Invoice"):
+    # Basic validation
+    if not (invoice and phone_number and amount and payment_gateway and type):
+        frappe.throw(_("All fields (invoice, phone_number, amount, payment_gateway, type) are required."))
+    if float(amount) <= 0:
+        frappe.throw(_("Amount must be greater than zero."))
+    
+
+    express_request = frappe.get_doc({
+        "doctype": "Mpesa Express Request",
+        "reference_name": invoice,
+        "phone_number": phone_number,
+        "amount": float(amount),
+        "payment_gateway": payment_gateway,
+        "reference_doctype": type,
+        "settings": payment_gateway[6:],
+    })
+    express_request.insert(ignore_permissions=True)
+    express_request.submit()
+    
+    return {
+        "status": "success",
+        "message": f"STK Push for {invoice} initiated to {phone_number} via {payment_gateway}."
+    }
