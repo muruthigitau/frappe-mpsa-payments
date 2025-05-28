@@ -1,4 +1,82 @@
 frappe.ui.form.on("Sales Invoice", {
+  refresh(frm) {
+    if (frm.doc.is_pos || frm.doc.docstatus === 0) {
+      frm.add_custom_button(
+        __("Initiate STK Push"),
+        function () {
+          frm.trigger("initiate_stk_push");
+        },
+        __("Mpesa Actions")
+      );
+    }
+  },
+
+  initiate_stk_push(frm) {
+    frm.trigger("open_stk_push_dialog");
+  },
+  open_stk_push_dialog(frm) {
+    let outstanding = frm.doc.outstanding_amount;
+
+    if (outstanding <= 0) {
+      frappe.msgprint(__("No outstanding amount to initiate STK push."));
+      return;
+    }
+
+    const dialog = new frappe.ui.Dialog({
+      title: __("Initiate STK Push"),
+      fields: [
+        {
+          fieldname: "phone_number",
+          label: "Phone Number",
+          fieldtype: "Data",
+          reqd: 1,
+          options: "Phone",
+        },
+        {
+          fieldname: "amount",
+          label: "Amount",
+          fieldtype: "Currency",
+          default: outstanding,
+          reqd: 1,
+        },
+        {
+          fieldname: "payment_gateway",
+          label: "Payment Gateway",
+          fieldtype: "Link",
+          options: "Payment Gateway",
+          reqd: 1,
+        },
+      ],
+      primary_action_label: "Send STK Push",
+      primary_action(values) {
+        if (values.amount <= 0) {
+          frappe.msgprint(__("Amount must be greater than 0."));
+          return;
+        }
+
+        frappe.call({
+          method:
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.initiate_invoice_stk_push",
+          args: {
+            invoice: frm.doc.name,
+            phone_number: values.phone_number,
+            amount: values.amount,
+            payment_gateway: values.payment_gateway,
+            type: "Sales Invoice",
+          },
+          callback(r) {
+            if (!r.exc) {
+              frappe.msgprint(__("STK Push initiated successfully."));
+              dialog.hide();
+            }
+          },
+        });
+      },
+    });
+
+    dialog.show();
+  },
+
   mpesa_payments: function (frm) {
     frm.trigger("open_mpesa_payment_modal");
   },
@@ -126,21 +204,20 @@ frappe.ui.form.on("Sales Invoice", {
     });
   },
 
-  insert_payment_entry: function(frm) {
+  insert_payment_entry: function (frm) {
     frappe.call({
-        method: 'frappe.client.insert',
-        args: {
-            doc: {
-                doctype: 'Payment Entry',
-                payment_type: 'Receive',
-                party_type: 'Customer',
-                party: frm.doc.customer,
-                paid_to: 'Cash',
-                reference_no: payment_response['MpesaReceiptNumber'],
-                amount: frm.doc.grand_total,
-                
-            }
-        }
-    })
-  }
+      method: "frappe.client.insert",
+      args: {
+        doc: {
+          doctype: "Payment Entry",
+          payment_type: "Receive",
+          party_type: "Customer",
+          party: frm.doc.customer,
+          paid_to: "Cash",
+          reference_no: payment_response["MpesaReceiptNumber"],
+          amount: frm.doc.grand_total,
+        },
+      },
+    });
+  },
 });
