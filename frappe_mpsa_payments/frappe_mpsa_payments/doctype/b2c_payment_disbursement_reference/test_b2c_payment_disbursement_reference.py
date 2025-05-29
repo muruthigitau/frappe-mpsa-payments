@@ -3,8 +3,8 @@
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
-from .mpesa_b2c_employee_payment_item import sanitise_phone_number
-from .mpesa_b2c_employee_payment_item import is_valid_receiver_contact
+from .b2c_payment_disbursement_reference import sanitise_phone_number
+from .b2c_payment_disbursement_reference import is_valid_receiver_contact
 
 
 class MPesaB2CEmployeePaymentItem(FrappeTestCase):
