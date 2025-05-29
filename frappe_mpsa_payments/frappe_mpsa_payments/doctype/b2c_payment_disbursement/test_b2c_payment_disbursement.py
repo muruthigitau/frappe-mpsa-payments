@@ -55,3 +55,12 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
             self.payment_disbursement.validate_mandatory_fields()
 
         self.assertIn("At least one reference is required", str(context.exception))s
+
+    def test_validate_mode_of_payment_required(self):
+        """Test that validate_mode_of_payment throws if mode_of_payment is missing."""
+        self.payment_disbursement.mode_of_payment = None
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_mode_of_payment()
+            
+        self.assertIn("Mode of Payment is required", str(context.exception))
