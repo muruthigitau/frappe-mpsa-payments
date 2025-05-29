@@ -12,7 +12,7 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
 
     def test_uuid_generation(self):
         """Test that UUID is generated correctly."""
-        self.payment_disbursement.generate_uuid()
+        self.payment_disbursement._generate_uuid_v4()
         self.assertTrue(self.payment_disbursement.uuid)
         self.assertEqual(len(self.payment_disbursement.uuid), 36)
 
