@@ -64,3 +64,37 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
             self.payment_disbursement.validate_mode_of_payment()
             
         self.assertIn("Mode of Payment is required", str(context.exception))
+
+    def test_validate_mode_of_payment_does_not_set_mpesa_setting_for_other_types(self):
+        """Test that mpesa_setting is not set if payment_type is not Mpesa Disbursement."""
+        self.payment_disbursement.mode_of_payment = "Mpesa-XYZ"
+        self.payment_disbursement.payment_type = "Other Type"
+        self.payment_disbursement.mpesa_setting = None
+        
+        # Patch frappe.db.get_value to raise if called
+        original_get_value = frappe.db.get_value
+        frappe.db.get_value = lambda *a, **k: (_ for _ in ()).throw(Exception("Should not be called"))
+        try:
+            self.payment_disbursement.validate_mode_of_payment()
+            
+            # Assert that mpesa_setting is still None
+            self.assertIsNone(self.payment_disbursement.mpesa_setting)
+        finally:
+            frappe.db.get_value = original_get_value
+
+    def test_validate_mode_of_payment_sets_mpesa_setting_for_mpesa_disbursement(self):
+        """Test that mpesa_setting is set if payment_type is Mpesa Disbursement."""
+        self.payment_disbursement.mode_of_payment = "Mpesa-XYZ"
+        self.payment_disbursement.payment_type = "Mpesa Disbursement"
+        self.payment_disbursement.mpesa_setting = None
+        
+        # Patch frappe.db.get_value to return a mock setting
+        original_get_value = frappe.db.get_value
+        frappe.db.get_value = lambda *a, **k: "Mock Mpesa Setting"
+        try:
+            self.payment_disbursement.validate_mode_of_payment()
+            
+            # Assert that mpesa_setting is set correctly
+            self.assertEqual(self.payment_disbursement.mpesa_setting, "Mock Mpesa Setting")
+        finally:
+            frappe.db.get_value = original_get_value
