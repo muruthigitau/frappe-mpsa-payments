@@ -123,3 +123,64 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
             self.payment_disbursement.validate_party_type()
 
         self.assertIn("Party Type must be Employee or Supplier", str(context.exception))
+
+    def test_validate_amounts_paid_amount_zero(self):
+        """Test that validate_amounts throws if paid_amount is zero."""
+        self.payment_disbursement.paid_amount = 0
+        self.payment_disbursement.base_paid_amount = 100
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.references = [frappe._dict(allocated_amount=0)]
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_amounts()
+        self.assertIn("Paid Amount must be greater than zero", str(context.exception))
+
+    def test_validate_amounts_paid_amount_negative(self):
+        """Test that validate_amounts throws if paid_amount is negative."""
+        self.payment_disbursement.paid_amount = -10
+        self.payment_disbursement.base_paid_amount = 100
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.references = [frappe._dict(allocated_amount=-10)]
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_amounts()
+        self.assertIn("Paid Amount must be greater than zero", str(context.exception))
+
+    def test_validate_amounts_base_paid_amount_required(self):
+        """Test that validate_amounts throws if base_paid_amount is missing and currency is not KES."""
+        self.payment_disbursement.paid_amount = 100
+        self.payment_disbursement.base_paid_amount = None
+        self.payment_disbursement.paid_from_account_currency = "USD"
+        self.payment_disbursement.references = [frappe._dict(allocated_amount=100)]
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_amounts()
+        self.assertIn("Base Paid Amount (KES) is required for M-Pesa", str(context.exception))
+
+    def test_validate_amounts_total_allocated_not_equal_paid_amount(self):
+        """Test that validate_amounts throws if total allocated does not equal paid_amount."""
+        self.payment_disbursement.paid_amount = 100
+        self.payment_disbursement.base_paid_amount = 100
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.references = [
+            frappe._dict(allocated_amount=60),
+            frappe._dict(allocated_amount=30)
+        ]
+        
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_amounts()
+        self.assertIn("Total allocated amount 90.0 must equal Paid Amount 100", str(context.exception))
+
+    def test_validate_amounts_success(self):
+        """Test that validate_amounts passes when all values are correct."""
+        self.payment_disbursement.paid_amount = 150
+        self.payment_disbursement.base_paid_amount = 150
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.references = [
+            frappe._dict(allocated_amount=50),
+            frappe._dict(allocated_amount=100)
+        ]
+        try:
+            self.payment_disbursement.validate_amounts()
+        except Exception as e: # fail test if an exception is raised
+            self.fail("validate_amounts() raised Exception unexpectedly when values are correct - " + str(e))
