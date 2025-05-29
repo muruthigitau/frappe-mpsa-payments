@@ -202,3 +202,49 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
                 "validate_amounts() raised Exception unexpectedly when values are correct - "
                 + str(e)
             )
+
+    def test_validate_reference_doctypes_all_match(self):
+        """Test that validate_reference_doctypes passes when all reference doctypes match."""
+        self.payment_disbursement.transaction_to_pay_against = "Purchase Invoice"
+        self.payment_disbursement.references = [
+            frappe._dict(reference_doctype="Purchase Invoice", idx=1),
+            frappe._dict(reference_doctype="Purchase Invoice", idx=2),
+        ]
+        try:
+            self.payment_disbursement.validate_reference_doctypes()
+        except Exception as e:
+            self.fail(
+                "validate_reference_doctypes() raised Exception unexpectedly when all doctypes match - "
+                + str(e)
+            )
+
+    def test_validate_reference_doctypes_one_mismatch(self):
+        """Test that validate_reference_doctypes throws if a reference doctype does not match."""
+        self.payment_disbursement.transaction_to_pay_against = "Purchase Invoice"
+        self.payment_disbursement.references = [
+            frappe._dict(reference_doctype="Purchase Invoice", idx=1),
+            frappe._dict(reference_doctype="Employee Advance", idx=2),
+        ]
+
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_reference_doctypes()
+
+        self.assertIn(
+            "Reference doctype 'Employee Advance' does not match 'Purchase Invoice' for row 2",
+            str(context.exception),
+        )
+
+    def test_validate_reference_doctypes_all_mismatch(self):
+        """Test that validate_reference_doctypes throws for the first mismatch found."""
+        self.payment_disbursement.transaction_to_pay_against = "Purchase Invoice"
+        self.payment_disbursement.references = [
+            frappe._dict(reference_doctype="Employee Advance", idx=1),
+            frappe._dict(reference_doctype="Employee Advance", idx=2),
+        ]
+        with self.assertRaises(frappe.ValidationError) as context:
+            self.payment_disbursement.validate_reference_doctypes()
+
+        self.assertIn(
+            "Reference doctype 'Employee Advance' does not match 'Purchase Invoice' for row 1",
+            str(context.exception),
+        )
