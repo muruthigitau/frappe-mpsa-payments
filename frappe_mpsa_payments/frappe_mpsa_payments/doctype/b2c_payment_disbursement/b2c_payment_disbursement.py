@@ -52,28 +52,6 @@ class B2CPaymentDisbursement(Document):
                 indicator="red" if any_errors else "green"
             )
 
-        self.on_update()
-        self.db_set("status", self.status)
-
-    def on_update(self) -> None:
-        """Update overall status based on payment references"""
-        if not self.references:
-            self.status = "Not Initiated"
-            return
-        
-        statuses = [ref.payment_status for ref in self.references]
-
-        if all(status == "Paid" for status in statuses):
-            self.status = "Paid"
-        elif all(status == "Failed" for status in statuses):
-            self.status = "Failed"
-        elif all(status == "Not Initiated" for status in statuses):
-            self.status = "Not Initiated"
-        elif any(status == "Paid" for status in statuses):
-            self.status = "Partially Paid"
-        else:
-            self.status = "Not Initiated"
-
     def validate_mandatory_fields(self) -> None:
         mandatory_fields = ["company", "posting_date", "party_type", "paid_from", "paid_to"]
         for field in mandatory_fields:
@@ -229,8 +207,6 @@ class B2CPaymentDisbursement(Document):
                 indicator="red" if any_errors else "green"
             )
 
-        self.on_update()
-        self.db_set("status", self.status)
 
     @frappe.whitelist()
     def get_outstanding_reference_documents(self, args: Dict) -> List[Dict]:

@@ -130,7 +130,7 @@
   },
   {
    "fieldname": "reference_date",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "label": "Cheque/Reference Date"
   },
   {
@@ -160,7 +160,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-17 09:15:21.803090",
+ "modified": "2025-05-29 19:36:51.020235",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement Reference",

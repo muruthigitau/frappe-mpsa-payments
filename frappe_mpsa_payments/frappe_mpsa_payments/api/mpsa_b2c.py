@@ -118,15 +118,17 @@ def results_callback_url(**kwargs) -> dict:
     """Handle the callback from MPesa API."""
     result = frappe._dict(kwargs["Result"])
     originator_conversation_id = result.get("OriginatorConversationID")
+    result_parameters = result.get("ResultParameters", {}).get("ResultParameter", [])
+    result_dict = {param["Key"]: param["Value"] for param in result_parameters}
     
     result_json = json.dumps(result)
 
     try:
-        b2c_payment_disburesement_reference = frappe.get_doc("B2C Payment Disbursement Reference", {"originator_conversation_id": originator_conversation_id})
-        b2c_payment_disburesement = frappe.get_doc(b2c_payment_disburesement_reference.parenttype, b2c_payment_disburesement_reference.parent)
+        b2c_payment_disbursement_reference = frappe.get_doc("B2C Payment Disbursement Reference", {"originator_conversation_id": originator_conversation_id})
+        b2c_payment_disbursement = frappe.get_doc(b2c_payment_disbursement_reference.parenttype, b2c_payment_disbursement_reference.parent)
 
         if result.get("ResultCode") != 0:
-            b2c_payment_disburesement_reference.payment_status = "Failed"
+            frappe.db.set_value("B2C Payment Disbursement Reference", b2c_payment_disbursement_reference, "payment_status", "Failed")
             
             update_integration_request(
                 originator_conversation_id,
@@ -136,13 +138,20 @@ def results_callback_url(**kwargs) -> dict:
             )
             frappe.log_error(f"B2C Request failed: {result.ResultDesc}", "Mpesa B2C Error")
 
-            publish_b2c_payment_update(b2c_payment_disburesement.name, b2c_payment_disburesement_reference.idx, b2c_payment_disburesement_reference.party, b2c_payment_disburesement_reference.allocated_amount, "Failed")
+            publish_b2c_payment_update(b2c_payment_disbursement.name, b2c_payment_disbursement_reference.idx, b2c_payment_disbursement_reference.party, b2c_payment_disbursement_reference.allocated_amount, "Failed")
 
         else:
-            create_mpesa_transaction_entry(result, b2c_payment_disburesement, b2c_payment_disburesement_reference)
+            create_mpesa_transaction_entry(result, b2c_payment_disbursement, b2c_payment_disbursement_reference)
 
-            b2c_payment_disburesement_reference.payment_status = "Paid"
-            b2c_payment_disburesement_reference.save(ignore_permissions=True)
+            frappe.db.set_value(
+                "B2C Payment Disbursement Reference", 
+                b2c_payment_disbursement_reference, 
+                {
+                    "reference_no": f"{result_dict.get("TransactionReceipt")}",
+                    "reference_date": f"{get_datetime(result_dict.get("TransactionCompletedDateTime"))}",
+                    "payment_status": "Paid"
+                }
+            )
             
             update_integration_request(
                 originator_conversation_id,
@@ -150,18 +159,15 @@ def results_callback_url(**kwargs) -> dict:
                 output=result_json,
             )
 
-            publish_b2c_payment_update(b2c_payment_disburesement.name, b2c_payment_disburesement_reference.idx, b2c_payment_disburesement_reference.party, b2c_payment_disburesement_reference.allocated_amount, "Paid")
+            publish_b2c_payment_update(b2c_payment_disbursement.name, b2c_payment_disbursement_reference.idx, b2c_payment_disbursement_reference.party, b2c_payment_disbursement_reference.allocated_amount, "Paid")
 
             frappe.enqueue(
                 "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
                 queue="long",
                 timeout=600,
-                b2c_disbursement=b2c_payment_disburesement,
-                b2c_disbursement_ref=b2c_payment_disburesement_reference
+                b2c_disbursement=b2c_payment_disbursement,
+                b2c_disbursement_ref=b2c_payment_disbursement_reference
             )
-
-        b2c_payment_disburesement_reference.save(ignore_permissions=True)
-        frappe.db.commit()
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Failed to update payment_status in callback")
