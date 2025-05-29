@@ -1,4 +1,5 @@
 import json
+import requests
 from datetime import datetime, timedelta
 from enum import Enum
 from urllib.parse import urlparse
@@ -68,6 +69,14 @@ class MpesaB2CConnector(MpesaConnector):
                     reference_doctype=doctype,
                     name=request_data.OriginatorConversationID,
                 )
+
+            except requests.Timeout as e:
+                update_integration_request(
+                    self.integration_request.name,
+                    status="Failed",
+                    error="Timeout: Remote server did not respond in time."
+                )
+
             except frappe.exceptions.DuplicateEntryError:
                 frappe.throw(
                     f"Integration Request with OriginatorConversationID {request_data.OriginatorConversationID} already exists."
@@ -182,7 +191,6 @@ def handle_successful_payment(b2c_disbursement, b2c_disbursement_ref):
     except Exception as e:
         error_msg = f"Error handling payment for {b2c_disbursement_ref.name}: {str(e)}"
         frappe.log_error(frappe.get_traceback(), "B2C Payment Disbursement Reference")
-
 
 def create_mpesa_transaction_entry(result: dict, b2c_disbursement: Document, b2c_disbursement_ref: Document):
     """
