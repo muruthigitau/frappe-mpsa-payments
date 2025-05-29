@@ -321,3 +321,55 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         
         # Assert that source_exchange_rate is still 1.5
         self.assertEqual(self.payment_disbursement.source_exchange_rate, 1.5)
+
+    @patch("frappe.get_doc")
+    def test_get_mpesa_settings_success(self, mock_get_doc):
+        """Test that _get_mpesa_settings returns the settings document when found."""
+        mock_setting = frappe._dict(
+            name="Test Setting",
+            initiator_name="Test Initiator",
+            security_credential="Test Credential",
+            business_shortcode="123456",
+            consumer_key="CKEY",
+            consumer_secret="CSECRET"
+        )
+        
+        # Mock the get_doc call to return the mock setting
+        self.payment_disbursement.mpesa_setting = "Test Gateway"
+        mock_get_doc.return_value = mock_setting
+
+        result = self.payment_disbursement._get_mpesa_settings()
+        
+        self.assertEqual(result, mock_setting) # Assert that the returned document matches the mock
+        
+        # Assert that get_doc was called with the correct parameters
+        mock_get_doc.assert_called_once_with(
+            "Mpesa Settings",
+            {"payment_gateway_name": "Test Gateway", "api_type": "MPesa B2C (Business to Customer)"},
+            [
+                "name",
+                "initiator_name",
+                "security_credential",
+                "business_shortcode",
+                "consumer_key",
+                "consumer_secret",
+            ],
+            as_dict=True,
+        )
+
+    @patch("frappe.get_doc")
+    @patch("frappe.throw")
+    @patch("frappe_mpsa_payments.frappe_mpsa_payments.doctype.b2c_payment_disbursement.b2c_payment_disbursement.app_logger")
+    def test_get_mpesa_settings_not_found(self, mock_logger, mock_throw, mock_get_doc):
+        """Test that _get_mpesa_settings throws and logs error if settings not found."""
+        self.payment_disbursement.mpesa_setting = "Missing Gateway"
+        mock_get_doc.side_effect = frappe.DoesNotExistError
+        mock_throw.side_effect = frappe.DoesNotExistError("Not found")
+
+        with self.assertRaises(frappe.DoesNotExistError):
+            self.payment_disbursement._get_mpesa_settings()
+
+        error_msg = "Mpesa Settings not found for payment gateway: Missing Gateway"
+        self.assertEqual(self.payment_disbursement.error, error_msg)
+        mock_logger.error.assert_called_with(error_msg)
+        mock_throw.assert_called_with(error_msg, frappe.DoesNotExistError)
