@@ -35,12 +35,12 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         self.payment_disbursement.paid_to = "Test Paid To"
         self.payment_disbursement.references = [frappe._dict()]
         self.payment_disbursement.meta = frappe._dict(get_label=lambda x: x)
-        
+
         with self.assertRaises(frappe.ValidationError) as context:
             self.payment_disbursement.validate_mandatory_fields()
 
         self.assertIn("Field company is mandatory", str(context.exception))
-        
+
     def test_validate_mandatory_fields_no_references(self):
         """Test that validate_mandatory_fields throws if references are missing."""
         self.payment_disbursement.company = "Test Company"
@@ -50,7 +50,7 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         self.payment_disbursement.paid_to = "Test Paid To"
         self.payment_disbursement.references = []
         self.payment_disbursement.meta = frappe._dict(get_label=lambda x: x)
-        
+
         with self.assertRaises(frappe.ValidationError) as context:
             self.payment_disbursement.validate_mandatory_fields()
 
@@ -59,10 +59,10 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
     def test_validate_mode_of_payment_required(self):
         """Test that validate_mode_of_payment throws if mode_of_payment is missing."""
         self.payment_disbursement.mode_of_payment = None
-        
+
         with self.assertRaises(frappe.ValidationError) as context:
             self.payment_disbursement.validate_mode_of_payment()
-            
+
         self.assertIn("Mode of Payment is required", str(context.exception))
 
     def test_validate_mode_of_payment_does_not_set_mpesa_setting_for_other_types(self):
@@ -70,13 +70,13 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         self.payment_disbursement.mode_of_payment = "Mpesa-XYZ"
         self.payment_disbursement.payment_type = "Other Type"
         self.payment_disbursement.mpesa_setting = None
-        
+
         # Patch frappe.db.get_value to raise if called
         original_get_value = frappe.db.get_value
         frappe.db.get_value = lambda *a, **k: (_ for _ in ()).throw(Exception("Should not be called"))
         try:
             self.payment_disbursement.validate_mode_of_payment()
-            
+
             # Assert that mpesa_setting is still None
             self.assertIsNone(self.payment_disbursement.mpesa_setting)
         finally:
@@ -87,14 +87,39 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         self.payment_disbursement.mode_of_payment = "Mpesa-XYZ"
         self.payment_disbursement.payment_type = "Mpesa Disbursement"
         self.payment_disbursement.mpesa_setting = None
-        
+
         # Patch frappe.db.get_value to return a mock setting
         original_get_value = frappe.db.get_value
         frappe.db.get_value = lambda *a, **k: "Mock Mpesa Setting"
         try:
             self.payment_disbursement.validate_mode_of_payment()
-            
+
             # Assert that mpesa_setting is set correctly
             self.assertEqual(self.payment_disbursement.mpesa_setting, "Mock Mpesa Setting")
         finally:
             frappe.db.get_value = original_get_value
+
+    def test_validate_party_type_employee(self):
+        """Test that party_type 'Employee' passes validation."""
+        self.payment_disbursement.party_type = "Employee"
+        try:
+            self.payment_disbursement.validate_party_type()
+        except Exception: # fail test if an exception is raised
+            self.fail("validate_party_type() raised Exception unexpectedly for 'Employee'")
+
+    def test_validate_party_type_supplier(self):
+        """Test that party_type 'Supplier' passes validation."""
+        self.payment_disbursement.party_type = "Supplier"
+        try:
+            self.payment_disbursement.validate_party_type()
+        except Exception: # fail test if an exception is raised
+            self.fail("validate_party_type() raised Exception unexpectedly for 'Supplier'")
+
+    def test_validate_party_type_invalid(self):
+        """Test that invalid party_type raises ValidationError."""
+        self.payment_disbursement.party_type = "Customer"
+
+        with self.assertRaises(frappe.ValidationError) as context: 
+            self.payment_disbursement.validate_party_type()
+
+        self.assertIn("Party Type must be Employee or Supplier", str(context.exception))
