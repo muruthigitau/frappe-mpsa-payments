@@ -274,8 +274,11 @@ class B2CPaymentDisbursement(Document):
             **config.additional_filters
         }
 
+        doctype = args.get("transaction_to_pay_against")
+        party_field = "applicant" if doctype == "Loan" else "employee"
+
         if args.get("party"):
-            filters["employee"] = args["party"]
+            filters[party_field] = args["party"]
         
         self._add_date_filter(filters, config.date_field, args.get("from_posting_date"), args.get("to_posting_date"))
 
@@ -354,6 +357,9 @@ class B2CPaymentDisbursement(Document):
             )
     
         return entries
+
+    def _fetch_unpaid_salary_slips(self, doctype: str, args: Dict, filters: Dict) -> List[Dict]:
+        pass
 
     def _fetch_erpnext_entries(self, doctype: str, args: Dict) -> List[Dict]:
         """
@@ -481,9 +487,14 @@ class B2CPaymentDisbursement(Document):
 
     def _extract_party_info(self, entry: Dict, args: Dict) -> Optional[Dict]:
         """Extract party and party_type from entry or args."""
+        doctype = args.get("transaction_to_pay_against")
 
-        party = entry.get("party") or entry.get("employee") or entry.get("supplier")
-        party_type = entry.get("party_type") or args.get("party_type")
+        if doctype == "Loan":
+            party = entry.get("applicant")
+            party_type = entry.get("applicant_type")
+        else:
+            party = entry.get("party") or entry.get("employee") or entry.get("supplier")
+            party_type = entry.get("party_type") or args.get("party_type")
         
         if not party or not party_type:
             app_logger.info(f"Skipping entry due to missing party or party_type: {entry}")

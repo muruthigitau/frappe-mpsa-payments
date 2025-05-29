@@ -50,5 +50,12 @@ DOCTYPE_CONFIGS = {
         additional_filters={},
         payable_amount_calc=lambda e: e.get("base_rounded_total") or e.get("rounded_total") or e.get("outstanding_amount") or 0,
         invoice_amount_field="net_pay"
+    ),
+    "Loan": DoctypeConfig(
+        fields=["name", "applicant_type", "applicant", "loan_amount", "disbursed_amount"],
+        date_field="posting_date",
+        additional_filters={"status": ["in", ["Sanctioned", "Partially Disbursed"]]},
+        payable_amount_calc=lambda e: (e.loan_amount or 0) - (e.disbursed_amount or 0),
+        invoice_amount_field="loan_amount"
     )
 }
