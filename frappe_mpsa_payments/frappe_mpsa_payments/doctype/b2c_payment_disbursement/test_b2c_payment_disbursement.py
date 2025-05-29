@@ -4,6 +4,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from .b2c_payment_disbursement import B2CPaymentDisbursement
+from sys import modules
 
 
 class TestB2CPaymentDisbursement(FrappeTestCase):
@@ -210,6 +211,7 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
             frappe._dict(reference_doctype="Purchase Invoice", idx=1),
             frappe._dict(reference_doctype="Purchase Invoice", idx=2),
         ]
+
         try:
             self.payment_disbursement.validate_reference_doctypes()
         except Exception as e:
@@ -241,6 +243,7 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
             frappe._dict(reference_doctype="Employee Advance", idx=1),
             frappe._dict(reference_doctype="Employee Advance", idx=2),
         ]
+
         with self.assertRaises(frappe.ValidationError) as context:
             self.payment_disbursement.validate_reference_doctypes()
 
@@ -248,3 +251,23 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
             "Reference doctype 'Employee Advance' does not match 'Purchase Invoice' for row 1",
             str(context.exception),
         )
+
+    def test_set_missing_values_sets_company_currency(self):
+        """Test that set_missing_values sets company_currency if missing."""
+
+        self.payment_disbursement.company_currency = None
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.posting_date = "2024-06-01"
+        self.payment_disbursement.source_exchange_rate = 1.0
+        self.payment_disbursement.paid_amount = 100
+        
+        # Patch frappe.get_cached_value
+        original_get_cached_value = frappe.get_cached_value
+        frappe.get_cached_value = lambda doctype, name, field: "KES"
+        
+        try:
+            self.payment_disbursement.set_missing_values()
+            self.assertEqual(self.payment_disbursement.company_currency, "KES")
+        finally:
+            frappe.get_cached_value = original_get_cached_value
+
