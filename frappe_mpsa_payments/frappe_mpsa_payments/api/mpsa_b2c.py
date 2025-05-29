@@ -170,7 +170,7 @@ def handle_successful_payment(b2c_disbursement, b2c_disbursement_ref):
         match b2c_disbursement_ref.reference_doctype:
             case "Salary Slip":
                 create_journal_entry(b2c_disbursement, b2c_disbursement_ref)
-            case "Employee Advance" | "Expense Claim" | "Purchase Invoice":
+            case "Employee Advance" | "Expense Claim" | "Purchase Invoice" | "Purchase Order":
                 create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref)
             case "Loan":
                 create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref)
@@ -227,7 +227,6 @@ def create_mpesa_transaction_entry(result: dict, b2c_disbursement: Document, b2c
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "B2C Payment Transaction Save Failed")
-
 
 def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
     """ Create Journal Entry for Salary Slip after successful B2C payment."""
