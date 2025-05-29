@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from enum import Enum
 from urllib.parse import urlparse
@@ -9,11 +10,11 @@ from frappe.model.document import Document
 from frappe.integrations.utils import create_request_log
 from frappe.utils import get_request_site_address, nowdate, get_datetime
 from frappe.utils.password import get_decrypted_password
-import json
-from ...utils.definitions import B2CRequestDefinition
-from ..connectors.connectors import MpesaConnector, update_integration_request
 
 from .payment_entry import create_payment_entry
+from .loan_disbursement import create_loan_disbursement
+from ...utils.definitions import B2CRequestDefinition
+from ..connectors.connectors import MpesaConnector, update_integration_request
 
 
 class URLS(Enum):
@@ -170,7 +171,9 @@ def handle_successful_payment(b2c_disbursement, b2c_disbursement_ref):
             case "Salary Slip":
                 create_journal_entry(b2c_disbursement, b2c_disbursement_ref)
             case "Employee Advance" | "Expense Claim" | "Purchase Invoice":
-                creat_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref)
+                create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref)
+            case "Loan":
+                create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref)
             case _:
                 frappe.log_error(
                     f"Unsupported reference_doctype: {b2c_disbursement_ref.reference_doctype}",
@@ -262,9 +265,7 @@ def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Failed to create Journal Entry")
 
-        
-
-def creat_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
+def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
     party_type = b2c_disbursement_ref.party_type
     party_account = b2c_disbursement.paid_to
     party = frappe.db.get_value(party_type, b2c_disbursement_ref.party, "name")
