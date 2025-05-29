@@ -7,7 +7,7 @@ from .b2c_payment_disbursement_reference import sanitise_phone_number
 from .b2c_payment_disbursement_reference import is_valid_receiver_contact
 
 
-class MPesaB2CEmployeePaymentItem(FrappeTestCase):
+class TestB2CPaymentDisbursementReference(FrappeTestCase):
     def test_validate_fails_if_amount_is_less_than_10(self):
         """Test that the validate method raises a ValidationError if the amount is less than 10"""
         doc = frappe.get_doc(
