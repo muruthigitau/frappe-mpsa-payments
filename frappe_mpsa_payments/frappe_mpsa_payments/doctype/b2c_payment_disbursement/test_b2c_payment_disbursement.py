@@ -287,3 +287,20 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         
         # Assert that company_currency is still USD
         self.assertEqual(self.payment_disbursement.company_currency, "USD")
+
+    @patch("frappe.get_cached_value")
+    def test_set_missing_values_sets_source_exchange_rate(self, mock_get_cached_value):
+        """Test that set_missing_values sets source_exchange_rate if missing."""
+        self.payment_disbursement.source_exchange_rate = None
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.company_currency = "USD"
+        self.payment_disbursement.posting_date = "2024-06-01"
+        self.payment_disbursement.paid_amount = 100
+        
+        # Mock get_cached_value to return a valid exchange rate
+        mock_get_cached_value.return_value = 110.0
+        
+        self.payment_disbursement.set_missing_values()
+        
+        # Assert that source_exchange_rate is set correctly
+        self.assertEqual(self.payment_disbursement.source_exchange_rate, 110.0)
