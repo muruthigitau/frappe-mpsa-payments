@@ -4,7 +4,7 @@
 import frappe
 from frappe.tests.utils import FrappeTestCase
 from .b2c_payment_disbursement import B2CPaymentDisbursement
-from sys import modules
+from unittest.mock import patch
 
 
 class TestB2CPaymentDisbursement(FrappeTestCase):
@@ -271,3 +271,19 @@ class TestB2CPaymentDisbursement(FrappeTestCase):
         finally:
             frappe.get_cached_value = original_get_cached_value
 
+    @patch("frappe.get_cached_value")
+    def test_set_missing_values_does_not_set_company_currency_if_exists(self, mock_get_cached_value):
+        """Test that set_missing_values does not overwrite company_currency if it already exists."""
+        self.payment_disbursement.company_currency = "USD"
+        self.payment_disbursement.paid_from_account_currency = "KES"
+        self.payment_disbursement.posting_date = "2024-06-01"
+        self.payment_disbursement.source_exchange_rate = 1.0
+        self.payment_disbursement.paid_amount = 100
+        
+        # Mock get_cached_value to return a different currency
+        mock_get_cached_value.return_value = "EUR"
+        
+        self.payment_disbursement.set_missing_values()
+        
+        # Assert that company_currency is still USD
+        self.assertEqual(self.payment_disbursement.company_currency, "USD")
