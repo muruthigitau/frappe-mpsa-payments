@@ -38,12 +38,29 @@ class MpesaSettings(Document):
     supported_currencies = ["KES"]
 
     def validate_transaction_currency(self, currency: str) -> None:
-        if currency not in self.supported_currencies:
-            frappe.throw(
-                _(
-                    "Please select another payment method. Mpesa does not support transactions in currency '{0}'"
-                ).format(currency)
-            )
+        """
+        Validates that the transaction currency is supported for Mpesa.
+
+        Allows the transaction if:
+        - The currency is KES, OR
+        - The company's default currency is KES
+        """
+        if currency in self.supported_currencies:
+            return
+
+        # If company is provided, check if its default currency is KES
+        if self.company:
+            default_currency = frappe.db.get_value("Company", self.company, "default_currency")
+            if default_currency in self.supported_currencies:
+                return
+
+        # If neither the currency nor company default is supported
+        frappe.throw(
+            _(
+                "Please select another payment method. Mpesa does not support transactions in currency '{0}'."
+            ).format(currency)
+        )
+
 
     def before_insert(self) -> None:
         """Before Insertion hook"""
