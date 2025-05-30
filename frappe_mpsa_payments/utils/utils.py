@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator
 
+import re
 import frappe
 from frappe import _
 from urllib.parse import urlparse
@@ -173,7 +174,7 @@ def handle_successful_transaction(request_doc, metadata_dict, settings, checkout
 
         frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
-    elif request_doc.reference_doctype == "Sales Invoice":
+    elif request_doc.reference_doctype == "Sales Invoice":          
         sales_invoice = frappe.get_doc("Sales Invoice", request_doc.reference_name)
         try:
             payment_row = sales_invoice.append("payments", {})
@@ -184,6 +185,18 @@ def handle_successful_transaction(request_doc, metadata_dict, settings, checkout
             sales_invoice.save(ignore_permissions=True)
         except Exception:
             log_and_throw_error("Payment Creation Error", checkout_request_id)
+            
+    elif request_doc.reference_doctype == "Sales Invoice Payment":    
+        try:
+            frappe.db.set_value(
+                "Sales Invoice Payment",
+                request_doc.reference_name,
+                {
+                    "reference_no": metadata_dict.get("MpesaReceiptNumber"),
+                },
+            )
+        except Exception:
+            log_and_throw_error("Sales Invoice Payment Update Error", checkout_request_id)  
 
 
 def update_mpesa_request_status(name, status_data):
@@ -192,3 +205,12 @@ def update_mpesa_request_status(name, status_data):
     frappe.publish_realtime(event="refresh_form", doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=name)
 
 
+def validate_phone_number(phone_number):
+    number = phone_number.strip().replace(" ", "")
+
+    # Match valid local or international formats for Kenyan numbers (07/01 or +254/254)
+    if not re.match(r"^(?:\+254|254|0)(7\d{8}|1\d{8})$", number):
+        frappe.throw(
+            f"'{number}' is not a valid Safaricom (Mpesa) phone number. "
+            "Please enter a valid number starting with 07, 01, +2547, or +2541."
+        )
