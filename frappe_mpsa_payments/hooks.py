@@ -20,6 +20,7 @@ fixtures = [
                 "in",
                 (
                     "Sales Invoice",
+                    "Sales Invoice Payment",
                 ),
             ],
             ["is_system_generated", "=", 0],
