@@ -1,80 +1,77 @@
 frappe.ui.form.on("Sales Invoice", {
   refresh(frm) {
+    // Only show for POS invoices or drafts
     if (frm.doc.is_pos || frm.doc.docstatus === 0) {
-      frm.add_custom_button(
-        __("Initiate STK Push"),
-        function () {
-          frm.trigger("initiate_stk_push");
-        },
-        __("Mpesa Actions")
-      );
-    }
-  },
-
-  initiate_stk_push(frm) {
-    frm.trigger("open_stk_push_dialog");
-  },
-  open_stk_push_dialog(frm) {
-    let outstanding = frm.doc.outstanding_amount;
-
-    if (outstanding <= 0) {
-      frappe.msgprint(__("No outstanding amount to initiate STK push."));
-      return;
-    }
-
-    const dialog = new frappe.ui.Dialog({
-      title: __("Initiate STK Push"),
-      fields: [
-        {
-          fieldname: "phone_number",
-          label: "Phone Number",
-          fieldtype: "Data",
-          reqd: 1,
-          options: "Phone",
-        },
-        {
-          fieldname: "amount",
-          label: "Amount",
-          fieldtype: "Currency",
-          default: outstanding,
-          reqd: 1,
-        },
-        {
-          fieldname: "payment_gateway",
-          label: "Payment Gateway",
-          fieldtype: "Link",
-          options: "Payment Gateway",
-          reqd: 1,
-        },
-      ],
-      primary_action_label: "Send STK Push",
-      primary_action(values) {
-        if (values.amount <= 0) {
-          frappe.msgprint(__("Amount must be greater than 0."));
-          return;
-        }
-
+      // Check if there's an outstanding amount > 0
+      if (frm.doc.outstanding_amount > 0) {
+        // Get company default currency
         frappe.call({
-          method:
-            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.initiate_invoice_stk_push",
+          method: "frappe.client.get_value",
           args: {
-            invoice: frm.doc.name,
-            phone_number: values.phone_number,
-            amount: values.amount,
-            payment_gateway: values.payment_gateway,
-            type: "Sales Invoice",
+            doctype: "Company",
+            filters: { name: frm.doc.company },
+            fieldname: "default_currency",
           },
-          callback(r) {
-            if (!r.exc) {
-              frappe.msgprint(__("STK Push initiated successfully."));
-              dialog.hide();
-            }
+          callback: function (company_r) {
+            // Get party account currency
+            frappe.call({
+              method: "frappe.client.get_value",
+              args: {
+                doctype: "Account",
+                filters: { name: frm.doc.debit_to },
+                fieldname: "account_currency",
+              },
+              callback: function (account_r) {
+                const companyCurrency = company_r.message.default_currency;
+                const partyAccountCurrency = account_r.message.account_currency;
+
+                // Check if any currency is KES
+                const isKES =
+                  frm.doc.currency === "KES" ||
+                  partyAccountCurrency === "KES" ||
+                  companyCurrency === "KES";
+
+                if (isKES) {
+                  frappe.call({
+                    method: "frappe.client.get_list",
+                    args: {
+                      doctype: "Mode of Payment",
+                      filters: [["name", "like", "Mpesa%"]],
+                      fields: ["name"],
+                    },
+                    callback: function (res) {
+                      // Only show button if there's an Mpesa payment mode
+                      if (res.message.length > 0) {
+                        frm.add_custom_button(
+                          __("Initiate STK Push"),
+                          function () {
+                            // Calculate amount once when button is clicked
+                            let amount = frm.doc.outstanding_amount;
+
+                            if (partyAccountCurrency !== "KES") {
+                              if (frm.doc.conversion_rate) {
+                                amount = amount * frm.doc.conversion_rate;
+                              } else {
+                                frappe.msgprint(
+                                  __("Conversion rate not available")
+                                );
+                                return;
+                              }
+                            }
+                            open_stk_push_dialog(frm, amount);
+                          },
+                          __("Mpesa Actions")
+                        );
+                      }
+                    },
+                  });
+                }
+              },
+            });
           },
         });
-      },
-    });
-
-    dialog.show();
+      }
+    }
   },
 
   mpesa_payments: function (frm) {
@@ -221,3 +218,58 @@ frappe.ui.form.on("Sales Invoice", {
     });
   },
 });
+
+function open_stk_push_dialog(frm, amount) {
+  const dialog = new frappe.ui.Dialog({
+    title: __("Initiate STK Push"),
+    fields: [
+      {
+        fieldname: "phone_number",
+        label: "Phone Number",
+        fieldtype: "Data",
+        reqd: 1,
+        options: "Phone",
+      },
+      {
+        fieldname: "amount",
+        label: "Amount (KES)",
+        fieldtype: "Currency",
+        default: amount,
+        reqd: 1,
+      },
+      {
+        fieldname: "payment_gateway",
+        label: "Payment Gateway",
+        fieldtype: "Link",
+        options: "Payment Gateway",
+        reqd: 1,
+        filters: {
+          gateway_settings: "Mpesa Settings",
+        },
+      },
+    ],
+    primary_action_label: "Send STK Push",
+    primary_action(values) {
+      frappe.call({
+        method:
+          "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.initiate_invoice_stk_push",
+        args: {
+          invoice: frm.doc.name,
+          phone_number: values.phone_number,
+          amount: values.amount,
+          payment_gateway: values.payment_gateway,
+          type: "Sales Invoice",
+        },
+        callback(r) {
+          if (!r.exc) {
+            frappe.msgprint(__("STK Push initiated successfully."));
+            dialog.hide();
+            frm.refresh();
+          }
+        },
+      });
+    },
+  });
+
+  dialog.show();
+}
