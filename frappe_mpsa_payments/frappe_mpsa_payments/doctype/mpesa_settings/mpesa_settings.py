@@ -25,7 +25,7 @@ from frappe.utils import (
 from frappe.utils.file_manager import get_file_path
 
 from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
-from ....utils.utils import erpnext_app_import_guard, create_payment_gateway_account
+from ....utils.utils import erpnext_app_import_guard, create_payment_gateway_account, validate_phone_number
 from .mpesa_connector import MpesaConnector
 from .mpesa_custom_fields import create_custom_pos_fields
 from frappe_mpsa_payments.utils.encoding_initiator_password import (
@@ -142,7 +142,17 @@ class MpesaSettings(Document):
     def request_for_payment(self, **kwargs) -> None:
         args = frappe._dict(kwargs)
         request_amounts = self.split_request_amount_according_to_transaction_limit(args)
-
+        phone_number = args.get("phone_number")
+        if not phone_number:
+            sender = args.get("sender", "")
+            if isinstance(sender, str) and sender and (sender.startswith(("0", "254", "+", "7", "1"))):
+                phone_number = sender
+        if not phone_number:
+            frappe.throw(_("A valid phone number is required for Mpesa payment."))
+        else:
+            phone_number = sanitize_mobile_number(phone_number)
+            validate_phone_number(phone_number)
+            
         for i, amount in enumerate(request_amounts):
             args.request_amount = amount
             if frappe.flags.in_test:
@@ -150,11 +160,10 @@ class MpesaSettings(Document):
 
                 response = frappe._dict(get_payment_request_response_payload(amount))
             else:
-                # payment_request = frappe.get_doc(args.get("reference_doctype"), args.get("reference_docname"))
                 stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
                 stk_request.update({
                     "amount": args.get("request_amount", 0.0),
-                    "phone_number": args.get("phone_number") or args.get("sender", ""),
+                    "phone_number": phone_number,
                     "timestamp": frappe.utils.now(),
                     "settings": args.payment_gateway[6:],
                     "payment_gateway": args.get("payment_gateway"),

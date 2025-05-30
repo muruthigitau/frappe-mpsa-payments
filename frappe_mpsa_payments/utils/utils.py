@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator
 
+import re
 import frappe
 from frappe import _
 from urllib.parse import urlparse
@@ -192,3 +193,12 @@ def update_mpesa_request_status(name, status_data):
     frappe.publish_realtime(event="refresh_form", doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=name)
 
 
+def validate_phone_number(phone_number):
+    number = phone_number.strip().replace(" ", "")
+
+    # Match valid local or international formats for Kenyan numbers (07/01 or +254/254)
+    if not re.match(r"^(?:\+254|254|0)(7\d{8}|1\d{8})$", number):
+        frappe.throw(
+            f"'{number}' is not a valid Safaricom (Mpesa) phone number. "
+            "Please enter a valid number starting with 07, 01, +2547, or +2541."
+        )
