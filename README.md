@@ -1,6 +1,7 @@
-## 📲 Frappe Mpesa Payments
+## 📲 Frappe Mpesa Payments  
 
 Frappe Mpesa Payments is a custom [Frappe](https://frappe.io/framework) application that integrates with [Safaricom's Daraja API](https://developer.safaricom.co.ke/). It is built to extend [ERPNext](https://frappe.io/erpnext) enabling seamless mobile money payments from customers, and payment disbursements to suppliers and employees. Hence it implements the following APIs: Mpesa Express (STK Push), C2B (Customer to Business), B2C (Business to Customer) and Transaction Status (Query status of payment).
+
 ---
 
 ## 🚀 Project Overview
@@ -125,6 +126,8 @@ If you are using [Frappe Cloud](https://frappecloud.com/)
 In the Mpesa Workspace or using the Awesome Search navigate to **Mpesa Settings**
 This DocType is central to configuring Safaricom's Daraja API credentials, it is the entry point of various Mpesa payment services (Mpesa Express, C2B, and B2C). It holds the necessary credentials and identifiers for authentication and payment initiation.
 
+To get these credentials you need to have an account on [Safaricom Developer Portal](https://developer.safaricom.co.ke/) and have a live/prod application that corresponds to the Business Shortcode you own (Paybill/Till Number). Contact [M-Pesa Business](mailto:m-pesabusiness@safaricom.co.ke) or [Safaricom API Support](mailto:api@safaricom.co.ke) for help in setting this up.
+
 1. **API Type:**  Select the type of Mpesa API integration you’re setting up (Mpesa Express, C2B, or B2C).
 2. **Consumer Key:** A unique key provided by Safaricom to authenticate API calls.
 3. **Consumer Secret:** A secret code paired with the Consumer Key to secure API access.
@@ -158,6 +161,7 @@ Mpesa Express (STK Push) is initiated through the **Payment Request** DocType in
 - Sales Invoice
 - Sales Order
 - POS
+- Webshop
 
 --TODO: Insert GIF Here
 
