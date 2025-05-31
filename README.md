@@ -26,7 +26,7 @@ Frappe Mpesa Payments is a custom [Frappe](https://frappe.io/framework) applicat
   - [3. 💸 Disburse B2C Payments (Business to Customer)](#3--disburse-b2c-payments-business-to-customer)
     - [🧾Accounting Entries](#accounting-entries)
     - [Use Cases](#use-cases)
-  - [4. 🔍 Reconcile Payments](#4--reconcile-payments)
+  - [4. 🔍 Mpesa Payment Reconciliation](#4--mpesa-payment-reconciliation)
   - [5. ❓Query Transaction Status](#5-query-transaction-status)
     - [Use Cases:](#use-cases-1)
 - [Key DocTypes](#key-doctypes)
@@ -45,15 +45,19 @@ With the growth of mobile money payments and digital cash transfers, this app wa
   - This is a feature that allows suppliers/vendors to initiate a payment prompt on a customer's phone, prompting them to enter their M-Pesa PIN to authorize the transaction. It's a convenient and secure way for customers to pay, as it eliminates the need for customers to remember paybill/account numbers. It also reduces the time taken to recieve payment  
     #### Use Cases
     - Request payment from:
-      1. Sales Invoice or Sales Order
+      1. Sales Invoice (Credit)
      
-      ![Drawing2](https://github.com/user-attachments/assets/67d71b05-695a-4ba0-96f2-78fb0ecce458)
+      ![ExpressSICredit](https://github.com/user-attachments/assets/85b95d05-c965-4e9a-a6ca-624bc7a59dd7)
 
-      2. POS (Point of Sale)
+      2. Sales Order
+     
+      ![ExpressSalesOrder](https://github.com/user-attachments/assets/78cc0c64-7d46-43a9-81f7-ecaf7273c538)
+
+      3. POS (Point of Sale)
      
       ![ExpressPOS](https://github.com/user-attachments/assets/97a62f5f-4375-4478-bdca-ea0bcd78dcba)
 
-      3. Webshop (E-Commerce)
+      4. Webshop (E-Commerce)
      
       ![ExpressWebShop](https://github.com/user-attachments/assets/a84cab5f-0a4e-4c0e-b7a4-e93270e46c9b)
 
@@ -155,7 +159,7 @@ Mpesa Express (STK Push) is initiated through the **Payment Request** DocType in
 
 **🔧 How it works:**
 1. Create a new Payment Request either from Sales Invoice or Sales Order.
-2. Set the **Mode of Payment** that is linked to your **Mpesa Settings**.
+2. Select a **Mode of Payment** that is associated with an **Mpesa Settings** record.
 3. Since the **Payment Channel** is `Phone`
 4. Enter the Customer's Phone Number in the **To** field
 5. Save the Payment Request
@@ -190,11 +194,11 @@ C2B (Customer to Business) integration enables your system to receive and log in
 
 #### Notes:
 - **Smart Matching Logic:**  
-  - If Customer inputs a Sales Invoice Number or Customer Name that exists in your ERPNext instance, as the Account Number when making a Paybill payment, Daraja API will send this information as BillRefNumber in the callback.
-  - If this information matches a Customer Name/Invoice Number in the system, then the Customer field is automatically filled in the Mpesa Payment Register. 
+  - If Customer inputs a Sales Invoice Number or Customer Name/Number(unique identifier of the customer in ERPNext), as the Account Number when making a Paybill payment, Daraja API will send this information as BillRefNumber in the callback.
+  - If this information matches the Sales Invoice Number or Customer Name/Number in the system, then the Customer field in the Mpesa Payment Register is automatically filled. 
 - **Auto-Reconciliaton Logic:**
-  - In the **Mpesa Settings** there is an option **Auto Reconcile C2B Payments**.
-  - If this is checked then once you submit the Mpesa Payment Record it will try to match an invoice if no invoice is found then a reconciliation of the customer's outstanding invoices will be performed automatically using FIFO logic.
+  - In **Mpesa Settings** there is an option **Auto Reconcile C2B Payments**.
+  - If this is checked then once you submit the Mpesa Payment Register Record it will try to match an invoice if no invoice is found then a reconciliation of the customer's outstanding invoices will be performed automatically using FIFO (First-In First-Out) logic.
   
 
 #### FAQs: What happens when Registration Fails?
@@ -241,15 +245,16 @@ Use this feature to send money directly to employees or suppliers via **Mpesa B2
 #### 🧾Accounting Entries
 - Salary Slip → A **Journal Entry** of type **Bank Entry** is created.
 - For all others (PI/PO/Employee Advance/Expense Claim) → A **Payment Entry** is created per reference.
+- Loan -> A **Loan Disbursement** is created.
 
 #### Use Cases
 - Employee salary disbursements
-- Supplier and vendor payments
-- Expense reimbursements
-- Loan disbursements
+- Supplier/Vendor payments
+- Expense reimbursements -> Employee Expense and Advance reimbursements
+- Loan disbursements -> Employee/Customer/Member Loan disbursements
 
 
-### 4. 🔍 Reconcile Payments
+### 4. 🔍 Mpesa Payment Reconciliation
 
 The **Mpesa Payment Reconciliation** tool simplifies matching incoming Mpesa payments with outstanding invoices.
 
