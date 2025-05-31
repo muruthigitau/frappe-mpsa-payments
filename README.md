@@ -42,7 +42,7 @@ With the growth of mobile money payments and digital cash transfers, this app wa
 
 ## Supported APIs:
 ### 1.  ✅ **Mpesa Express (STK Push)**
-  - This is a feature that allows suppliers/vendors to initiate a payment prompt on a customer's phone, prompting them to enter their M-Pesa PIN to authorize the transaction. It's a convenient and secure way for customers to pay, as it eliminates the need for customers to remember paybill/account numbers. It also reduces the time taken to recieve payment  
+  - This is a feature that allows suppliers/vendors to initiate a payment prompt on a customer's phone, prompting them to enter their M-Pesa PIN to authorize the transaction. It's a convenient and secure way for customers to pay, as it eliminates the need for customers to remember paybill/account numbers. It also reduces the time taken to receive payment  
     #### Use Cases
     - Request payment from:
       1. Sales Invoice (Credit)
