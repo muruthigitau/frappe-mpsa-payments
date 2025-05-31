@@ -4,62 +4,20 @@ Frappe Mpesa Payments is a custom [Frappe](https://frappe.io/framework) applicat
 
 ---
 
-## 🚀 Project Overview
-
-This app was built to enable Kenyan businesses to automate and streamline payment collection, salary disbursement, and transaction tracking through Safaricom Mpesa — without leaving their ERP system.
-
-### Supported APIs:
-- ✅ **Mpesa Express (STK Push)**
-- ✅ **C2B (Customer to Business)**
-- ✅ **B2C (Business to Customer)**
-- ✅ **Transaction Status (Query status of payment)**
-
-### Use Cases:
-#### 1. Mpesa Express (STK Push)
-  - Request payment from Sales Invoices, Sales Order from the customer.
-  ![mpesa_express_sales_order_and_invoice](https://github.com/user-attachments/assets/59129a80-d1f7-4638-9658-2c5dd48e30ff)
-  - POS (Point of Sale)
-  ![mpesa_express_pos](https://github.com/user-attachments/assets/16ed5cf0-89fe-44fe-aa05-16ee2d265add)
-  - Webshop (E-Commerce)
-  ![mpesa_express_webshop](https://github.com/user-attachments/assets/d56b053e-3ad8-4965-8587-a090484b445b)
-
-
-#### 2. C2B (Customer to Business)
-  - Receive payments from customers in real-time and reconcile with invoices.
-  ![mpesa_c2b_sales_invoice](https://github.com/user-attachments/assets/ce7fdc6e-4e4a-44f1-a759-e411ac99f13a)
-
-#### 3. B2C (Business to Customer)
-  -  Disburse payments to suppliers to pay for Purchase Invoices and Purchase Orders
-  ![b2c_disbursement_purchase_order_and_invoice](https://github.com/user-attachments/assets/b37f03a9-da9b-4a31-a6a2-90c30938062d)
-  - Disburse money to your employees
-    - Expense claims
-     ![b2c_disbursement_expense_claim](https://github.com/user-attachments/assets/4eda92c2-b8b3-4784-9260-d91cf9de99db)
-    - Employee Advances
-    ![b2c_disbursement_employee_advance](https://github.com/user-attachments/assets/7875b2ad-ad36-4f06-8ff5-7a10a98e349b)
-    - Salary 
-    ![b2c_disbursement_salary_slip](https://github.com/user-attachments/assets/8207bf8e-ac72-4d43-a627-0e5a1e452d92)
-
-#### 4. Query transaction status for failed/delayed payments.
-#### 5. Log and audit incoming/outgoing C2B and B2C transactions.
-
----
-
 ## Table of Contents
 - [📲 Frappe Mpesa Payments](#-frappe-mpesa-payments)
 - [🚀 Project Overview](#-project-overview)
-  - [Supported APIs:](#supported-apis)
-  - [Use Cases:](#use-cases)
-    - [1. Mpesa Express (STK Push)](#1-mpesa-express-stk-push)
-    - [2. C2B (Customer to Business)](#2-c2b-customer-to-business)
-    - [3. B2C (Business to Customer)](#3-b2c-business-to-customer)
-    - [4. Query transaction status for failed/delayed payments.](#4-query-transaction-status-for-faileddelayed-payments)
-    - [5. Log and audit incoming/outgoing C2B and B2C transactions.](#5-log-and-audit-incomingoutgoing-c2b-and-b2c-transactions)
-- [Table of Contents](#table-of-contents)
-- [🔑 Features](#-features)
+- [Supported APIs:](#supported-apis)
+  - [1.  ✅ **Mpesa Express (STK Push)**](#1---mpesa-express-stk-push)
+  - [2.  ✅ **C2B (Customer to Business)**](#2---c2b-customer-to-business)
+  - [3.  ✅ **B2C (Business to Customer)**](#3---b2c-business-to-customer)
+  - [4.  ✅ **Transaction Status (Query status of payment)**](#4---transaction-status-query-status-of-payment)
 - [🛠️ Installation](#️-installation)
-  - [Managed Hosting](#managed-hosting)
-  - [Self Hosting](#self-hosting)
+  - [✅ Dependencies](#-dependencies)
+  - [☁️ Managed Hosting Frappe Cloud](#️-managed-hosting-frappe-cloud)
+  - [🧑🏿‍💻 Self Hosting](#-self-hosting)
 - [⚙️ Configuration](#️-configuration)
+  - [Mpesa Settings](#mpesa-settings)
 - [🤵🏿 Usage Guide](#-usage-guide)
   - [1. 🔁 Trigger STK Push (Mpesa Express)](#1--trigger-stk-push-mpesa-express)
   - [2. 📥 Receive C2B Payments](#2--receive-c2b-payments)
@@ -67,78 +25,125 @@ This app was built to enable Kenyan businesses to automate and streamline paymen
     - [FAQs: What happens when Registration Fails?](#faqs-what-happens-when-registration-fails)
   - [3. 💸 Disburse B2C Payments (Business to Customer)](#3--disburse-b2c-payments-business-to-customer)
     - [🧾Accounting Entries](#accounting-entries)
-    - [Use Cases](#use-cases-1)
+    - [Use Cases](#use-cases)
   - [4. 🔍 Reconcile Payments](#4--reconcile-payments)
   - [5. ❓Query Transaction Status](#5-query-transaction-status)
-    - [Use Cases:](#use-cases-2)
+    - [Use Cases:](#use-cases-1)
 - [Key DocTypes](#key-doctypes)
 - [🔐 Security](#-security)
 - [🛠️ Troubleshooting](#️-troubleshooting)
 
+
 ---
 
-## 🔑 Features
-- **STK Push (Mpesa Express):** Trigger an STK push from Payment Requests.
-- **C2B Integration:** Receive and log incoming payments from customers automatically.
-- **B2C Payments:** Send funds to employees or vendors and generate accounting entries.
-- **Transaction Status Lookup:** Query historical Mpesa transactions via API.
-- **Mpesa Settings:** Configure all Daraja credentials and certificates in one place.
-- **Payment Reconciliation Tool:** Match C2B payments to outstanding invoices.
-- **Webhook URL Registration:** Register your confirmation & validation URLs from within the system.
-- **Public Key Management:** Upload & store certificates for secure B2C encryption.
+## 🚀 Project Overview
+
+With the growth of mobile money payments and digital cash transfers, this app was built to enable Kenyan businesses to automate and streamline payment collection, salary disbursement, and transaction tracking through Safaricom Mpesa — without leaving their [ERPNext](https://frappe.io/erpnext) system.
+
+## Supported APIs:
+### 1.  ✅ **Mpesa Express (STK Push)**
+  - This is a feature that allows suppliers/vendors to initiate a payment prompt on a customer's phone, prompting them to enter their M-Pesa PIN to authorize the transaction. It's a convenient and secure way for customers to pay, as it eliminates the need for customers to remember paybill/account numbers. It also reduces the time taken to recieve payment  
+    #### Use Cases
+    - Request payment from:
+      1. Sales Invoice or Sales Order
+     
+      ![Drawing2](https://github.com/user-attachments/assets/67d71b05-695a-4ba0-96f2-78fb0ecce458)
+
+      2. POS (Point of Sale)
+     
+      ![ExpressPOS](https://github.com/user-attachments/assets/97a62f5f-4375-4478-bdca-ea0bcd78dcba)
+
+      3. Webshop (E-Commerce)
+     
+      ![ExpressWebShop](https://github.com/user-attachments/assets/a84cab5f-0a4e-4c0e-b7a4-e93270e46c9b)
+
+### 2.  ✅ **C2B (Customer to Business)**  
+  - In ERPNext, C2B integration allows you to automatically receive and reconcile payments made by customers through M-Pesa to your Paybill or Till number. These payments are linked to payment entries, enabling real-time updates of outstanding balances and reducing manual data entry.
+
+    ![C2BProcess](https://github.com/user-attachments/assets/54b629bc-645e-4f38-90ff-b5030f8bc307)
+
+
+### 3.  ✅ **B2C (Business to Customer)**
+  - M-Pesa B2C integration enables businesses disburse payments directly to customers, employees or suppliers directly to their M-Pesa accounts. Through seamless API integration, ERPNext users can initiate bulk payments such as salaries, expense claims, supplier payouts or even loans directly from the system. This enhances efficiency, reduces errors and ensures secure, traceable disbursements, all while maintaining accurate financial records within ERPNext.
+
+    #### Use Cases
+    - Disburse payments to suppliers
+         
+      ![B2CPurchases](https://github.com/user-attachments/assets/7d7614f5-121b-442f-aac6-b0e08ef43809)
+
+    - Disburse to employees
+
+      ![B2CEmployee](https://github.com/user-attachments/assets/c44cdd77-88e6-4d12-bdca-75a88dbee6ab)
+
+    - Disburse Loans
+      
+      ![B2CLoanDisbursement](https://github.com/user-attachments/assets/7f90eb17-bac8-4b7e-a27f-02289252fbb7)
+
+### 4.  ✅ **Transaction Status (Query status of payment)**
+  - In the case a customer has paid via M-Pesa but the payment is not reflecting in your ERPNext instance, this API becomes essential. This integration allows ERPNext to query Safaricom's systems using the **transaction receipt** number and retrieve real-time details such as transaction status **(Success, Failed or Pending)**. It helps resolve issues caused by network delays, missed callbacks, or unregistered C2B transactions by enabling manual verification.
+
+    ![TransactionStatus](https://github.com/user-attachments/assets/82954f85-9931-4164-a24a-464f421d9622)
 
 ---
 
 ## 🛠️ Installation
-✅ Dependencies
-- Frappe Framework
-- ERPNext
-- Valid Daraja API credentials
-- Publicly accessible domain (for webhook callbacks)
-N/B Must be *https://*
 
-### Managed Hosting
-If you are using [Frappe Cloud](https://frappecloud.com/)
-1. Login in to your Frappe Cloud account.
-2. Navigate to your Sites/Bench Groups dashboard.
-3. Go to the **Apps** tab and select **+ Install App** / **+ Add App**.
-4. Search for **Frappe Mpesa Payments** application in the [Marketplace](https://frappecloud.com/marketplace/search) section.
-5. Or select **Add from Github** then add this github url ```https://github.com/navariltd/frappe-mpsa-payments.git``` Fetch Branches
+### ✅ Dependencies
 
-### Self Hosting
-1. Ensure you have a working Frappe and ERPNext instance
-2. Clone this repository into your Frappe bench apps directory.
-3. Go to the [Marketplace]
- ``` 
- bench get-app https://github.com/navariltd/frappe-mpsa-payments.git
- ```
+  - [Frappe Framework](https://frappe.io/framework)
+  - [ERPNext](https://frappe.io/erpnext)
+  - Optional [Frappe HR](https://frappe.io/hr) For Salary Disbursements
+  - Optional [Frappe Lending](https://frappe.io/lending) For Loans Disbursements
+  - [Valid Daraja API credentials](https://developer.safaricom.co.ke/)
+  - [M-Pesa Org Portal Access](https://org.ke.m-pesa.com)
+  - Publicly accessible domain (for webhook callbacks)
+  N/B Must be *https://*
 
- 3. Install the app into your site
- ``` 
- bench --site [your-site-name] install-app frappe_mpsa_payments
- ```
+### ☁️ Managed Hosting [Frappe Cloud](https://frappecloud.com/)
 
+  1. Login to your Frappe Cloud account.
+  2. Navigate to your Sites/Bench Groups dashboard.
+  3. Go to the **Apps** tab and select **+ Install APP** / **+ Add APP**.
+  4. Search for **Frappe Mpesa Payments** application in the [Marketplace](https://frappecloud.com/marketplace/search) section.
+  5. Or select **Add from Github** then add this github url ```https://github.com/navariltd/frappe-mpsa-payments.git```.
+  6. Install Application or Fetch Branches. 
+
+### 🧑🏿‍💻 Self Hosting
+
+  1. Ensure you have a working Frappe and ERPNext instance
+  2. Clone this repository into your Frappe bench apps directory.
+   ``` 
+   bench get-app https://github.com/navariltd/frappe-mpsa-payments.git
+   ```
+  3. Install the app into your site
+   ``` 
+   bench --site [your-site-name] install-app frappe_mpsa_payments
+   ```
+  4. Reload and restart the bench to reflect changes:
+  ```
+  bench restart
+  ```
 ---
 
 ## ⚙️ Configuration
-<h4>Mpesa Settings</h4>
+### Mpesa Settings
 
 In the Mpesa Workspace or using the Awesome Search navigate to **Mpesa Settings**
-This DocType is central to configuring Safaricom's Daraja API credentials, it is the entry point of various Mpesa payment services (Mpesa Express, C2B, and B2C). It holds the necessary credentials and identifiers for authentication and payment initiation.
+This DocType is central to configuring Safaricom's Daraja API credentials, it is the entry point of the various Mpesa payment services (Mpesa Express, C2B, and B2C). It holds the necessary credentials and identifiers for authentication and payment initiation.
 
 To get these credentials you need to have an account on [Safaricom Developer Portal](https://developer.safaricom.co.ke/) and have a live/prod application that corresponds to the Business Shortcode you own (Paybill/Till Number). Contact [M-Pesa Business](mailto:m-pesabusiness@safaricom.co.ke) or [Safaricom API Support](mailto:api@safaricom.co.ke) for help in setting this up.
 
-1. **API Type:**  Select the type of Mpesa API integration you’re setting up (Mpesa Express, C2B, or B2C).
-2. **Consumer Key:** A unique key provided by Safaricom to authenticate API calls.
-3. **Consumer Secret:** A secret code paired with the Consumer Key to secure API access.
-4. **Security Credential:** Encryption credential used for additional security, particularly in B2C transactions.
-5. **Till Number:** Identifier for C2B payments, where customers make payments directly to a till.
-6. **Business Shortcode:** A unique code used to identify your business account in the Mpesa system.
-7. **Online PassKey:** An additional authentication key, specifically for initiating Mpesa Express (STK Push) transactions.
-8. **Initiator Name:** Operator name for API Operator in the [Mpesa Org Portal](https://org.ke.m-pesa.com).
-9. **Initiator Password:** Password paired with the Initiator Name.
+1. **API Type:**  *Select the type of Mpesa API integration you’re setting up (Mpesa Express, C2B, or B2C).*
+2. **Consumer Key:** *A unique key provided by Safaricom to authenticate API calls.*
+3. **Consumer Secret:** *A secret code paired with the Consumer Key to secure API access.*
+4. **Security Credential:** *Encryption credential used for additional security, particularly in B2C transactions.*
+5. **Till Number:** *Identifier for C2B payments, where customers make payments directly to a till.*
+6. **Business Shortcode:** *A unique code used to identify your business account in the Mpesa system.*
+7. **Online PassKey:** *An additional authentication key, specifically for initiating Mpesa Express (STK Push) transactions.*
+8. **Initiator Name:** *Operator name for API Operator in the [Mpesa Org Portal](https://org.ke.m-pesa.com).*
+9. **Initiator Password:** *Password paired with the Initiator Name.*
 
-![Screenshot from 2024-10-30 15-55-09](https://github.com/user-attachments/assets/f786501f-5c5d-4c27-9a62-ba3d76ce9562)
+![mpesa_settings](https://github.com/user-attachments/assets/44aec79b-2ee0-47f8-8a26-2eb7d52adb5a)
 
 ---
 
@@ -194,7 +199,11 @@ C2B (Customer to Business) integration enables your system to receive and log in
 
 #### FAQs: What happens when Registration Fails?
 
---TODO: Insert data here
+| Problem                             | Solution                                                                                       |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| URLs are already registered.        | Login to Daraja Portal. Access the Self Services tab and delete the previously registered urls |
+| Bad Request                         | Confirm everything is set up in the Mpesa Settings and the credentials are correct             |
+| Invalid Access Token                | Make sure the Consumer key and secret are correctly set in the Mpesa Settings doctype          |
 
 
 ### 3. 💸 Disburse B2C Payments (Business to Customer)
@@ -295,7 +304,7 @@ This DocType is central to configuring Safaricom's Daraja API credentials, allow
 8. **Initiator Name:** API Operator configured from the Mpesa Org Portal
 9. **Initiator Password:** Password paired with the Initiator Name will be encrypted to SecurityCredential for transactions.
 
-![Screenshot from 2024-10-30 15-55-09](https://github.com/user-attachments/assets/f786501f-5c5d-4c27-9a62-ba3d76ce9562)
+![mpesa_settings](https://github.com/user-attachments/assets/44aec79b-2ee0-47f8-8a26-2eb7d52adb5a)
 
 
 <h4>Mpesa C2B Payment Register URL</h4>
@@ -306,8 +315,8 @@ This DocType registers the callback URLs for incoming C2B payments. Once registe
 2. **Company:** Specifies the company associated with the payment registration.
 3. **Mode of Payment:** Identifies the payment mode for better categorization in your accounting or ERP system.
 4. **Register Status:** Displays the status of the URL registration (e.g., Success, Pending), useful for troubleshooting or verification.
-
-![Screenshot from 2024-10-30 15-56-11](https://github.com/user-attachments/assets/a30279f5-0fd7-4543-8a0a-1b8a8e2ec363)
+  
+![c2b_register_url](https://github.com/user-attachments/assets/ca72a755-e168-4483-b053-2e6e7a2d7d25)
 
 <h4>Mpesa C2B Payment Register</h4>
 
