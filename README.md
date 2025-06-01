@@ -250,8 +250,8 @@ Use this feature to send money directly to employees or suppliers via **Mpesa B2
 #### Use Cases
 - Employee salary disbursements
 - Supplier/Vendor payments
-- Expense reimbursements -> Employee Expense and Advance reimbursements
-- Loan disbursements -> Employee/Customer/Member Loan disbursements
+- Employee Expense and Advance reimbursements
+- Employee/Customer/Member Loan disbursements
 
 
 ### 4. 🔍 Mpesa Payment Reconciliation
