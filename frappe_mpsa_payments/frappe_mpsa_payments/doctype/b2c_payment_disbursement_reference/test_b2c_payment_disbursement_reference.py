@@ -107,7 +107,7 @@ class TestB2CPaymentDisbursementReference(FrappeTestCase):
             self.assertFalse(is_valid_receiver_contact(contact))
 
     def test_is_valid_reciever_contact_for_011_phone_numbers(self):
-        """Test that the is_valid_receiver_contact function correctly identifies 011 phone numbers as invalid"""
+        """Test that the is_valid_receiver_contact function correctly identifies 011 phone numbers as valid"""
         invalid_contacts = [
             "0112345678",
             "01123456789",
