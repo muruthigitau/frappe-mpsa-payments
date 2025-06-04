@@ -2,8 +2,6 @@
 # For license information, please see license.txt
 
 from typing import Dict, List, Optional
-import uuid
-
 
 import frappe
 from frappe import _
@@ -14,15 +12,12 @@ from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.party import get_party_account
 from erpnext.accounts.doctype.payment_entry.payment_entry import get_outstanding_reference_documents as original_get_outstanding_reference_documents
 
-from ...api.mpsa_b2c import MpesaB2CConnector
-from ....utils.definitions import B2CRequestDefinition
 from .. import app_logger
-from ..custom_exceptions import InformationMismatchError
 from .config import DOCTYPE_CONFIGS, DoctypeConfig
 
 
 class B2CPaymentDisbursement(Document):
-    """MPesa B2C Payment Class"""
+    """B2C Payment Disbursement Class"""
 
     def validate(self) -> None:
         """Validations for the document and references."""
@@ -41,16 +36,22 @@ class B2CPaymentDisbursement(Document):
     def before_submit(self) -> None:
         """Initital payment trigger"""
         if self.payment_type == "Mpesa Disbursement":
+
             setting = self._get_mpesa_settings()
-            connector = MpesaB2CConnector(settings_name=setting.name)
-
-            any_errors = self._process_mpesa_b2c_payments(connector, setting)
-
-            frappe.msgprint(
-                msg="Some B2C Payment Requests failed. Please Retry." if any_errors else "Payment Request Initiated.",
-                title="Payment Request Error" if any_errors else "Payment Request",
-                indicator="red" if any_errors else "green"
-            )
+            
+            for ref in self.references:
+                b2c_request = frappe.get_doc({
+                    "doctype": "Mpesa B2C Request",
+                    "mpesa_settings": setting.name,
+                    "phone_number": ref.partyb,
+                    "amount": ref.allocated_amount,
+                    "b2c_payment": self.name,
+                    "b2c_payment_reference": ref.name,
+                    "reference_doctype": ref.reference_doctype,
+                    "reference_name": ref.reference_name
+                })
+                b2c_request.insert(ignore_permissions=True)
+                b2c_request.submit()
 
     def validate_mandatory_fields(self) -> None:
         mandatory_fields = ["company", "posting_date", "party_type", "paid_from", "paid_to"]
@@ -64,10 +65,6 @@ class B2CPaymentDisbursement(Document):
     def validate_mode_of_payment(self) -> None:
         if not self.mode_of_payment:
             frappe.throw(f"Mode of Payment is required")
-
-        if self.payment_type == "Mpesa Disbursement":
-            mpesa_setting = frappe.db.get_value("Mpesa Settings", self.mode_of_payment[6:], "name")
-            self.mpesa_setting = mpesa_setting
 
     def validate_party_type(self) -> None:
         if self.party_type not in ["Employee", "Supplier"]:
@@ -103,9 +100,6 @@ class B2CPaymentDisbursement(Document):
         if self.paid_from_account_currency != "KES" and self.paid_amount:
             kes_rate = get_exchange_rate(self.company_currency, "KES", self.posting_date)
             self.base_paid_amount = flt(self.paid_amount * self.source_exchange_rate) / flt(kes_rate)
-        
-    def _generate_uuid_v4(self) -> str:
-        return str(uuid.uuid4())
 
     def _get_mpesa_settings(self) -> Document:
         """ Fetch and validate Mpesa Settings for the Payment Gateway."""
@@ -113,7 +107,7 @@ class B2CPaymentDisbursement(Document):
         try:
             setting: Document = frappe.get_doc(
                 "Mpesa Settings",
-                {"payment_gateway_name": self.mpesa_setting, "api_type": "MPesa B2C (Business to Customer)"},
+                {"payment_gateway_name": self.mpesa_setting},
                 [
                     "name",
                     "initiator_name",
@@ -131,82 +125,6 @@ class B2CPaymentDisbursement(Document):
             frappe.throw(error_msg, frappe.DoesNotExistError)
 
         return setting
-
-    def _prepare_request_data(self, ref, setting) -> None:
-        """Prepares the B2C request payload"""
-        return B2CRequestDefinition(
-            ConsumerKey=setting.consumer_key,
-            ConsumerSecret=setting.get_password("consumer_secret"),
-            OriginatorConversationID=ref.originator_conversation_id,
-            InitiatorName=setting.initiator_name,
-            SecurityCredential=setting.security_credential,
-            CommandID=self.commandid,
-            Amount=ref.allocated_amount,
-            PartyA=setting.business_shortcode,  # TODO: Consider this
-            PartyB=ref.partyb,
-            Remarks=self.remarks,
-            Occassion=self.occassion,
-        )
-
-    def _process_payment_ref(self, ref, connector, setting, is_retry=False) -> bool:
-        """Handles a single B2C payment reference"""
-        try:
-
-            request_data = self._prepare_request_data(ref, setting)
-
-            response = connector.make_b2c_payment_request(
-                request_data=request_data,
-                doctype=ref.reference_doctype,
-                document_name=ref.reference_name
-            )
-
-            if response.get("ResponseCode") == "0":
-                ref.payment_status = "Initiated"
-            else:
-                ref.payment_status = "Failed"
-                return False
-
-        except Exception as e:
-            ref.payment_status = "Failed"
-            error_msg = f"{'Retry' if is_retry else 'Initial'} error for ref {ref.reference_name}: {str(e)}"
-            app_logger.error(error_msg, exc_info=True)
-            frappe.log_error(error_msg, "MPesa B2C Error")
-            return False
-
-        return True
-    
-    def _process_mpesa_b2c_payments(self, connector, setting, only_failed=False, is_retry=False) -> bool:
-        any_errors = False
-
-        for ref in self.references:
-            if only_failed and ref.payment_status != "Failed":
-                continue
-
-            if is_retry:
-                ref.originator_conversation_id = self._generate_uuid_v4()
-                ref.save()
-
-            success = self._process_payment_ref(ref, connector, setting, is_retry=is_retry)
-            if not success:
-                any_errors = True
-
-        return any_errors
-
-    @frappe.whitelist()
-    def retry_failed_payments(self) -> None:
-        """Retry only failed payments"""
-        if self.payment_type == "Mpesa Disbursement":
-            setting = self._get_mpesa_settings()
-            connector = MpesaB2CConnector(settings_name=setting.name)
-
-            any_errors = self._process_mpesa_b2c_payments(connector, setting, only_failed=True, is_retry=True)
-
-            frappe.msgprint(
-                msg="Some B2C Payment retries failed. Please Retry." if any_errors else "Payment Request Initiated.",
-                title="Payment Request Error" if any_errors else "Payment Request",
-                indicator="red" if any_errors else "green"
-            )
-
 
     @frappe.whitelist()
     def get_outstanding_reference_documents(self, args: Dict) -> List[Dict]:
@@ -226,7 +144,6 @@ class B2CPaymentDisbursement(Document):
         filters = self._build_filters(args, config)
         entries = self._fetch_entries(doctype, config, args, filters)
         return self._populate_references(entries, args, doctype, config.date_field)
-        
 
     def _get_doctype_config(self, doctype: str) -> DoctypeConfig:
         """
@@ -441,7 +358,6 @@ class B2CPaymentDisbursement(Document):
                 "exchange_rate": self._get_exchange_rate(entry, doctype),
                 "partyb": partyb,
                 "payment_status": "Not Initiated",
-                "originator_conversation_id": self._generate_uuid_v4()
             }
             references.append(reference)
 

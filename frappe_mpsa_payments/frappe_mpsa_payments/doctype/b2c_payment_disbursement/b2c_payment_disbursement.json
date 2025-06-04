@@ -38,15 +38,7 @@
   "payment_status",
   "status",
   "column_break_oy1c",
-  "amended_from",
-  "section_break_pujd",
-  "column_break_kxii",
-  "custom_remarks",
-  "remarks",
-  "commandid",
-  "column_break_wwdi",
-  "mpesa_setting",
-  "occassion"
+  "amended_from"
  ],
  "fields": [
   {
@@ -54,46 +46,6 @@
    "fieldtype": "Select",
    "label": "Series",
    "options": "MPESA-B2C-.YYYY.-\nB2C-ACC-.YYYY.-"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "section_break_pujd",
-   "fieldtype": "Section Break",
-   "label": "More Info"
-  },
-  {
-   "depends_on": "eval: doc.company",
-   "fieldname": "mpesa_setting",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Mpesa Setting",
-   "mandatory_depends_on": "eval: doc.payment_type == \"M-Pesa B2C\"",
-   "options": "Mpesa Settings"
-  },
-  {
-   "default": "SalaryPayment",
-   "fieldname": "commandid",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "in_list_view": 1,
-   "label": "Command ID",
-   "no_copy": 1,
-   "options": "\nSalaryPayment\nBusinessPayment\nPromotionPayment",
-   "reqd": 1
-  },
-  {
-   "default": "Here are my remarks",
-   "fieldname": "remarks",
-   "fieldtype": "Small Text",
-   "label": "Remarks",
-   "read_only_depends_on": "eval:doc.custom_remarks == 0",
-   "reqd": 1
-  },
-  {
-   "fieldname": "occassion",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Occassion"
   },
   {
    "fieldname": "party_type",
@@ -143,10 +95,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "column_break_wwdi",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -179,10 +127,6 @@
    "label": "Mode of Payment",
    "options": "Mode of Payment",
    "reqd": 1
-  },
-  {
-   "fieldname": "column_break_kxii",
-   "fieldtype": "Column Break"
   },
   {
    "depends_on": "eval: doc.mode_of_payment",
@@ -299,12 +243,6 @@
    "print_hide": 1
   },
   {
-   "default": "0",
-   "fieldname": "custom_remarks",
-   "fieldtype": "Check",
-   "label": "Custom Remarks"
-  },
-  {
    "fetch_from": "company.default_currency",
    "fieldname": "company_currency",
    "fieldtype": "Link",
@@ -329,7 +267,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-24 18:55:55.824906",
+ "modified": "2025-06-04 17:56:28.408950",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",

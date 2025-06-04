@@ -13,9 +13,7 @@ from frappe.model.document import Document
 class B2CPaymentDisbursementReference(Document):
     def validate(self) -> None:
         """Validation Hook"""
-        if not self.originator_conversation_id:
-            self.originator_conversation_id = str(uuid4())
-
+        
         if not self.party:
             frappe.throw(
                 f"Row #{self.idx}: Party is mandatory",
