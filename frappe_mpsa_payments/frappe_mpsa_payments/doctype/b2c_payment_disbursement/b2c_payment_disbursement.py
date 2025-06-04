@@ -40,6 +40,7 @@ class B2CPaymentDisbursement(Document):
             setting = self._get_mpesa_settings()
             
             for ref in self.references:
+                ref.payment_status = "Initiated"
                 b2c_request = frappe.get_doc({
                     "doctype": "Mpesa B2C Request",
                     "mpesa_settings": setting.name,
@@ -52,6 +53,8 @@ class B2CPaymentDisbursement(Document):
                 })
                 b2c_request.insert(ignore_permissions=True)
                 b2c_request.submit()
+
+        self.status = "Initiated"
 
     def validate_mandatory_fields(self) -> None:
         mandatory_fields = ["company", "posting_date", "party_type", "paid_from", "paid_to"]
@@ -107,15 +110,8 @@ class B2CPaymentDisbursement(Document):
         try:
             setting: Document = frappe.get_doc(
                 "Mpesa Settings",
-                {"payment_gateway_name": self.mpesa_setting},
-                [
-                    "name",
-                    "initiator_name",
-                    "security_credential",
-                    "business_shortcode",
-                    "consumer_key",
-                    "consumer_secret",
-                ],
+                {"payment_gateway_name": self.mode_of_payment[6:]},
+                ["name"],
                 as_dict=True,
             )
         except frappe.DoesNotExistError:

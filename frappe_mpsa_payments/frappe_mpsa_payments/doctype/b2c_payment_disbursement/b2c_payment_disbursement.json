@@ -76,7 +76,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "\nNot Initiated\nPaid\nPartially Paid\nFailed",
+   "options": "\nNot Initiated\nInitiated\nPaid\nPartially Paid\nFailed",
    "read_only": 1,
    "reqd": 1
   },
@@ -266,8 +266,14 @@
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2025-06-04 17:56:28.408950",
+ "links": [
+  {
+   "group": "Mpesa Requests",
+   "link_doctype": "Mpesa B2C Request",
+   "link_fieldname": "b2c_payment"
+  }
+ ],
+ "modified": "2025-06-04 19:11:52.165633",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",
