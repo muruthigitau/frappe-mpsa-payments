@@ -704,8 +704,7 @@ def verify_transaction(**kwargs) -> None:
     checkout_id = getattr(transaction_response, "CheckoutRequestID", "")
     if not isinstance(checkout_id, str):
         frappe.log_error(_("Invalid Checkout Request ID"))
-    print("=====================================")
-    print(str(transaction_response))
+
     integration_request = frappe.get_doc("Integration Request", checkout_id)
     transaction_data = frappe._dict(json.loads(integration_request.data))
     total_paid = 0  
