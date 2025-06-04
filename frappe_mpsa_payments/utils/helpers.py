@@ -44,3 +44,17 @@ def update_integration_request(
     doc.error = error
     doc.output = output
     doc.save(ignore_permissions=True)
+
+
+def _get_result_param(result: dict, key_name: str) -> str:
+    """Helper to extract a parameter from ResultParameters array"""
+    try:
+        parameters = result.get("ResultParameters", {}).get("ResultParameter", [])
+        for param in parameters:
+            if param.get("key") == key_name:
+                return param.get("Value", "")
+    
+    except Exception:
+        pass
+
+    return ""

@@ -1,0 +1,374 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "MB2C.-.YY.-.MM.-.######",
+ "creation": "2023-11-07 14:25:41.290770",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "request_details_section",
+  "phone_number",
+  "mpesa_settings",
+  "originator_conversation_id",
+  "commandid",
+  "column_break_uaay",
+  "amount",
+  "status",
+  "occassion",
+  "remarks",
+  "b2c_payment_disbursement_section",
+  "b2c_payment",
+  "reference_doctype",
+  "column_break_xxuq",
+  "b2c_payment_reference",
+  "reference_name",
+  "section_break_ovxt",
+  "conversation_id",
+  "response_code",
+  "response_description",
+  "column_break_dtub",
+  "request_id",
+  "error_code",
+  "error_message",
+  "result_details_section",
+  "result_type",
+  "result_code",
+  "result_desc",
+  "column_break_iset",
+  "transaction_id",
+  "receiver_public_name",
+  "recipient_is_registered_customer",
+  "charges_paid_acct_avlbl_funds",
+  "utility_acct_avlbl_funds",
+  "working_acct_avlbl_funds",
+  "transaction_completed_datetime",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_ovxt",
+   "fieldtype": "Section Break",
+   "label": "Response Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "transaction_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Transaction ID",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "receiver_public_name",
+   "fieldtype": "Data",
+   "label": "Receiver Party Public Name",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "charges_paid_acct_avlbl_funds",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "B2C Charges Paid Account Available Funds",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "utility_acct_avlbl_funds",
+   "fieldtype": "Float",
+   "label": "B2C Utility Account Available Funds",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_iset",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "recipient_is_registered_customer",
+   "fieldtype": "Select",
+   "label": "B2C Recipient Is Registered Customer",
+   "options": "\nN\nY",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "working_acct_avlbl_funds",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "B2C Working Account Available Funds",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "transaction_completed_datetime",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Transaction Completed Date Time",
+   "read_only": 1
+  },
+  {
+   "fieldname": "request_details_section",
+   "fieldtype": "Section Break",
+   "label": "Request Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "mpesa_settings",
+   "fieldtype": "Link",
+   "label": "Mpesa Settings",
+   "options": "Mpesa Settings",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "originator_conversation_id",
+   "fieldtype": "Data",
+   "label": "Originator Conversation ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_uaay",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Not Initiated\nInitiated\nPaid\nFailed",
+   "read_only": 1
+  },
+  {
+   "default": "here are my remarks",
+   "fieldname": "remarks",
+   "fieldtype": "Data",
+   "label": "Remarks",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "b2c_payment_disbursement_section",
+   "fieldtype": "Section Break",
+   "label": "B2C Payment Disbursement"
+  },
+  {
+   "fieldname": "b2c_payment",
+   "fieldtype": "Link",
+   "label": "B2C Payment",
+   "options": "B2C Payment Disbursement",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_xxuq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "b2c_payment_reference",
+   "fieldtype": "Link",
+   "label": "B2C Payment Reference",
+   "options": "B2C Payment Disbursement Reference",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "result_type",
+   "fieldtype": "Data",
+   "label": "Result Type",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "result_code",
+   "fieldtype": "Data",
+   "label": "Result Code",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "response_description",
+   "fieldtype": "Small Text",
+   "label": "Response Description"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "conversation_id",
+   "fieldtype": "Data",
+   "label": "Conversation ID"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Mpesa B2C Request",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference Doctype",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Name",
+   "options": "reference_doctype",
+   "read_only": 1
+  },
+  {
+   "default": "SalaryPayment",
+   "fieldname": "commandid",
+   "fieldtype": "Select",
+   "label": "Command ID",
+   "options": "\nSalaryPayment\nBusinessPayment\nPromotionPayment",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "occassion",
+   "fieldtype": "Data",
+   "label": "Occasion",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "response_code",
+   "fieldtype": "Data",
+   "label": "Response Code"
+  },
+  {
+   "fieldname": "column_break_dtub",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "error_code",
+   "fieldtype": "Data",
+   "label": "Error Code"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message"
+  },
+  {
+   "fieldname": "result_details_section",
+   "fieldtype": "Section Break",
+   "label": "Result Details"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "result_desc",
+   "fieldtype": "Small Text",
+   "label": "Result Desc"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "request_id",
+   "fieldtype": "Data",
+   "label": "Request Id"
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-06-04 16:38:06.299013",
+ "modified_by": "Administrator",
+ "module": "Frappe Mpsa Payments",
+ "name": "Mpesa B2C Request",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
