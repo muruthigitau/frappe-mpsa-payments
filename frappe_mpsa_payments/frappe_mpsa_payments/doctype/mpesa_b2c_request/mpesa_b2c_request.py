@@ -36,16 +36,31 @@ class MpesaB2CRequest(Document):
         any_errors = self._process_mpesa_b2c_request()
 
     def before_update_after_submit(self):
-        if self.status == "Paid" and self.b2c_payment_reference:
-            frappe.db.set_value(
-                "B2C Payment Disbursement Reference",
-                self.b2c_payment_reference,
-                {
+        if self.status in ("Paid", "Failed") and self.b2c_payment_reference:
+            update_fields = {
+                "Paid": {
                     "payment_status": "Paid",
                     "reference_no": self.transaction_id,
                     "reference_date": getdate(self.transaction_completed_datetime)
+                },
+                "Failed": {
+                    "payment_status": "Failed"
                 }
+            }.get(self.status)
+
+            frappe.db.set_value(
+                "B2C Payment Disbursement Reference",
+                self.b2c_payment_reference,
+                update_fields
             )
+
+            if self.b2c_payment:
+                frappe.enqueue(
+                    method="frappe_mpsa_payments.utils.helpers.update_disbursement_status",
+                    queue='short',
+                    job_name=f"update-status-{self.b2c_payment}",
+                    b2c_payment_disbursement=self.b2c_payment
+                )
 
     def _generate_uuid_v4(self) -> str:
         return str(uuid.uuid4())

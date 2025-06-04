@@ -138,6 +138,7 @@
    "fieldname": "originator_conversation_id",
    "fieldtype": "Data",
    "label": "Originator Conversation ID",
+   "read_only": 1,
    "reqd": 1
   },
   {
@@ -204,13 +205,15 @@
    "allow_on_submit": 1,
    "fieldname": "response_description",
    "fieldtype": "Small Text",
-   "label": "Response Description"
+   "label": "Response Description",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "conversation_id",
    "fieldtype": "Data",
-   "label": "Conversation ID"
+   "label": "Conversation ID",
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
@@ -240,6 +243,7 @@
    "default": "SalaryPayment",
    "fieldname": "commandid",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Command ID",
    "options": "\nSalaryPayment\nBusinessPayment\nPromotionPayment",
    "read_only": 1,
@@ -255,6 +259,7 @@
   {
    "fieldname": "occassion",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "Occasion",
    "read_only": 1
   },
@@ -262,7 +267,8 @@
    "allow_on_submit": 1,
    "fieldname": "response_code",
    "fieldtype": "Data",
-   "label": "Response Code"
+   "label": "Response Code",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_dtub",
@@ -272,13 +278,15 @@
    "allow_on_submit": 1,
    "fieldname": "error_code",
    "fieldtype": "Data",
-   "label": "Error Code"
+   "label": "Error Code",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "error_message",
    "fieldtype": "Small Text",
-   "label": "Error Message"
+   "label": "Error Message",
+   "read_only": 1
   },
   {
    "fieldname": "result_details_section",
@@ -289,20 +297,22 @@
    "allow_on_submit": 1,
    "fieldname": "result_desc",
    "fieldtype": "Small Text",
-   "label": "Result Desc"
+   "label": "Result Desc",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
    "fieldname": "request_id",
    "fieldtype": "Data",
-   "label": "Request Id"
+   "label": "Request Id",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-04 16:38:06.299013",
+ "modified": "2025-06-04 18:26:21.136288",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa B2C Request",
