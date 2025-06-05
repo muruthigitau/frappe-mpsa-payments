@@ -30,7 +30,8 @@ def make_b2c_payment_request(request_data: B2CRequestDefinition, doctype: str, d
     try:
 
         callback_url = build_callback_url("frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.b2c_results_callback")
-        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, "Paybill (4091127)")
+        request_doc = frappe.get_doc(MPESA_B2C_REQUEST_DOCTYPE, document_name)
+        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.mpesa_settings)
 
         payload = {
             **request_data.to_dict(), 
