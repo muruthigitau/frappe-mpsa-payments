@@ -422,7 +422,7 @@ class B2CPaymentDisbursement(Document):
         if party_type == "Supplier":
             contact = frappe.db.get_all(
                 "Contact", 
-                filters={"link_name": entry.supplier}, 
+                filters={"link_name": entry.party}, 
                 fields=["phone", "mobile_no"],
                 limit=1
             )
