@@ -108,16 +108,17 @@ def b2c_results_callback(**kwargs):
             docname=request_doc.name
         )
 
-        b2c_disbursement = frappe.get_doc("B2C Payment Disbursement", request_doc.b2c_payment)
-        b2c_disbursement_ref = frappe.get_doc("B2C Payment Disbursement Reference", request_doc.b2c_payment_reference)
+        if str(result_code) == "0":
+            b2c_disbursement = frappe.get_doc("B2C Payment Disbursement", request_doc.b2c_payment)
+            b2c_disbursement_ref = frappe.get_doc("B2C Payment Disbursement Reference", request_doc.b2c_payment_reference)
 
-        frappe.enqueue(
-            "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
-            queue="long",
-            timeout=600,
-            b2c_disbursement=b2c_disbursement,
-            b2c_disbursement_ref=b2c_disbursement_ref
-        )
+            frappe.enqueue(
+                "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
+                queue="long",
+                timeout=600,
+                b2c_disbursement=b2c_disbursement,
+                b2c_disbursement_ref=b2c_disbursement_ref
+            )
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), f"B2C Request Callback Error for ID {originator_conversation_id}")
