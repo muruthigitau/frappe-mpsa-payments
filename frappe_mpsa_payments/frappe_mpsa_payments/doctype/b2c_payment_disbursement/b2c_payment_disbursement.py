@@ -41,18 +41,14 @@ class B2CPaymentDisbursement(Document):
             
             for ref in self.references:
                 ref.payment_status = "Initiated"
-                b2c_request = frappe.get_doc({
-                    "doctype": "Mpesa B2C Request",
-                    "mpesa_settings": setting.name,
-                    "phone_number": ref.partyb,
-                    "amount": ref.allocated_amount,
-                    "b2c_payment": self.name,
-                    "b2c_payment_reference": ref.name,
-                    "reference_doctype": ref.reference_doctype,
-                    "reference_name": ref.reference_name
-                })
-                b2c_request.insert(ignore_permissions=True)
-                b2c_request.submit()
+                frappe.enqueue(
+                    "frappe_mpsa_payments.frappe_mpsa_payments.doctype.b2c_payment_disbursement.b2c_payment_disbursement.create_b2c_request",
+                    queue="short",
+                    timeout=300,
+                    ref=ref,
+                    setting=setting,
+                    b2c_disbursement=self.name
+                )
 
         self.status = "Initiated"
 
@@ -472,3 +468,18 @@ class B2CPaymentDisbursement(Document):
                 allocated_negative_outstanding = flt(allocated_negative_outstanding - abs(ref.allocated_amount), precision)
             else:
                 ref.allocated_amount = 0
+
+def create_b2c_request(ref, setting, b2c_disbursement):
+    b2c_request = frappe.get_doc({
+        "doctype": "Mpesa B2C Request",
+        "mpesa_settings": setting.name,
+        "phone_number": ref.partyb,
+        "amount": ref.allocated_amount,
+        "b2c_payment": b2c_disbursement,
+        "b2c_payment_reference": ref.name,
+        "reference_doctype": ref.reference_doctype,
+        "reference_name": ref.reference_name
+    })
+    b2c_request.insert(ignore_permissions=True)
+    b2c_request.submit()
+    frappe.db.set_value(ref.doctype, ref.name, "mpesa_b2c_request", b2c_request.name)
