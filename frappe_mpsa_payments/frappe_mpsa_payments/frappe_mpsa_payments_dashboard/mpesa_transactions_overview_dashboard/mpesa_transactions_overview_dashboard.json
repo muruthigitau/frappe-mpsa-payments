@@ -2,6 +2,11 @@
  "cards": [],
  "charts": [
   {
+   "chart": "Total Incoming (C2B)",
+   "width": "Half"
+  },
+  {
+   "chart": "Total Incoming (Express)",
    "width": "Half"
   }
  ],
@@ -12,7 +17,7 @@
  "idx": 0,
  "is_default": 0,
  "is_standard": 1,
- "modified": "2025-06-09 22:47:21.787268",
+ "modified": "2025-06-09 22:56:25.020749",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Transactions Overview Dashboard",
