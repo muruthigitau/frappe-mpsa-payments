@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Literal
 
 import frappe
+from frappe.utils import getdate
+from .doctype_names import MPESA_B2C_REQUEST_DOCTYPE
 
 # from .doctype_names import DARAJA_ACCESS_TOKENS_DOCTYPE
 
@@ -58,6 +60,41 @@ def _get_result_param(result: dict, key_name: str) -> str:
         pass
 
     return ""
+
+def update_b2c_reference_status(b2c_request_doc: str) -> None:
+    try:
+        request_doc = frappe.get_doc(MPESA_B2C_REQUEST_DOCTYPE, b2c_request_doc)
+
+        if request_doc.status in ("Paid", "Failed") and request_doc.b2c_payment_reference:
+            update_fields = {
+                "Paid": {
+                    "payment_status": "Paid",
+                    "reference_no": request_doc.transaction_id,
+                    "reference_date": getdate(request_doc.transaction_completed_datetime)
+                },
+                "Failed": {
+                    "payment_status": "Failed"
+                }
+            }.get(request_doc.status)
+
+            frappe.db.set_value(
+                "B2C Payment Disbursement Reference",
+                request_doc.b2c_payment_reference,
+                update_fields
+            )
+
+    except frappe.DoesNotExistError:
+        frappe.log_error(
+            f"Mpesa B2C Payment document '{b2c_request_doc}' not found.",
+            "B2C Reference Status Update Error"
+        )
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(),
+            f"Failed to update B2C Reference status for B2C Payment: {b2c_request_doc}"
+        )
+        raise
+
 
 def update_disbursement_status(b2c_payment_disbursement: str) -> None:
     """

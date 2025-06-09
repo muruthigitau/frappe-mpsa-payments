@@ -10,7 +10,7 @@ import erpnext
 from frappe import _
 from frappe.model.document import Document
 from frappe.integrations.utils import create_request_log
-from frappe.utils import get_request_site_address, nowdate, get_datetime
+from frappe.utils import get_url, nowdate, get_datetime
 from frappe.utils.password import get_decrypted_password
 
 from .payment_entry import create_payment_entry
@@ -20,18 +20,18 @@ from .loan_disbursement import create_loan_disbursement
 from ...utils.doctype_names import MPESA_B2C_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
 from ...utils.definitions import B2CRequestDefinition
 from ...utils.utils import build_callback_url
-from ...utils.helpers import _get_result_param
+from ...utils.helpers import _get_result_param, update_b2c_reference_status
 from ..connectors.connectors import MpesaConnector, update_integration_request
 
 
-def make_b2c_payment_request(request_data: B2CRequestDefinition, doctype: str, document_name: str) -> dict:
+def make_b2c_payment_request(request_data: B2CRequestDefinition, doctype: str, document_name: str, mpesa_settings: str) -> dict:
     """Make a B2C Payment Request."""
 
     try:
 
-        callback_url = build_callback_url("frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.b2c_results_callback")
-        request_doc = frappe.get_doc(MPESA_B2C_REQUEST_DOCTYPE, document_name)
-        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.mpesa_settings)
+        base_url = get_url()
+        callback_url = f"{base_url}/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.b2c_results_callback"
+        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, mpesa_settings)
 
         payload = {
             **request_data.to_dict(), 
@@ -63,33 +63,33 @@ def make_b2c_payment_request(request_data: B2CRequestDefinition, doctype: str, d
 @frappe.whitelist(allow_guest=True)
 def b2c_results_callback(**kwargs):
     """Handle the B2C callback from MPesa API."""
-    result = frappe._dict(kwargs.get("Result", {}))
-    originator_conversation_id = result.get("OriginatorConversationID")
-    result_code = result.get("ResultCode")
-    result_desc = result.get("ResultDesc")
-    transaction_id = result.get("TransactionID")
-    conversation_id = result.get("ConversationID")
-
-    result_parameters = result.get("ResultParameters", {}).get("ResultParameter", [])
-    result_dict = {param["Key"]: param["Value"] for param in result_parameters}
-
-    fields = {
-        "status": "Paid" if str(result_code) == "0" else "Failed",
-        "result_code": result_code,
-        "result_desc": result_desc,
-        "conversation_id": conversation_id,
-        "originator_conversation_id": originator_conversation_id,
-        "transaction_id": transaction_id,
-        "recipient_is_registered_customer": result_dict.get("B2CRecipientIsRegisteredCustomer"),
-        "charges_paid_acct_avlbl_funds": result_dict.get("B2CChargesPaidAccountAvailableFunds"),
-        "receiver_public_name": result_dict.get("ReceiverPartyPublicName"),
-        "transaction_completed_datetime": get_datetime(result_dict.get("TransactionCompletedDateTime"))
-            if result_dict.get("TransactionCompletedDateTime") else None,
-        "utility_acct_avlbl_funds": result_dict.get("B2CUtilityAccountAvailableFunds"),
-        "working_acct_avlbl_funds": result_dict.get("B2CWorkingAccountAvailableFunds"),
-    }
-
     try:
+        result = frappe._dict(kwargs.get("Result", {}))
+        originator_conversation_id = result.get("OriginatorConversationID")
+        result_code = result.get("ResultCode")
+        result_desc = result.get("ResultDesc")
+        transaction_id = result.get("TransactionID")
+        conversation_id = result.get("ConversationID")
+
+        result_parameters = result.get("ResultParameters", {}).get("ResultParameter", [])
+        result_dict = {param["Key"]: param["Value"] for param in result_parameters}
+
+        fields = {
+            "status": "Paid" if str(result_code) == "0" else "Failed",
+            "result_code": result_code,
+            "result_desc": result_desc,
+            "conversation_id": conversation_id,
+            "originator_conversation_id": originator_conversation_id,
+            "transaction_id": transaction_id,
+            "recipient_is_registered_customer": result_dict.get("B2CRecipientIsRegisteredCustomer"),
+            "charges_paid_acct_avlbl_funds": result_dict.get("B2CChargesPaidAccountAvailableFunds"),
+            "receiver_public_name": result_dict.get("ReceiverPartyPublicName"),
+            "transaction_completed_datetime": get_datetime(result_dict.get("TransactionCompletedDateTime"))
+                if result_dict.get("TransactionCompletedDateTime") else None,
+            "utility_acct_avlbl_funds": result_dict.get("B2CUtilityAccountAvailableFunds"),
+            "working_acct_avlbl_funds": result_dict.get("B2CWorkingAccountAvailableFunds"),
+        }
+
         request_doc = frappe.get_doc(
             MPESA_B2C_REQUEST_DOCTYPE,
             {"originator_conversation_id": originator_conversation_id}
@@ -97,9 +97,23 @@ def b2c_results_callback(**kwargs):
 
         for key, value in fields.items():
             if value is not None:
-                # frappe.db.set_value(MPESA_B2C_REQUEST_DOCTYPE, request_doc.name, key, value)
                 setattr(request_doc, key, value)
-        request_doc.save(ignore_permissions=True)
+        
+        try:
+            request_doc.save(ignore_permissions=True)
+        except frappe.UniqueValidationError:
+            frappe.db.set_value(MPESA_B2C_REQUEST_DOCTYPE, request_doc.name, {
+                "status": "Failed"
+            })
+            frappe.log_error(frappe.get_traceback(), f"Duplicate transaction_id for B2C Request {request_doc.name}")
+
+        # update_b2c_reference_status(request_doc)
+        frappe.enqueue(
+            "frappe_mpsa_payments.utils.helpers.update_b2c_reference_status",
+            queue="short",
+            timeout=300,
+            b2c_request_doc=request_doc.name
+        )
 
         frappe.log(f"B2C Request updated for {request_doc.name}")
         frappe.publish_realtime(

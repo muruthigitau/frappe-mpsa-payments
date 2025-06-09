@@ -25,7 +25,9 @@
   "transaction_id_section",
   "reference_no",
   "column_break_hvei",
-  "reference_date"
+  "reference_date",
+  "section_break_apzo",
+  "mpesa_b2c_request"
  ],
  "fields": [
   {
@@ -145,12 +147,26 @@
    "fieldtype": "Link",
    "label": "Currency",
    "options": "Currency"
+  },
+  {
+   "fieldname": "section_break_apzo",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "mpesa_b2c_request",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Mpesa B2C Request",
+   "options": "Mpesa B2C Request",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-04 17:55:56.785709",
+ "modified": "2025-06-05 23:20:35.518252",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement Reference",
