@@ -10,6 +10,26 @@ app_license = "agpl-3.0"
 
 # required_apps = []
 
+
+fixtures = [
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            [
+                "dt",
+                "in",
+                (
+                    "Sales Invoice",
+                    "Sales Invoice Payment",
+                ),
+            ],
+            ["is_system_generated", "=", 0],
+            ["module", "=", "Frappe Mpsa Payments"],
+        ],
+    },
+]
+
+
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
 # 	{

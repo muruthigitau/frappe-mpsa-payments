@@ -528,18 +528,25 @@ def create_and_reconcile_payment_reconciliation(outstanding_invoices, customer, 
 	}
 
 	for invoice in outstanding_invoices:
-		invoice_doc = frappe.get_doc("Sales Invoice", invoice)
-		args["invoices"].append(
-            {
-                "invoice_type": "Sales Invoice",
-                "invoice_number": invoice_doc.get("name"),
-                "invoice_date": invoice_doc.get("posting_date"),
-                "amount": invoice_doc.get("grand_total"),
-                "outstanding_amount": invoice_doc.get("outstanding_amount"),
-                "currency": invoice_doc.get("currency"),
-                "exchange_rate": 0,
-            }
-        )
+
+		invoice_name = invoice.get("voucher_no") if isinstance(invoice, dict) else invoice
+
+		try:
+			invoice_doc = frappe.get_doc("Sales Invoice", invoice_name)
+			args["invoices"].append(
+				{
+					"invoice_type": "Sales Invoice",
+					"invoice_number": invoice_doc.get("name"),
+					"invoice_date": invoice_doc.get("posting_date"),
+					"amount": invoice_doc.get("grand_total"),
+					"outstanding_amount": invoice_doc.get("outstanding_amount"),
+					"currency": invoice_doc.get("currency"),
+					"exchange_rate": 0,
+				}
+			)
+		except Exception as e:
+			frappe.log_error(f"Failed to process invoice {invoice_name}: {str(e)}")
+			continue
 
 	
 	for payment_entry in payment_entries:
@@ -557,9 +564,14 @@ def create_and_reconcile_payment_reconciliation(outstanding_invoices, customer, 
 			}
 		)
 
-	reconcile_doc.allocate_entries(args)
-	reconcile_doc.reconcile()
-	frappe.db.commit()
+
+	try:
+		reconcile_doc.allocate_entries(args)
+		reconcile_doc.reconcile()
+		frappe.db.commit()
+	except Exception as e:
+		frappe.log_error(f"Reconciliation failed: {str(e)}")
+		frappe.throw(_("Reconciliation failed: {0}").format(str(e)))
 
 @frappe.whitelist()
 def process_mpesa_c2b_reconciliation(mpesa_names, invoice_names):

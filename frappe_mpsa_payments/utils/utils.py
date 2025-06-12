@@ -2,12 +2,13 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Generator
 
+import re
 import frappe
 from frappe import _
 from urllib.parse import urlparse
 from frappe.utils import get_request_site_address
 
-from .doctype_names import ACCESS_TOKENS_DOCTYPE
+from .doctype_names import ACCESS_TOKENS_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
 
 
 def create_payment_gateway(
@@ -146,13 +147,68 @@ def build_callback_url(endpoint: str) -> str:
 
     return f"{base_url}/api/method/{endpoint}"
 
-@frappe.whitelist()
-def get_mode_of_payment_account(mode_of_payment: str, company: str) -> str:
-	return frappe.db.get_value(
-		"Mode of Payment Account",
-		{
-			"parent": mode_of_payment,
-			"company": company
-		},
-		"default_account"
-	)
+def log_and_throw_error(err_msg, context=None):
+    frappe.log_error(frappe.get_traceback(), err_msg)
+    if context:
+        frappe.throw(_(f"{err_msg}: {context}"))
+
+def handle_successful_transaction(request_doc, metadata_dict, settings, checkout_request_id):
+    """Handle actions for a successful transaction"""
+    if request_doc.reference_doctype == "Payment Request":
+        payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
+        try:
+            payment_request.create_payment_entry()
+        except Exception:
+            log_and_throw_error("Payment Entry Creation Error", checkout_request_id)
+
+        try:
+            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
+                from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+                si = make_sales_invoice(payment_request.reference_name, ignore_permissions=True)
+                si.allocate_advances_automatically = True
+                si = si.insert(ignore_permissions=True)
+                si.submit()
+        except Exception:
+            log_and_throw_error("Sales Invoice Creation Error", checkout_request_id)
+
+        frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
+
+    elif request_doc.reference_doctype == "Sales Invoice":          
+        sales_invoice = frappe.get_doc("Sales Invoice", request_doc.reference_name)
+        try:
+            payment_row = sales_invoice.append("payments", {})
+            payment_row.amount = float(metadata_dict.get("Amount", 0))
+            payment_row.mode_of_payment = request_doc.payment_gateway
+            payment_row.reference_no = metadata_dict.get("MpesaReceiptNumber")
+            payment_row.clearance_date = frappe.utils.nowdate()
+            sales_invoice.save(ignore_permissions=True)
+        except Exception:
+            log_and_throw_error("Payment Creation Error", checkout_request_id)
+            
+    elif request_doc.reference_doctype == "Sales Invoice Payment":    
+        try:
+            frappe.db.set_value(
+                "Sales Invoice Payment",
+                request_doc.reference_name,
+                {
+                    "reference_no": metadata_dict.get("MpesaReceiptNumber"),
+                },
+            )
+        except Exception:
+            log_and_throw_error("Sales Invoice Payment Update Error", checkout_request_id)  
+
+
+def update_mpesa_request_status(name, status_data):
+    """Update the Mpesa Express Request DocType with callback status"""
+    frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, name, status_data)
+    frappe.publish_realtime(event="refresh_form", doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=name)
+
+def validate_phone_number(phone_number):
+    if not phone_number or len(phone_number) < 9: 
+        return False
+        
+    number = phone_number.strip().replace(" ", "")
+    if not re.match(r"^(?:\+254|254|0)(7\d{8}|1\d{8})$", number):
+        return False
+    
+    return True

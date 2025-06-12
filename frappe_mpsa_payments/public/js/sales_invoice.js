@@ -1,4 +1,39 @@
 frappe.ui.form.on("Sales Invoice", {
+  refresh(frm) {
+    if (frm.doc.is_pos || frm.doc.docstatus === 0) {
+      if (frm.doc.outstanding_amount > 0) {
+        frappe.call({
+          method:
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.sales_invoice.validate_stk_push_eligibility",
+          args: {
+            docname: frm.doc.name,
+            doctype: "Sales Invoice",
+          },
+          callback: function (response) {
+            if (response.message && response.message.eligible) {
+              frm.add_custom_button(
+                __("Initiate STK Push"),
+                function () {
+                  open_stk_push_dialog(frm, response.message.amount);
+                },
+                __("Mpesa Actions")
+              );
+            }
+          },
+        });
+      }
+    }
+    setup_stk_push_button_logic(frm);
+  },
+
+  onload_post_render: function (frm) {
+    setup_stk_push_button_logic(frm);
+  },
+
+  payment: function (frm) {
+    setup_stk_push_button_logic(frm);
+  },
+
   mpesa_payments: function (frm) {
     frm.trigger("open_mpesa_payment_modal");
   },
@@ -126,21 +161,192 @@ frappe.ui.form.on("Sales Invoice", {
     });
   },
 
-  insert_payment_entry: function(frm) {
+  insert_payment_entry: function (frm) {
     frappe.call({
-        method: 'frappe.client.insert',
-        args: {
-            doc: {
-                doctype: 'Payment Entry',
-                payment_type: 'Receive',
-                party_type: 'Customer',
-                party: frm.doc.customer,
-                paid_to: 'Cash',
-                reference_no: payment_response['MpesaReceiptNumber'],
-                amount: frm.doc.grand_total,
-                
-            }
-        }
-    })
-  }
+      method: "frappe.client.insert",
+      args: {
+        doc: {
+          doctype: "Payment Entry",
+          payment_type: "Receive",
+          party_type: "Customer",
+          party: frm.doc.customer,
+          paid_to: "Cash",
+          reference_no: payment_response["MpesaReceiptNumber"],
+          amount: frm.doc.grand_total,
+        },
+      },
+    });
+  },
 });
+
+frappe.ui.form.on("Sales Invoice Payment", {
+  type: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
+  reference_no: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
+  payment_type: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
+  payment_gateway: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
+  mode_of_payment: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
+});
+
+function setup_stk_push_button_logic(frm) {
+  const child_table = frm.doc.payments || [];
+
+  child_table.forEach((row) => {
+    const cdt = "Sales Invoice Payment";
+    const cdn = row.name;
+
+    if (row.type === "Phone" && !row.reference_no) {
+      frappe.model.set_value(
+        cdt,
+        cdn,
+        "initiate_stk_push",
+        `
+        <div style="margin-top:5px;">
+          <button class="btn btn-primary btn-xs stk-button" data-row-name="${cdn}">
+            Initiate STK Push
+          </button>
+        </div>
+      `
+      );
+    } else {
+      frappe.model.set_value(cdt, cdn, "initiate_stk_push", "");
+    }
+  });
+
+  setTimeout(() => {
+    frm.fields_dict.payments.grid.grid_rows.forEach((grid_row) => {
+      const $btn = $(grid_row.wrapper).find(".stk-button");
+
+      $btn.off("click").on("click", function () {
+        const row_name = $(this).data("row-name");
+        const row = frm.doc.payments.find((r) => r.name === row_name);
+
+        if (row) {
+          initiate_stk_push_child(frm, row);
+        }
+      });
+    });
+  }, 300);
+}
+
+function initiate_stk_push_child(frm, row) {
+  if (row.type !== "Phone") {
+    frappe.msgprint(__("STK Push is only allowed for Phone type payments."));
+    return;
+  }
+
+  if (!row.phone_number) {
+    frappe.msgprint(__("Please enter a phone number to initiate STK Push."));
+    return;
+  }
+
+  frappe.call({
+    method:
+      "frappe_mpsa_payments.frappe_mpsa_payments.api.sales_invoice.get_stk_amount",
+    args: {
+      payment_name: row.name,
+      company: frm.doc.company,
+    },
+    callback(amount_res) {
+      const final_amount = amount_res.message;
+
+      if (!final_amount) {
+        frappe.msgprint(
+          __(
+            "STK Push is only supported for KES payments or if company's default currency is KES."
+          )
+        );
+        return;
+      }
+
+      frappe.call({
+        method:
+          "frappe_mpsa_payments.frappe_mpsa_payments.api.sales_invoice.initiate_row_stk_push",
+        args: {
+          name: row.name,
+          phone_number: row.phone_number,
+          amount: final_amount,
+          mode_of_payment: row.mode_of_payment,
+          company: frm.doc.company,
+        },
+        callback(r) {
+          if (!r.exc) {
+            frappe.msgprint(__("STK Push initiated successfully."));
+            frm.refresh();
+
+            setup_stk_push_button_logic(frm);
+          }
+        },
+      });
+    },
+  });
+}
+
+function open_stk_push_dialog(frm, amount) {
+  const dialog = new frappe.ui.Dialog({
+    title: __("Initiate STK Push"),
+    fields: [
+      {
+        fieldname: "phone_number",
+        label: "Phone Number",
+        fieldtype: "Data",
+        reqd: 1,
+        options: "Phone",
+      },
+      {
+        fieldname: "amount",
+        label: "Amount (KES)",
+        fieldtype: "Currency",
+        default: amount,
+        reqd: 1,
+      },
+      {
+        fieldname: "mode_of_payment",
+        label: "Mode of Payment",
+        fieldtype: "Link",
+        options: "Mode of Payment",
+        get_query: function () {
+          return {
+            filters: {
+              type: "Phone",
+            },
+          };
+        },
+        reqd: 1,
+      },
+    ],
+    primary_action_label: "Send STK Push",
+    primary_action(values) {
+      frappe.call({
+        method:
+          "frappe_mpsa_payments.frappe_mpsa_payments.api.sales_invoice.initiate_invoice_stk_push",
+        args: {
+          invoice: frm.doc.name,
+          phone_number: values.phone_number,
+          amount: values.amount,
+          mode_of_payment: values.mode_of_payment,
+          company: frm.doc.company,
+          type: "Sales Invoice",
+        },
+        callback(r) {
+          if (!r.exc) {
+            frappe.msgprint(__("STK Push initiated successfully."));
+            dialog.hide();
+            frm.refresh();
+          }
+        },
+      });
+    },
+  });
+
+  dialog.show();
+}

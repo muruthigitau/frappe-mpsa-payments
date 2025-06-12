@@ -1,5 +1,10 @@
 import frappe
 from frappe.utils import now_datetime, cint
+from ...utils.utils import (
+    log_and_throw_error,
+    update_mpesa_request_status,
+    handle_successful_transaction,
+)
 
 from ...utils.doctype_names import MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE, MPESA_B2C_REQUEST_DOCTYPE
 from ...utils.helpers import _get_result_param
@@ -7,52 +12,34 @@ from ...utils.helpers import _get_result_param
 
 def balance_query_on_success(response: dict, document_name: str, **kwargs) -> None:
     pass
-        
-        
+
+
 def transaction_status_on_success(response: dict, document_name: str, **kwargs) -> None:
     try:
-        result_code = response.get("ResultCode")
-        result_desc = response.get("ResultDesc")
-        merchant_request_id = response.get("MerchantRequestID")
-        checkout_request_id = response.get("CheckoutRequestID")
-        response_code = response.get("ResponseCode")
-        response_description = response.get("ResponseDescription")
-        status = "Completed" if result_code == "0" else "Failed"
+        frappe.set_user("Administrator")
 
-        # Fetch the current status from the database
+        result_code = response.get("ResultCode")
+        status = "Completed" if result_code == "0" else "Failed"
+        metadata_dict = kwargs.get("metadata", {})
+
         request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, document_name)
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
-        
 
-        # Only proceed if the new status is "Completed" and it's a change from the current status
-        if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
-            payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
-            try:
-                payment_request.create_payment_entry()
-            except Exception:
-                frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {document_name}")
-            
-            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-                payment_request.make_invoice()
-                
-            frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
+        if status == "Completed" and request_doc.status != "Completed":
+            handle_successful_transaction(request_doc, metadata_dict, settings, response.get("CheckoutRequestID"))
 
-        # Update the database record
-        frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, document_name, {
+        update_mpesa_request_status(document_name, {
             "result_code": result_code,
-            "result_desc": result_desc,
-            "merchant_request_id": merchant_request_id,
-            "checkout_request_id": checkout_request_id,
-            "response_code": response_code,
-            "response_description": response_description,
-            "status": status
+            "result_desc": response.get("ResultDesc"),
+            "merchant_request_id": response.get("MerchantRequestID"),
+            "checkout_request_id": response.get("CheckoutRequestID"),
+            "response_code": response.get("ResponseCode"),
+            "response_description": response.get("ResponseDescription"),
+            "status": status,
         })
 
-        # Publish an event to refresh the form
-        frappe.publish_realtime(event='refresh_form', doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=document_name)
-
     except Exception:
-        frappe.log_error(frappe.get_traceback(), f"MPESA Transaction Status Update Error: {document_name}")
+        log_and_throw_error("MPESA Transaction Status Update Error", document_name)
 
 
 def stk_push_on_success(response: dict, payload: dict, document_name: str, **kwargs) -> None:
