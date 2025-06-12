@@ -143,7 +143,8 @@ class MpesaSettings(Document):
         args = frappe._dict(kwargs)
         request_amounts = self.split_request_amount_according_to_transaction_limit(args)
         phone_number = args.get("phone_number")
-        if not phone_number:
+        
+        if not validate_phone_number(phone_number) :
             sender = args.get("sender", "")
             if isinstance(sender, str) and sender and (sender.startswith(("0", "254", "+", "7", "1"))):
                 phone_number = sender
@@ -151,7 +152,6 @@ class MpesaSettings(Document):
             frappe.throw(_("A valid phone number is required for Mpesa payment."))
         else:
             phone_number = sanitize_mobile_number(phone_number)
-            validate_phone_number(phone_number)
             
         for i, amount in enumerate(request_amounts):
             args.request_amount = amount
