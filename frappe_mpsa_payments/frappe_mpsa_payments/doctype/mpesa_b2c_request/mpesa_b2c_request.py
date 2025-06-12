@@ -85,7 +85,9 @@ class MpesaB2CRequest(Document):
         return True
     
     def _process_mpesa_b2c_request(self, only_failed=False, is_retry=False) -> bool:
-        if only_failed and self.payment_status != "Failed":
+        any_errors = False
+
+        if only_failed and self.status != "Failed":
             return False
 
         if is_retry:
@@ -99,13 +101,13 @@ class MpesaB2CRequest(Document):
         return any_errors
 
     @frappe.whitelist()
-    def retry_failed_payments(self) -> None:
+    def retry_failed_payment(self) -> None:
         """Retry only failed payments"""
 
         any_errors = self._process_mpesa_b2c_request(only_failed=True, is_retry=True)
 
         frappe.msgprint(
-            msg="Some B2C Payment retries failed. Please Retry." if any_errors else "Payment Request Initiated.",
+            msg="B2C Payment request retry failed. Please Retry." if any_errors else "B2C Payment Request Initiated.",
             title="Payment Request Error" if any_errors else "Payment Request",
             indicator="red" if any_errors else "green"
         )

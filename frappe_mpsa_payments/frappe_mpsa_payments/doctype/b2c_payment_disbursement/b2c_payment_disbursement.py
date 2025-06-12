@@ -119,6 +119,23 @@ class B2CPaymentDisbursement(Document):
         return setting
 
     @frappe.whitelist()
+    def retry_failed_payments(self) -> None:
+        """Retry failed B2C Payment References"""
+
+        for ref in self.references:
+            if ref.payment_status == "Failed" and ref.mpesa_b2c_request:
+                try:
+                    b2c_request = frappe.get_doc("Mpesa B2C Request", ref.mpesa_b2c_request)
+                    if b2c_request.status == "Failed":
+                        b2c_request.retry_failed_payment()
+                except Exception as e:
+                    frappe.log_error(
+                        f"Retry error for B2C Request {ref.mpesa_b2c_request}: {str(e)}",
+                        "Retry Failed Payments Error"
+                    )
+
+
+    @frappe.whitelist()
     def get_outstanding_reference_documents(self, args: Dict) -> List[Dict]:
         """
         Fetch outstanding references based on filters.
