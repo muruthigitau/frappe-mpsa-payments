@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 import frappe
-from frappe.utils import getdate
+from frappe.utils import getdate, now
 from .doctype_names import MPESA_B2C_REQUEST_DOCTYPE
 
 # from .doctype_names import DARAJA_ACCESS_TOKENS_DOCTYPE
@@ -94,3 +94,36 @@ def update_b2c_reference_status(b2c_request_doc: str) -> None:
             f"Failed to update B2C Reference status for B2C Payment: {b2c_request_doc}"
         )
         raise
+
+def update_b2c_disbursement_statuses():
+    """
+    Scheduler job to update B2C Payment Disbursement statuses every 30 mins.
+    Only attempts update if retry_count <= 3.
+    """
+    try:
+        disbursements = frappe.get_all(
+            "B2C Payment Disbursement",
+            filters={
+                "docstatus": 1,
+                "retry_count": ["<=", 3],
+                "status": ["not in",["Paid", "Not Initiated"]],
+            },
+            fields=["name", "retry_count"]
+        )
+
+        for dis in disbursements:
+            try:
+                doc = frappe.get_doc("B2C Payment Disbursement", dis.name)
+                result = doc.update_disbursement_status()
+
+                doc.retry_count += 1
+                doc.last_status_check = now()
+                doc.save(ignore_permissions=True, update_modified=False)
+                frappe.db.commit()
+
+                frappe.log(f"[B2C Status Update] {dis.name} : {result}")
+
+            except Exception as e:
+                frappe.log_error(frappe.get_traceback(), f"[B2C Status Update Error] {dis.name}")
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Failed to update B2C Disbursement statuses")

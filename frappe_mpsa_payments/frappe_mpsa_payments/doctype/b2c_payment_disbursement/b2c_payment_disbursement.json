@@ -270,16 +270,17 @@
   {
    "fieldname": "more_info_section",
    "fieldtype": "Section Break",
-   "hidden": 1,
    "label": "More Info",
    "read_only": 1
   },
   {
    "allow_on_submit": 1,
+   "default": "0",
    "fieldname": "retry_count",
    "fieldtype": "Int",
    "hidden": 1,
-   "label": "Retry Count"
+   "label": "Retry Count",
+   "print_hide": 1
   },
   {
    "fieldname": "column_break_rpjq",
@@ -290,7 +291,8 @@
    "fieldname": "last_status_check",
    "fieldtype": "Datetime",
    "hidden": 1,
-   "label": "Last Status Check"
+   "label": "Last Status Check",
+   "print_hide": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -302,7 +304,7 @@
    "link_fieldname": "b2c_payment"
   }
  ],
- "modified": "2025-06-12 20:22:27.928020",
+ "modified": "2025-06-12 21:04:22.146671",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",

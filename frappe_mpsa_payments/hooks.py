@@ -149,23 +149,13 @@ doctype_js = {"Sales Invoice": "public/js/sales_invoice.js"}
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"frappe_mpsa_payments.tasks.all"
-# 	],
-# 	"daily": [
-# 		"frappe_mpsa_payments.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"frappe_mpsa_payments.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"frappe_mpsa_payments.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"frappe_mpsa_payments.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+    "cron": {
+        "*/15 * * * *": [
+            "frappe_mpsa_payments.utils.helpers.update_b2c_disbursement_statuses"
+        ]
+    }
+}
 
 # Testing
 # -------
