@@ -86,10 +86,12 @@ def get_data(filters):
             posting_date DESC
     """
 
-    # TODO: Remove this print statement
+    # TODO: Remove this
     print("Executing query:", query)
 
     data = frappe.db.sql(query, values, as_dict=True)
+
+    print("Data fetched:", data)
     return data
 
 
@@ -107,6 +109,7 @@ def get_conditions(filters):
     # Status filter (Draft/Submitted/Cancelled)
     if filters.get("status"):
         print("Applying status filter:", filters["status"])
+
         status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
         docstatus = status_map.get(filters["status"])
         if docstatus is not None:
