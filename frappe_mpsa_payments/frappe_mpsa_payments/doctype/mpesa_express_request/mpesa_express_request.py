@@ -18,7 +18,10 @@ class MpesaExpressRequest(Document):
         if self.reference_doctype == "Payment Request":
             self.validate_payment_request_amount()
 
-        validate_phone_number(self.phone_number)
+        if not validate_phone_number(self.phone_number):
+            frappe.throw(
+                "Invalid phone number format. Please ensure it is in the correct format, e.g., 254712345678."
+            )
 
 
     def validate_payment_request_amount(self):
@@ -26,10 +29,6 @@ class MpesaExpressRequest(Document):
         currency = payment_request.currency
         company = payment_request.company
         company_currency = frappe.db.get_value("Company", company, "default_currency")
-        
-        if not payment_request.phone_number:
-            frappe.throw("Phone number is required in the Payment Request to initiate STK Push.")
-        self.phone_number = payment_request.phone_number.strip().replace(" ", "")
 
         if currency != "KES":
             if payment_request.reference_doctype and payment_request.reference_name:
