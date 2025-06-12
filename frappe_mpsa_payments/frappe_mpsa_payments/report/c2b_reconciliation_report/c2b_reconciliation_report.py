@@ -71,20 +71,23 @@ def get_data(filters):
     where_clause, values = get_conditions(filters or {})
 
     query = f"""
-		SELECT
-			posting_date,
-			transactiontype,
-			company,
-			transid,
-			transtime,
-			transamount
-		FROM
-			`tabMpesa C2B Payment Register`
-		WHERE
-			{where_clause}
-		ORDER BY
-			posting_date DESC
-	"""
+        SELECT
+            posting_date,
+            transactiontype,
+            company,
+            transid,
+            transtime,
+            transamount
+        FROM
+            `tabMpesa C2B Payment Register`
+        WHERE
+            {where_clause}
+        ORDER BY
+            posting_date DESC
+    """
+
+    # TODO: Remove this print statement
+    print("Executing query:", query)
 
     data = frappe.db.sql(query, values, as_dict=True)
     return data
@@ -96,11 +99,14 @@ def get_conditions(filters):
 
     # Posting Date filter
     if filters.get("posting_date"):
+        print("Applying posting_date filter:", filters["posting_date"])
         conditions.append("posting_date = %(posting_date)s")
+        print("Filter conditions:", conditions)
         values["posting_date"] = filters["posting_date"]
 
     # Status filter (Draft/Submitted/Cancelled)
     if filters.get("status"):
+        print("Applying status filter:", filters["status"])
         status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
         docstatus = status_map.get(filters["status"])
         if docstatus is not None:
