@@ -1,0 +1,40 @@
+{
+ "cards": [
+  {
+   "card": "Total Received C2B"
+  },
+  {
+   "card": "Total Disbursed B2C"
+  }
+ ],
+ "charts": [
+  {
+   "chart": "Total Incoming (C2B)",
+   "width": "Half"
+  },
+  {
+   "chart": "Total Incoming (Express)",
+   "width": "Half"
+  },
+  {
+   "chart": "Total Outgoing (B2C)",
+   "width": "Half"
+  },
+  {
+   "chart": "Mpesa Trend",
+   "width": "Half"
+  }
+ ],
+ "creation": "2025-06-09 22:47:21.787268",
+ "dashboard_name": "Mpesa Transactions Overview Dashboard",
+ "docstatus": 0,
+ "doctype": "Dashboard",
+ "idx": 0,
+ "is_default": 0,
+ "is_standard": 1,
+ "modified": "2025-06-09 23:21:10.553825",
+ "modified_by": "Administrator",
+ "module": "Frappe Mpsa Payments",
+ "name": "Mpesa Transactions Overview Dashboard",
+ "owner": "Administrator"
+}
