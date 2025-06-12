@@ -38,7 +38,11 @@
   "payment_status",
   "status",
   "column_break_oy1c",
-  "amended_from"
+  "amended_from",
+  "more_info_section",
+  "retry_count",
+  "column_break_rpjq",
+  "last_status_check"
  ],
  "fields": [
   {
@@ -262,6 +266,31 @@
    "fieldname": "payment_type_section",
    "fieldtype": "Section Break",
    "label": "Type of Payment"
+  },
+  {
+   "fieldname": "more_info_section",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "More Info",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "retry_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Retry Count"
+  },
+  {
+   "fieldname": "column_break_rpjq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "last_status_check",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Last Status Check"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -273,7 +302,7 @@
    "link_fieldname": "b2c_payment"
   }
  ],
- "modified": "2025-06-04 19:11:52.165633",
+ "modified": "2025-06-12 20:22:27.928020",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",

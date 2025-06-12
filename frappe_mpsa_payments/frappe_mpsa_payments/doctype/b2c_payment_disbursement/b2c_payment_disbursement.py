@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import flt, getdate, nowdate, now
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.party import get_party_account
@@ -134,6 +134,41 @@ class B2CPaymentDisbursement(Document):
                         "Retry Failed Payments Error"
                     )
 
+    @frappe.whitelist()
+    def update_disbursement_status(self) -> None:
+        """
+        Update the B2C Payment Disbursement status based on all its child reference payment statuses.
+        Called from a background job to avoid contention and db locks.
+        """
+
+        try:
+            references = self.references
+
+            total = len(references)
+            paid = sum(1 for ref in references if ref.payment_status == "Paid")
+            failed = sum(1 for ref in references if ref.payment_status == "Failed")
+
+            new_status = "Not Initiated"
+            if paid == total and total > 0:
+                new_status = "Paid"
+            elif failed == total and total > 0:
+                new_status = "Failed"
+            elif paid or failed:
+                new_status = "Partially Paid"
+            elif total > 0:
+                new_status = "Initiated"
+
+            if new_status != self.status:
+                self.status = new_status
+                self.last_status_check = now()
+                self.save()
+                return f"Status updated to {new_status}"
+            else:
+                return f"No status change. Current status: {self.status}"
+
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), f"Error updating B2C Payment Disbursement status for {self.name}")
+            frappe.throw(f"Failed to update status")
 
     @frappe.whitelist()
     def get_outstanding_reference_documents(self, args: Dict) -> List[Dict]:

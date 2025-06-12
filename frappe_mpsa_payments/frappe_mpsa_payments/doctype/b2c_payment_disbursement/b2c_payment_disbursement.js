@@ -169,7 +169,23 @@ frappe.ui.form.on("B2C Payment Disbursement", {
               });
             }
           );
-        });
+        }, "Actions");
+      }
+
+      if (frm.doc.docstatus === 1 && !["Paid", "Not Initiated"].includes(frm.doc.status)) {
+        frm.add_custom_button(__("Update B2C Status"), () => {
+          frappe.call({
+            method: "update_disbursement_status",
+            doc: frm.doc,
+            args: {},
+            callback: function(r) {
+              if (r.message) {
+                frappe.msgprint(r.message);
+                frm.reload_doc();
+              }
+            }
+          })
+        }, "Actions")
       }
     },
 
