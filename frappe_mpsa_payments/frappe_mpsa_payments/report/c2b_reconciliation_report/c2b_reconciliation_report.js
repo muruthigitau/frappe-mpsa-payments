@@ -24,18 +24,18 @@ frappe.query_reports['C2B Reconciliation Report'] = {
     },
   ],
   formatter: function (value, row, column, data, default_formatter) {
-	value = default_formatter(value, row, column, data);
-	if (column.fieldname === 'status') {
-	  const colorMap = {
-		'Submitted': 'green',
-		'Cancelled': 'red',
-		'Draft': 'orange'
-	  };
-	  const color = colorMap[value];
-	  if (color) {
-		value = `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
-	  }
-	}
-	return value;
+    value = default_formatter(value, row, column, data);
+    if (column.fieldname === 'status') {
+      const colorMap = {
+        Submitted: 'green',
+        Cancelled: 'red',
+        Draft: 'orange',
+      };
+      const color = colorMap[value];
+      if (color) {
+        value = `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
+      }
+    }
+    return value;
   },
 };
