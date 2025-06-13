@@ -102,6 +102,9 @@ def apply_filters(query, MpesaC2B, filters):
     if filters.get("end_date"):
         query = query.where(MpesaC2B.posting_date <= filters["end_date"])
 
+    if filters.get("company"):
+        query = query.where(MpesaC2B.company == filters["company"])
+
     if filters.get("status"):
         status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
         docstatus = status_map.get(filters["status"])

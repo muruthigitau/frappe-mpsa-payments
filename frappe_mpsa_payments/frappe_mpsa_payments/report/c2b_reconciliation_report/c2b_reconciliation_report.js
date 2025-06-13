@@ -16,6 +16,13 @@ frappe.query_reports['C2B Reconciliation Report'] = {
       reqd: 1,
     },
     {
+      fieldname: 'company',
+      fieldtype: 'Link',
+      label: __('Company'),
+      options: 'Company',
+      reqd: 0,
+    },
+    {
       fieldname: 'status',
       fieldtype: 'Select',
       label: __('Status'),
