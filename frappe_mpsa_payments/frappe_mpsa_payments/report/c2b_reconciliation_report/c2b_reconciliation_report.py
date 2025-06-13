@@ -2,11 +2,17 @@
 # For license information, please see license.txt
 
 import frappe
+from datetime import datetime
 
 
 def execute(filters=None):
     columns = get_columns()
     data = get_data(filters)
+
+    # TODO: Delete this print statement after debugging
+    for row in data:
+        print("Status row: ", row["status"])
+        print("Payment Entry row: ", row.get("payment_entry", "No Payment Entry"))
 
     return columns, data
 
@@ -40,22 +46,10 @@ def get_columns():
             "width": 150,
         },
         {
-            "fieldname": "transtime",
-            "fieldtype": "Data",
-            "label": "Trans Time",
-            "width": 150,
-        },
-        {
             "fieldname": "transamount",
             "fieldtype": "Float",
             "label": "Trans Amount",
             "width": 150,
-        },
-        {
-            "fieldname": "docstatus",
-            "fieldtype": "Int",
-            "label": "Docstatus",
-            "width": 100,
         },
         {
             "fieldname": "payment_entry",
@@ -63,6 +57,12 @@ def get_columns():
             "label": "Payment Entry",
             "options": "Payment Entry",
             "width": 180,
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Data",
+            "label": "Status",
+            "width": 100,
         },
     ]
 
@@ -76,8 +76,9 @@ def get_data(filters):
             transactiontype,
             company,
             transid,
-            transtime,
-            transamount
+            transamount,
+            payment_entry,
+            docstatus
         FROM
             `tabMpesa C2B Payment Register`
         WHERE
@@ -86,12 +87,20 @@ def get_data(filters):
             posting_date DESC
     """
 
-    # TODO: Remove this
-    print("Executing query:", query)
-
     data = frappe.db.sql(query, values, as_dict=True)
 
-    print("Data fetched:", data)
+    # Map docstatus values to human-readable strings
+    status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
+
+    for row in data:
+        row["docstatus"] = status_map.get(row["docstatus"], "Unknown")
+        print("Docstatus row should show: ", row["docstatus"])
+        row["status"] = row["docstatus"]
+
+        # print("Status field should show: ", row["status"])
+        payment_entry = row.get("payment_entry", "None")
+        # print("Payment Entry: ", row.get("payment_entry", "No Payment Entry"))
+
     return data
 
 
@@ -101,15 +110,11 @@ def get_conditions(filters):
 
     # Posting Date filter
     if filters.get("posting_date"):
-        print("Applying posting_date filter:", filters["posting_date"])
         conditions.append("posting_date >= %(posting_date)s")
-        print("Filter conditions:", conditions)
         values["posting_date"] = filters["posting_date"]
 
     # Status filter (Draft/Submitted/Cancelled)
     if filters.get("status"):
-        print("Applying status filter:", filters["status"])
-
         status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
         docstatus = status_map.get(filters["status"])
         if docstatus is not None:
