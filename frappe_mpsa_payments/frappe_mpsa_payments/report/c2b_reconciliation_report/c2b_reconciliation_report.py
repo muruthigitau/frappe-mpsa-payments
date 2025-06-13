@@ -102,7 +102,7 @@ def get_conditions(filters):
     # Posting Date filter
     if filters.get("posting_date"):
         print("Applying posting_date filter:", filters["posting_date"])
-        conditions.append("posting_date = %(posting_date)s")
+        conditions.append("posting_date >= %(posting_date)s")
         print("Filter conditions:", conditions)
         values["posting_date"] = filters["posting_date"]
 
