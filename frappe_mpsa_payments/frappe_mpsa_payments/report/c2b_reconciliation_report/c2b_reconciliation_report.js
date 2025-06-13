@@ -7,12 +7,14 @@ frappe.query_reports['C2B Reconciliation Report'] = {
       fieldname: 'start_date',
       fieldtype: 'Date',
       label: __('Start Date'),
+      default: frappe.datetime.add_days(frappe.datetime.get_today(), -30),
       reqd: 1,
     },
     {
       fieldname: 'end_date',
       fieldtype: 'Date',
       label: __('End Date'),
+      default: frappe.datetime.get_today(),
       reqd: 1,
     },
     {
@@ -20,7 +22,8 @@ frappe.query_reports['C2B Reconciliation Report'] = {
       fieldtype: 'Link',
       label: __('Company'),
       options: 'Company',
-      reqd: 0,
+      default: frappe.defaults.get_user_default('Company'),
+      reqd: 1,
     },
     {
       fieldname: 'status',
