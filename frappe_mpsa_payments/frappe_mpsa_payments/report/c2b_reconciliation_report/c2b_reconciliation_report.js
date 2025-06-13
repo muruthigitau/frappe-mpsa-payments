@@ -4,9 +4,15 @@
 frappe.query_reports['C2B Reconciliation Report'] = {
   filters: [
     {
-      fieldname: 'posting_date',
+      fieldname: 'start_date',
       fieldtype: 'Date',
-      label: __('Posting Date'),
+      label: __('Start Date'),
+      reqd: 1,
+    },
+    {
+      fieldname: 'end_date',
+      fieldtype: 'Date',
+      label: __('End Date'),
       reqd: 1,
     },
     {

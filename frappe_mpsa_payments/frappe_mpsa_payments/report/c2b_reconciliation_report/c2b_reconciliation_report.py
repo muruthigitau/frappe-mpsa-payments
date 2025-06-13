@@ -96,8 +96,11 @@ def apply_filters(query, MpesaC2B, filters):
     if not filters:
         return query
 
-    if filters.get("posting_date"):
-        query = query.where(MpesaC2B.posting_date >= filters["posting_date"])
+    if filters.get("start_date"):
+        query = query.where(MpesaC2B.posting_date >= filters["start_date"])
+
+    if filters.get("end_date"):
+        query = query.where(MpesaC2B.posting_date <= filters["end_date"])
 
     if filters.get("status"):
         status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
