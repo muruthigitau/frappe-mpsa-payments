@@ -152,7 +152,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       let has_failed_references = frm.doc.references.some(reference => reference.payment_status === "Failed");
 
       if (has_failed_references && frm.doc.docstatus === 1) {
-        frm.add_custom_button(__("Retry Failed Disbursements"), function() {
+        frm.add_custom_button(__("Retry Failed Transactions"), function() {
           frappe.confirm(
             'Retry failed disbursements?',
             function() {
@@ -173,7 +173,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       }
 
       if (frm.doc.docstatus === 1 && !["Paid", "Not Initiated"].includes(frm.doc.status)) {
-        frm.add_custom_button(__("Update B2C Status"), () => {
+        frm.add_custom_button(__("Check Latest Payment Status"), () => {
           frappe.call({
             method: "update_disbursement_status",
             doc: frm.doc,

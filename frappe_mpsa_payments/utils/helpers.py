@@ -116,11 +116,6 @@ def update_b2c_disbursement_statuses():
                 doc = frappe.get_doc("B2C Payment Disbursement", dis.name)
                 result = doc.update_disbursement_status()
 
-                doc.retry_count += 1
-                doc.last_status_check = now()
-                doc.save(ignore_permissions=True, update_modified=False)
-                frappe.db.commit()
-
                 frappe.log(f"[B2C Status Update] {dis.name} : {result}")
 
             except Exception as e:

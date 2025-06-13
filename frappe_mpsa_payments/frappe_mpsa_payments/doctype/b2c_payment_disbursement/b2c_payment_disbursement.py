@@ -158,13 +158,25 @@ class B2CPaymentDisbursement(Document):
             elif total > 0:
                 new_status = "Initiated"
 
+            self.retry_count += 1
+            self.last_status_check = now()
+            
             if new_status != self.status:
+                old_status = self.status
                 self.status = new_status
-                self.last_status_check = now()
-                self.save()
-                return f"Status updated to {new_status}"
+                self.save(ignore_permissions=True)
+                return (
+                    f"Status changed from '{old_status}' to '{new_status}'. "
+                    f"References: {paid} Paid, {failed} Failed, {total} Total. "
+                    f"Retry #{self.retry_count}."
+                )
             else:
-                return f"No status change. Current status: {self.status}"
+                self.save(ignore_permissions=True)
+                return (
+                    f"No status change (still '{self.status}'). "
+                    f"References: {paid} Paid, {failed} Failed, {total} Total. "
+                    f"Retry #{self.retry_count}."
+                )
 
         except Exception:
             frappe.log_error(frappe.get_traceback(), f"Error updating B2C Payment Disbursement status for {self.name}")

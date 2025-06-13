@@ -80,6 +80,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
+   "no_copy": 1,
    "options": "\nNot Initiated\nInitiated\nPaid\nPartially Paid\nFailed",
    "read_only": 1,
    "reqd": 1
@@ -157,12 +158,10 @@
    "fieldname": "transaction_to_pay_against",
    "fieldtype": "Link",
    "label": "Transaction To Pay Against",
-   "no_copy": 1,
    "options": "DocType",
    "reqd": 1
   },
   {
-   "collapsible": 1,
    "fieldname": "payment_status",
    "fieldtype": "Section Break",
    "label": "Payment Status"
@@ -280,6 +279,7 @@
    "fieldtype": "Int",
    "hidden": 1,
    "label": "Retry Count",
+   "no_copy": 1,
    "print_hide": 1
   },
   {
@@ -292,6 +292,7 @@
    "fieldtype": "Datetime",
    "hidden": 1,
    "label": "Last Status Check",
+   "no_copy": 1,
    "print_hide": 1
   }
  ],
@@ -304,7 +305,7 @@
    "link_fieldname": "b2c_payment"
   }
  ],
- "modified": "2025-06-12 21:04:22.146671",
+ "modified": "2025-06-13 05:35:32.244767",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",
