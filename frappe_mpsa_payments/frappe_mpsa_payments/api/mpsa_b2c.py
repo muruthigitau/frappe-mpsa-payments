@@ -234,6 +234,8 @@ def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
             "debit_in_account_currency": b2c_disbursement_ref.allocated_amount,
             "party_type": b2c_disbursement_ref.party_type,
             "party": b2c_disbursement_ref.party,
+            "reference_type": "Payroll Entry",
+            "reference_name": b2c_disbursement_ref.payroll_entry
         })
 
         journal_entry.insert(ignore_permissions=True)
