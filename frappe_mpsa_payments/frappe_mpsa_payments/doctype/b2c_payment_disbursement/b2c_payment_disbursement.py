@@ -6,6 +6,8 @@ from typing import Dict, List, Optional
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import Sum
 from frappe.utils import flt, getdate, nowdate, now
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.utils import get_exchange_rate
@@ -277,6 +279,9 @@ class B2CPaymentDisbursement(Document):
         """
         if config.use_erpnext_function:
             return self._fetch_erpnext_entries(doctype, args)
+        
+        if doctype == "Salary Slip":
+            return self._fetch_unpaid_salary_slips(doctype, args, filters)
 
         try:
             entries = frappe.db.get_all(
@@ -308,7 +313,80 @@ class B2CPaymentDisbursement(Document):
         return entries
 
     def _fetch_unpaid_salary_slips(self, doctype: str, args: Dict, filters: Dict) -> List[Dict]:
-        pass
+        """
+        Fetch unpaid salary slips for a given Payroll Entry.
+        """
+        
+        SalarySlip = DocType("Salary Slip")
+        JournalEntry = DocType("Journal Entry")
+        JournalEntryAccount = DocType("Journal Entry Account")
+
+        if not args.get("payroll_entry"):
+            frappe.throw("Payroll Entry is required to fetch unpaid salary slips")
+
+        # Fetch all Salary Slips linked to the Payroll Entry
+        salary_slips_query = (
+            frappe.qb.from_(SalarySlip)
+            .select(
+                SalarySlip.name,
+                SalarySlip.posting_date,
+                SalarySlip.employee,
+                SalarySlip.net_pay,
+                SalarySlip.currency,
+                SalarySlip.journal_entry,
+                SalarySlip.base_rounded_total,
+                SalarySlip.payroll_entry
+            )
+            .where(SalarySlip.payroll_entry == args["payroll_entry"])
+            .where(SalarySlip.docstatus == 1)
+        )
+
+        salary_slips = salary_slips_query.run(as_dict=True)
+
+        if not salary_slips:
+            return []
+        
+        # 2: Check for linked Bank Entries (Journal Entry)
+        journal_entries_query = (
+            frappe.qb.from_(JournalEntry)
+            .join(JournalEntryAccount)
+            .on(JournalEntry.name == JournalEntryAccount.parent)
+            .select(JournalEntry.name)
+            .where(JournalEntry.voucher_type == "Bank Entry")
+            .where(JournalEntry.docstatus == 1)
+            .where(JournalEntryAccount.reference_type == "Payroll Entry")
+            .where(JournalEntryAccount.reference_name == args["payroll_entry"])
+            .distinct()
+        )
+        journal_entries = journal_entries_query.run(as_dict=True)
+        je_names = [je.name for je in journal_entries]
+
+        if not je_names:
+            return salary_slips
+        
+        # 3: Fetch Journal Entry Accounts for these Journal Entries
+        je_accounts_query = (
+            frappe.qb.from_(JournalEntryAccount)
+            .select(
+                JournalEntryAccount.party,
+                JournalEntryAccount.debit_in_account_currency
+            )
+            .where(JournalEntryAccount.parent.isin(je_names))
+            .where(JournalEntryAccount.party_type == "Employee")
+            .where(JournalEntryAccount.debit_in_account_currency > 0)
+        )
+        je_accounts = je_accounts_query.run(as_dict=True)
+
+        paid_employees = {(acc.party, acc.debit_in_account_currency) for acc in je_accounts}
+
+        # 4: Identify unpaid Salary Slips
+        unpaid_slips = []
+        for slip in salary_slips:
+            if (slip.employee, slip.net_pay) not in paid_employees:
+                unpaid_slips.append(slip)
+
+        return unpaid_slips
+
 
     def _fetch_erpnext_entries(self, doctype: str, args: Dict) -> List[Dict]:
         """
@@ -406,6 +484,7 @@ class B2CPaymentDisbursement(Document):
                 "reference_name": entry.get("voucher_no") or entry.get("name"),
                 "party_type": party_type,
                 "party": party,
+                "payroll_entry": entry.get("payroll_entry") if doctype == "Salary Slip" and self.transaction_to_pay_against == "Salary Slip" else None,
                 "due_date": entry.get("due_date") or entry.get("schedule_date"),
                 "total_amount": self._get_invoice_amount(entry, config),
                 "outstanding_amount": payable_amount,
@@ -422,6 +501,7 @@ class B2CPaymentDisbursement(Document):
                 "reference_name": reference["reference_name"],
                 "party_type": reference["party_type"],
                 "party": reference["party"],
+                "payroll_entry": reference["payroll_entry"],
                 "due_date": reference["due_date"],
                 "total_amount": reference["total_amount"],
                 "outstanding_amount": reference["outstanding_amount"],

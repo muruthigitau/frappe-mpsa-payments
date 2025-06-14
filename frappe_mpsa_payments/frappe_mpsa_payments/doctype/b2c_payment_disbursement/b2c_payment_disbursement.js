@@ -391,6 +391,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
           label: __("Party"),
           fieldname: "party",
           options: frm.doc.party_type,
+          depends_on: () => frm.doc.transaction_to_pay_against !== "Salary Slip",
           get_query: () => {
             const party_type = frm.doc.party_type;
             let filters = {};
@@ -404,13 +405,12 @@ frappe.ui.form.on("B2C Payment Disbursement", {
             return { filters };
           }
         },
-        { fieldtype: "Column Break" },
         {
           fieldtype: "Link",
           label: __("Payroll Entry"),
           fieldname: "payroll_entry",
           options: "Payroll Entry",
-          hidden: 1,
+          reqd: 1,
           depends_on: () => frm.doc.transaction_to_pay_against === "Salary Slip",
           get_query: () => {
             return {
@@ -420,6 +420,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
             };
           }
         },
+        { fieldtype: "Column Break" },
         { fieldtype: "Section Break", label: __("Posting Date") },
         {
           fieldtype: "Date",
@@ -509,6 +510,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         party_type: frm.doc.party_type,
         transaction_to_pay_against: frm.doc.transaction_to_pay_against,
         party: filters.party,
+        payroll_entry: filters.payroll_entry,
         from_posting_date: filters.from_posting_date,
         to_posting_date: filters.to_posting_date,
         from_due_date: filters.from_due_date,
