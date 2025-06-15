@@ -5,7 +5,9 @@ import frappe
 
 
 def execute(filters=None):
-    columns, data = [], []
+    columns = get_columns()
+    data = get_data(filters)
+
     return columns, data
 
 
@@ -52,13 +54,14 @@ def get_data(filters):
         FROM `tabMpesa C2B Payment Register`
         WHERE {where_clause}
         GROUP BY customer
-        ORDER BY total_amount DESC
+        ORDER BY posting_date DESC
     """,
         values,
         as_dict=True,
     )
 
     return data
+
 
 def get_filters(filters):
     conditions = []
@@ -84,4 +87,8 @@ def get_filters(filters):
             values["docstatus"] = docstatus
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+    # TODO: Delete this line when the report is ready
+    print(f"Where clause received: {where_clause}, Values: {values}")
+
     return where_clause, values
