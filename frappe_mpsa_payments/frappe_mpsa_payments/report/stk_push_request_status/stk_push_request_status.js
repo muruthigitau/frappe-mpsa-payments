@@ -14,7 +14,7 @@ frappe.query_reports["STK Push Request Status"] = {
 			"fieldname": "start_date",
 			"label": __("Start Date"),
 			"fieldtype": "Date",
-			"default": frappe.datetime.add_days(frappe.datetime.get_today(), -30),
+			"default": "2025-01-01",
 		}, 
 		{
 			"fieldname": "end_date",
