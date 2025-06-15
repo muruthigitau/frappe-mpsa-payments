@@ -77,32 +77,6 @@ def get_data(filters):
         row["status"] = status_map.get(row.get("docstatus"), "Unknown")
 
     return data
-def get_data(filters):
-    where_clause, values = get_filters(filters)
-
-    data = frappe.db.sql(
-        f"""
-        SELECT
-            customer,
-            MAX(customer) as customer_name,
-            SUM(transamount) as total_amount,
-            COUNT(name) as payment_count,
-            MAX(docstatus) as docstatus
-        FROM `tabMpesa C2B Payment Register`
-        WHERE {where_clause} AND customer IS NOT NULL
-        GROUP BY customer
-        ORDER BY posting_date DESC
-    """,
-        values,
-        as_dict=True,
-    )
-
-    status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
-
-    for row in data:
-        row["status"] = status_map.get(row.get("docstatus"), "Unknown")
-
-    return data
 
 
 def get_filters(filters):
