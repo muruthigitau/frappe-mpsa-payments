@@ -410,7 +410,6 @@ frappe.ui.form.on("B2C Payment Disbursement", {
           label: __("Payroll Entry"),
           fieldname: "payroll_entry",
           options: "Payroll Entry",
-          reqd: 1,
           depends_on: () => frm.doc.transaction_to_pay_against === "Salary Slip",
           get_query: () => {
             return {
@@ -480,21 +479,23 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         "Outstanding Amount": ["outstanding_amt_greater_than", "outstanding_amt_less_than"]
       };
 
-      for (let key in fields) {
-        let from_field = fields[key][0];
-        let to_field = fields[key][1];
+      for (let label in fields) {
+        let [from_field, to_field] = fields[label];
+        let from_value = filters[from_field];
+        let to_value = filters[to_field];
 
-        if (filters[from_field] && !filters[to_field]) {
-          frappe.throw(__("Error: {0} is mandatory field", [to_field.replace(/_/g, " ")]));
-        } else if (filters[from_field] && filters[from_field] > filters[to_field]) {
-          frappe.throw(
-            __("{0}: {1} must be less than {2}", [
-              key,
-              from_field.replace(/_/g, " "),
-              to_field.replace(/_/g, " "),
-            ])
-          );
+
+        if (from_value && !to_value) {
+          frappe.throw(__(`Please enter <b>${to_field.replace(/_/g, " ")}</b> to complete the range for <b>${label}</b>`));
         }
+
+        if (from_value && to_value && from_value > to_value) {
+          frappe.throw(__(`For <b>${label}</b>, <b>${from_field.replace(/_/g, " ")}</b> must be less than <b>${to_field.replace(/_/g, " ")}</b>.`))
+        }
+      }
+
+      if (frm.doc.transaction_to_pay_against === "Salary Slip" && !filters.payroll_entry) {
+        frappe.throw(__("Payroll Entry is required when paying against Salary Slip."))
       }
     },
 

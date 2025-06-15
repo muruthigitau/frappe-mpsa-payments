@@ -140,11 +140,15 @@ def create_payment_entry(
 
 	if references:
 		for ref in references:
-			pe.append("references", {
+			reference_row = {
 				"reference_doctype": ref["reference_doctype"],
 				"reference_name": ref["reference_name"],
 				"allocated_amount": ref["allocated_amount"]
-			})
+			}
+			if "b2c_payment_disbursement" in ref:
+				reference_row["b2c_payment_disbursement"] = ref["b2c_payment_disbursement"]
+
+			pe.append("references", reference_row)
 
 	pe.insert(ignore_permissions=True)
 

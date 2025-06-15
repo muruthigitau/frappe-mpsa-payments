@@ -300,12 +300,23 @@
  "is_submittable": 1,
  "links": [
   {
-   "group": "Mpesa Requests",
    "link_doctype": "Mpesa B2C Request",
    "link_fieldname": "b2c_payment"
+  },
+  {
+   "link_doctype": "Journal Entry",
+   "link_fieldname": "b2c_payment_disbursement",
+   "parent_doctype": "Journal Entry",
+   "table_fieldname": "accounts"
+  },
+  {
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "b2c_payment_disbursement",
+   "parent_doctype": "Payment Entry",
+   "table_fieldname": "references"
   }
  ],
- "modified": "2025-06-13 05:35:32.244767",
+ "modified": "2025-06-15 12:58:45.486257",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",

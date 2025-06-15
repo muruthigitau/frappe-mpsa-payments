@@ -107,12 +107,12 @@ def b2c_results_callback(**kwargs):
             })
             frappe.log_error(frappe.get_traceback(), f"Duplicate transaction_id for B2C Request {request_doc.name}")
 
-        # update_b2c_reference_status(request_doc)
         frappe.enqueue(
             "frappe_mpsa_payments.utils.helpers.update_b2c_reference_status",
             queue="short",
             timeout=300,
-            b2c_request_doc=request_doc.name
+            b2c_request_doc=request_doc.name,
+            enqueue_next=True
         )
 
         frappe.log(f"B2C Request updated for {request_doc.name}")
@@ -121,18 +121,6 @@ def b2c_results_callback(**kwargs):
             doctype=MPESA_B2C_REQUEST_DOCTYPE,
             docname=request_doc.name
         )
-
-        if str(result_code) == "0":
-            b2c_disbursement = frappe.get_doc("B2C Payment Disbursement", request_doc.b2c_payment)
-            b2c_disbursement_ref = frappe.get_doc("B2C Payment Disbursement Reference", request_doc.b2c_payment_reference)
-
-            frappe.enqueue(
-                "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
-                queue="long",
-                timeout=600,
-                b2c_disbursement=b2c_disbursement,
-                b2c_disbursement_ref=b2c_disbursement_ref
-            )
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), f"B2C Request Callback Error for ID {originator_conversation_id}")
@@ -235,7 +223,8 @@ def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
             "party_type": b2c_disbursement_ref.party_type,
             "party": b2c_disbursement_ref.party,
             "reference_type": "Payroll Entry",
-            "reference_name": b2c_disbursement_ref.payroll_entry
+            "reference_name": b2c_disbursement_ref.payroll_entry,
+            "b2c_payment_disbursement": b2c_disbursement.name
         })
 
         journal_entry.insert(ignore_permissions=True)
@@ -261,8 +250,12 @@ def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
         references = [{
             'reference_doctype': b2c_disbursement_ref.reference_doctype,
             'reference_name': b2c_disbursement_ref.reference_name,
-            'allocated_amount': b2c_disbursement_ref.allocated_amount
+            'allocated_amount': b2c_disbursement_ref.allocated_amount,
+            'b2c_payment_disbursement': b2c_disbursement.name
         }]
+
+        reference_date = b2c_disbursement_ref.reference_date
+        reference_no = b2c_disbursement_ref.reference_no
 
         payment_entry = create_payment_entry(
             company,
@@ -271,8 +264,8 @@ def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
             currency,
             mode_of_payment,
             party_type=party_type,
-            reference_date=b2c_disbursement_ref.reference_date,
-            reference_no=b2c_disbursement_ref.reference_no,
+            reference_date=reference_date,
+            reference_no=reference_no,
             posting_date=nowdate(),
             cost_center=erpnext.get_default_cost_center(company),
             submit=0,

@@ -61,7 +61,7 @@ def _get_result_param(result: dict, key_name: str) -> str:
 
     return ""
 
-def update_b2c_reference_status(b2c_request_doc: str) -> None:
+def update_b2c_reference_status(b2c_request_doc: str, enqueue_next: bool = False) -> None:
     try:
         request_doc = frappe.get_doc(MPESA_B2C_REQUEST_DOCTYPE, b2c_request_doc)
 
@@ -81,6 +81,18 @@ def update_b2c_reference_status(b2c_request_doc: str) -> None:
                 "B2C Payment Disbursement Reference",
                 request_doc.b2c_payment_reference,
                 update_fields
+            )
+
+        if enqueue_next and request_doc.status == "Paid":
+            b2c_disbursement = frappe.get_doc("B2C Payment Disbursement", request_doc.b2c_payment)
+            b2c_disbursement_ref = frappe.get_doc("B2C Payment Disbursement Reference", request_doc.b2c_payment_reference)
+
+            frappe.enqueue(
+                "frappe_mpsa_payments.frappe_mpsa_payments.api.mpsa_b2c.handle_successful_payment",
+                queue="long",
+                timeout=600,
+                b2c_disbursement=b2c_disbursement,
+                b2c_disbursement_ref=b2c_disbursement_ref
             )
 
     except frappe.DoesNotExistError:
