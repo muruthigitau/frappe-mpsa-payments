@@ -341,9 +341,21 @@ class B2CPaymentDisbursement(Document):
             .where(SalarySlip.docstatus == 1)
         )
 
+        if filters.get("from_posting_date"):
+            salary_slips_query = salary_slips_query.where(SalarySlip.posting_date >= filters["from_posting_date"])
+        if filters.get("to_posting_date"):
+            salary_slips_query = salary_slips_query.where(SalarySlip.posting_date <= filters["to_posting_date"])
+        if filters.get("outstanding_amt_greater_than"):
+            salary_slips_query = salary_slips_query.where(SalarySlip.net_pay > filters["outstanding_amt_greater_than"])
+
         salary_slips = salary_slips_query.run(as_dict=True)
 
         if not salary_slips:
+            frappe.msgprint(
+                _(f"No outstanding references found for the set filters"),
+                title=_("No References"),
+                indicator="blue"
+            )
             return []
         
         # 2: Check for linked Bank Entries (Journal Entry)
@@ -384,6 +396,13 @@ class B2CPaymentDisbursement(Document):
         for slip in salary_slips:
             if (slip.employee, slip.net_pay) not in paid_employees:
                 unpaid_slips.append(slip)
+
+        if not unpaid_slips:
+            frappe.msgprint(
+                _(f"All Salary Slips for Payroll Entry {args['payroll_entry']} are fully paid."),
+                title=_("All Paid"),
+                indicator="green"
+            )
 
         return unpaid_slips
 
