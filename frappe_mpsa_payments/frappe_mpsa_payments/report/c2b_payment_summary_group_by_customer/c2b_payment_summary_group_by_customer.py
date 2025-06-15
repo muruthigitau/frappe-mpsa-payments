@@ -79,35 +79,6 @@ def get_data(filters):
     return data
 
 
-def get_filters(filters):
-    conditions = []
-    values = {}
-
-    if filters.get("start_date"):
-        conditions.append("posting_date >= %(start_date)s")
-        values["start_date"] = filters["start_date"]
-
-    if filters.get("end_date"):
-        conditions.append("posting_date <= %(end_date)s")
-        values["end_date"] = filters["end_date"]
-
-    if filters.get("company"):
-        conditions.append("company = %(company)s")
-        values["company"] = filters["company"]
-
-    if filters.get("status"):
-        status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
-        docstatus = status_map.get(filters["status"])
-
-        if docstatus is not None:
-            conditions.append("docstatus = %(docstatus)s")
-            values["docstatus"] = docstatus
-
-    where_clause = " AND ".join(conditions) if conditions else "1=1"
-
-    return where_clause, values
-
-
 def apply_filters(query, MpesaC2B, filters):
     if not filters:
         return query
