@@ -20,16 +20,16 @@ def get_columns():
     """
     return [
         {
-            "fieldname": "transaction_id",
-            "fieldtype": "Data",
-            "label": "Request ID",
-            "width": 150,
-        },
-        {
             "fieldname": "timestamp",
             "fieldtype": "Datetime",
             "label": "Transaction Date",
             "width": 180,
+        },
+        {
+            "fieldname": "transaction_id",
+            "fieldtype": "Data",
+            "label": "Request ID",
+            "width": 150,
         },
         {
             "fieldname": "phone_number",
