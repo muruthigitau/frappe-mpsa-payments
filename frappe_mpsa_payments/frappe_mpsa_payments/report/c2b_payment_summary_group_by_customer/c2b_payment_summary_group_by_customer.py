@@ -38,6 +38,12 @@ def get_columns():
             "fieldtype": "Int",
             "width": 120,
         },
+        {
+            "label": "Status",
+            "fieldname": "status",
+            "fieldtype": "Data",
+            "width": 100,
+        },
     ]
 
 
@@ -50,15 +56,23 @@ def get_data(filters):
             customer,
             MAX(customer) as customer_name,
             SUM(transamount) as total_amount,
-            COUNT(name) as payment_count
+            COUNT(name) as payment_count,
+            MAX(docstatus) as docstatus
         FROM `tabMpesa C2B Payment Register`
-        WHERE {where_clause}
+        WHERE {where_clause} AND customer IS NOT NULL
         GROUP BY customer
         ORDER BY posting_date DESC
     """,
         values,
         as_dict=True,
     )
+
+    status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
+
+    for row in data:
+        print("Processing row: ", row)
+        print("Row status: ", row.get("docstatus"))
+        row["status"] = status_map.get(row.get("docstatus"), "Unknown")
 
     return data
 
@@ -82,13 +96,11 @@ def get_filters(filters):
     if filters.get("status"):
         status_map = {"Draft": 0, "Submitted": 1, "Cancelled": 2}
         docstatus = status_map.get(filters["status"])
+
         if docstatus is not None:
             conditions.append("docstatus = %(docstatus)s")
             values["docstatus"] = docstatus
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
-
-    # TODO: Delete this line when the report is ready
-    print(f"Where clause received: {where_clause}, Values: {values}")
 
     return where_clause, values
