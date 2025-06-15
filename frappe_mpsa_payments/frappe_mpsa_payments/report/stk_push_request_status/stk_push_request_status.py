@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe.query_builder import DocType
 
 
 def execute(filters=None):
@@ -12,6 +13,11 @@ def execute(filters=None):
 
 
 def get_columns():
+    """Get the columns for the STK Push Request Status report.
+
+    Returns:
+        list: List of column definitions for the report.
+    """
     return [
         {
             "fieldname": "transaction_id",
@@ -64,48 +70,46 @@ def get_columns():
     ]
 
 
-def get_conditions(filters):
-    conditions = []
-    values = {}
+def get_data(filters):
+    """Build and execute the Mpesa Express Request query."""
+    MpesaExpressRequest = DocType("Mpesa Express Request")
+
+    query = frappe.qb.from_(MpesaExpressRequest).select(
+        MpesaExpressRequest.name.as_("transaction_id"),
+        MpesaExpressRequest.amount,
+        MpesaExpressRequest.phone_number,
+        MpesaExpressRequest.status,
+        MpesaExpressRequest.timestamp,
+        MpesaExpressRequest.account_reference.as_("merchant_request_id"),
+        MpesaExpressRequest.name.as_("checkout_request_id"),
+        MpesaExpressRequest.checkout_request_id,
+        MpesaExpressRequest.result_desc.as_("error_message"),
+    )
+
+    query = apply_filters(query, filters)
+    query = query.orderby(MpesaExpressRequest.timestamp, order=frappe.qb.desc)
+
+    return query.run(as_dict=True)
+
+
+def apply_filters(query, filters):
+    """Apply dynamic filters to the base query."""
+    MpesaExpressRequest = DocType("Mpesa Express Request")
 
     if filters.get("status"):
-        conditions.append("status = %(status)s")
-        values["status"] = filters["status"]
+        query = query.where(MpesaExpressRequest.status == filters["status"])
 
     if filters.get("start_date"):
-        conditions.append("timestamp >= %(start_date)s")
-        values["start_date"] = filters["start_date"]
+        query = query.where(
+            MpesaExpressRequest.timestamp >= f"{filters['start_date']} 00:00:00"
+        )
 
     if filters.get("end_date"):
-        conditions.append("timestamp <= %(end_date)s")
-        values["end_date"] = filters["end_date"]
+        query = query.where(
+            MpesaExpressRequest.timestamp <= f"{filters['end_date']} 23:59:59"
+        )
 
     if filters.get("phone_number"):
-        conditions.append("phone_number = %(phone_number)s")
-        values["phone_number"] = filters["phone_number"]
+        query = query.where(MpesaExpressRequest.phone_number == filters["phone_number"])
 
-    where_clause = "WHERE " + " AND ".join(conditions) if conditions else "1=1"
-
-    return where_clause, values
-
-
-def get_data(filters):
-    where_clause, values = get_conditions(filters)
-
-    query = f"""
-        SELECT
-            name as transaction_id,
-            amount,
-            phone_number,
-            status,
-            timestamp,
-            account_reference as merchant_request_id,
-            name as checkout_request_id,
-               checkout_request_id,
-            result_desc as error_message
-        FROM `tabMpesa Express Request`
-        {where_clause}
-        ORDER BY timestamp DESC
-    """
-
-    return frappe.db.sql(query, values, as_dict=True)
+    return query
