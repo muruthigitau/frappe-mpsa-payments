@@ -135,7 +135,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Disbursements",
-   "link_count": 4,
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -163,7 +163,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Disbursed Payment Entry",
+   "label": "Payment Entry",
    "link_count": 0,
    "link_to": "Payment Entry",
    "link_type": "DocType",
@@ -179,9 +179,19 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Loan Disbursement",
+   "link_count": 0,
+   "link_to": "Loan Disbursement",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-06-15 12:37:53.797551",
+ "modified": "2025-06-16 12:48:46.011805",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa",
