@@ -132,8 +132,8 @@ def get_data(filters):
 
 
 def apply_filters(query, filters):
-    """Apply dynamic filters to the base query."""
     MpesaExpressRequest = DocType("Mpesa Express Request")
+    PaymentRequest = DocType("Payment Request")
 
     if filters.get("status"):
         query = query.where(MpesaExpressRequest.status == filters["status"])
@@ -150,5 +150,11 @@ def apply_filters(query, filters):
 
     if filters.get("phone_number"):
         query = query.where(MpesaExpressRequest.phone_number == filters["phone_number"])
+
+    if filters.get("voucher_type"):
+        query = query.where(PaymentRequest.reference_doctype == filters["voucher_type"])
+
+    if filters.get("voucher_no"):
+        query = query.where(PaymentRequest.reference_name == filters["voucher_no"])
 
     return query
