@@ -25,12 +25,14 @@ frappe.query_reports['STK Push Request Status'] = {
     {
       fieldname: 'voucher_type',
       label: __('Voucher Type'),
-      fieldtype: 'Data',
+      fieldtype: 'Select',
+      options: 'Purchase Invoice\nSales Invoice\nPOS Invoice',
+      default: 'Purchase Invoice',
     },
     {
       fieldname: 'voucher_no',
       label: __('Voucher No'),
-      fieldtype: 'Data',
+      fieldtype: 'Link',
     },
     {
       fieldname: 'phone_number',
