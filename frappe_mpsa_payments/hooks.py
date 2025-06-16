@@ -15,14 +15,6 @@ fixtures = [
     {
         "doctype": "Custom Field",
         "filters": [
-            [
-                "dt",
-                "in",
-                (
-                    "Sales Invoice",
-                    "Sales Invoice Payment",
-                ),
-            ],
             ["is_system_generated", "=", 0],
             ["module", "=", "Frappe Mpsa Payments"],
         ],
