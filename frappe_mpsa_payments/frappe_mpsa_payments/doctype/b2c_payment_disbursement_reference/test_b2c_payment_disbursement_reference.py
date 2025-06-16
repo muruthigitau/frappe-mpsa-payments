@@ -79,6 +79,7 @@ class TestB2CPaymentDisbursementReference(FrappeTestCase):
             ("25471234567", "25471234567"),
             ("0712345678a", "0712345678a"),
             ("0712345678 ", "0712345678 "),
+            ("0112345678", "0112345678"),
         ]
 
         for input_number, expected_output in test_cases:
@@ -104,3 +105,15 @@ class TestB2CPaymentDisbursementReference(FrappeTestCase):
 
         for contact in invalid_contacts:
             self.assertFalse(is_valid_receiver_contact(contact))
+
+    def test_is_valid_reciever_contact_for_011_phone_numbers(self):
+        """Test that the is_valid_receiver_contact function correctly identifies 011 phone numbers as valid"""
+        invalid_contacts = [
+            "0112345678",
+            "01123456789",
+            "+254112345678",
+            "254112345678",
+        ]
+
+        for contact in invalid_contacts:
+            self.assertTrue(is_valid_receiver_contact(contact))

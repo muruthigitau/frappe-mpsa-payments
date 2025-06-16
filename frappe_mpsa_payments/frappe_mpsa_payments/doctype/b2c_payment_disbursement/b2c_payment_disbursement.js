@@ -152,7 +152,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
       let has_failed_references = frm.doc.references.some(reference => reference.payment_status === "Failed");
 
       if (has_failed_references && frm.doc.docstatus === 1) {
-        frm.add_custom_button(__("Retry Failed Disbursements"), function() {
+        frm.add_custom_button(__("Retry Failed Transactions"), function() {
           frappe.confirm(
             'Retry failed disbursements?',
             function() {
@@ -169,7 +169,23 @@ frappe.ui.form.on("B2C Payment Disbursement", {
               });
             }
           );
-        });
+        }, "Actions");
+      }
+
+      if (frm.doc.docstatus === 1 && !["Paid", "Not Initiated"].includes(frm.doc.status)) {
+        frm.add_custom_button(__("Check Latest Payment Status"), () => {
+          frappe.call({
+            method: "update_disbursement_status",
+            doc: frm.doc,
+            args: {},
+            callback: function(r) {
+              if (r.message) {
+                frappe.msgprint(r.message);
+                frm.reload_doc();
+              }
+            }
+          })
+        }, "Actions")
       }
     },
 
@@ -375,6 +391,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
           label: __("Party"),
           fieldname: "party",
           options: frm.doc.party_type,
+          depends_on: () => frm.doc.transaction_to_pay_against !== "Salary Slip",
           get_query: () => {
             const party_type = frm.doc.party_type;
             let filters = {};
@@ -388,13 +405,11 @@ frappe.ui.form.on("B2C Payment Disbursement", {
             return { filters };
           }
         },
-        { fieldtype: "Column Break" },
         {
           fieldtype: "Link",
           label: __("Payroll Entry"),
           fieldname: "payroll_entry",
           options: "Payroll Entry",
-          hidden: 1,
           depends_on: () => frm.doc.transaction_to_pay_against === "Salary Slip",
           get_query: () => {
             return {
@@ -404,6 +419,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
             };
           }
         },
+        { fieldtype: "Column Break" },
         { fieldtype: "Section Break", label: __("Posting Date") },
         {
           fieldtype: "Date",
@@ -463,21 +479,23 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         "Outstanding Amount": ["outstanding_amt_greater_than", "outstanding_amt_less_than"]
       };
 
-      for (let key in fields) {
-        let from_field = fields[key][0];
-        let to_field = fields[key][1];
+      for (let label in fields) {
+        let [from_field, to_field] = fields[label];
+        let from_value = filters[from_field];
+        let to_value = filters[to_field];
 
-        if (filters[from_field] && !filters[to_field]) {
-          frappe.throw(__("Error: {0} is mandatory field", [to_field.replace(/_/g, " ")]));
-        } else if (filters[from_field] && filters[from_field] > filters[to_field]) {
-          frappe.throw(
-            __("{0}: {1} must be less than {2}", [
-              key,
-              from_field.replace(/_/g, " "),
-              to_field.replace(/_/g, " "),
-            ])
-          );
+
+        if (from_value && !to_value) {
+          frappe.throw(__(`Please enter <b>${to_field.replace(/_/g, " ")}</b> to complete the range for <b>${label}</b>`));
         }
+
+        if (from_value && to_value && from_value > to_value) {
+          frappe.throw(__(`For <b>${label}</b>, <b>${from_field.replace(/_/g, " ")}</b> must be less than <b>${to_field.replace(/_/g, " ")}</b>.`))
+        }
+      }
+
+      if (frm.doc.transaction_to_pay_against === "Salary Slip" && !filters.payroll_entry) {
+        frappe.throw(__("Payroll Entry is required when paying against Salary Slip."))
       }
     },
 
@@ -493,6 +511,7 @@ frappe.ui.form.on("B2C Payment Disbursement", {
         party_type: frm.doc.party_type,
         transaction_to_pay_against: frm.doc.transaction_to_pay_against,
         party: filters.party,
+        payroll_entry: filters.payroll_entry,
         from_posting_date: filters.from_posting_date,
         to_posting_date: filters.to_posting_date,
         from_due_date: filters.from_due_date,

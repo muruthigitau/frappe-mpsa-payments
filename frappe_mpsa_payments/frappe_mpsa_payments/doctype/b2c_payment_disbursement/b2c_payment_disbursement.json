@@ -38,7 +38,11 @@
   "payment_status",
   "status",
   "column_break_oy1c",
-  "amended_from"
+  "amended_from",
+  "more_info_section",
+  "retry_count",
+  "column_break_rpjq",
+  "last_status_check"
  ],
  "fields": [
   {
@@ -76,6 +80,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
+   "no_copy": 1,
    "options": "\nNot Initiated\nInitiated\nPaid\nPartially Paid\nFailed",
    "read_only": 1,
    "reqd": 1
@@ -153,12 +158,10 @@
    "fieldname": "transaction_to_pay_against",
    "fieldtype": "Link",
    "label": "Transaction To Pay Against",
-   "no_copy": 1,
    "options": "DocType",
    "reqd": 1
   },
   {
-   "collapsible": 1,
    "fieldname": "payment_status",
    "fieldtype": "Section Break",
    "label": "Payment Status"
@@ -262,18 +265,58 @@
    "fieldname": "payment_type_section",
    "fieldtype": "Section Break",
    "label": "Type of Payment"
+  },
+  {
+   "fieldname": "more_info_section",
+   "fieldtype": "Section Break",
+   "label": "More Info",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "retry_count",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Retry Count",
+   "no_copy": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "column_break_rpjq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "last_status_check",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Last Status Check",
+   "no_copy": 1,
+   "print_hide": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [
   {
-   "group": "Mpesa Requests",
    "link_doctype": "Mpesa B2C Request",
    "link_fieldname": "b2c_payment"
+  },
+  {
+   "link_doctype": "Journal Entry",
+   "link_fieldname": "b2c_payment_disbursement",
+   "parent_doctype": "Journal Entry",
+   "table_fieldname": "accounts"
+  },
+  {
+   "link_doctype": "Payment Entry",
+   "link_fieldname": "b2c_payment_disbursement",
+   "parent_doctype": "Payment Entry",
+   "table_fieldname": "references"
   }
  ],
- "modified": "2025-06-04 19:11:52.165633",
+ "modified": "2025-06-15 12:58:45.486257",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",

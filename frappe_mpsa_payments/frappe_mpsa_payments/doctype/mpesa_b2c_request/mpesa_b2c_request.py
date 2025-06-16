@@ -31,36 +31,9 @@ class MpesaB2CRequest(Document):
         if not self.originator_conversation_id:
             self.originator_conversation_id = self._generate_uuid_v4()
 
-    def before_submit(self):
+    def on_submit(self):
         
-        any_errors = self._process_mpesa_b2c_request()
-
-    def before_update_after_submit(self):
-        if self.status in ("Paid", "Failed") and self.b2c_payment_reference:
-            update_fields = {
-                "Paid": {
-                    "payment_status": "Paid",
-                    "reference_no": self.transaction_id,
-                    "reference_date": getdate(self.transaction_completed_datetime)
-                },
-                "Failed": {
-                    "payment_status": "Failed"
-                }
-            }.get(self.status)
-
-            frappe.db.set_value(
-                "B2C Payment Disbursement Reference",
-                self.b2c_payment_reference,
-                update_fields
-            )
-
-            if self.b2c_payment:
-                frappe.enqueue(
-                    method="frappe_mpsa_payments.utils.helpers.update_disbursement_status",
-                    queue='short',
-                    job_name=f"update-status-{self.b2c_payment}",
-                    b2c_payment_disbursement=self.b2c_payment
-                )
+        any_errors = self._process_mpesa_b2c_request()        
 
     def _generate_uuid_v4(self) -> str:
         return str(uuid.uuid4())
@@ -92,7 +65,8 @@ class MpesaB2CRequest(Document):
             response = make_b2c_payment_request(
                 request_data=request_data,
                 doctype=self.doctype,
-                document_name=self.name
+                document_name=self.name,
+                mpesa_settings=self.mpesa_settings
             )
 
             if response.get("ResultCode") == "0":
@@ -113,9 +87,8 @@ class MpesaB2CRequest(Document):
     def _process_mpesa_b2c_request(self, only_failed=False, is_retry=False) -> bool:
         any_errors = False
 
-        
-        if only_failed and self.payment_status != "Failed":
-            return
+        if only_failed and self.status != "Failed":
+            return False
 
         if is_retry:
             self.originator_conversation_id = self._generate_uuid_v4()
@@ -128,13 +101,13 @@ class MpesaB2CRequest(Document):
         return any_errors
 
     @frappe.whitelist()
-    def retry_failed_payments(self) -> None:
+    def retry_failed_payment(self) -> None:
         """Retry only failed payments"""
 
         any_errors = self._process_mpesa_b2c_request(only_failed=True, is_retry=True)
 
         frappe.msgprint(
-            msg="Some B2C Payment retries failed. Please Retry." if any_errors else "Payment Request Initiated.",
+            msg="B2C Payment request retry failed. Please Retry." if any_errors else "B2C Payment Request Initiated.",
             title="Payment Request Error" if any_errors else "Payment Request",
             indicator="red" if any_errors else "green"
         )

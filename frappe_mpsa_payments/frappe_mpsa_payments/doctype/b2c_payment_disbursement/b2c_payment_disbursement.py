@@ -6,7 +6,9 @@ from typing import Dict, List, Optional
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, getdate, nowdate
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import Sum
+from frappe.utils import flt, getdate, nowdate, now
 from erpnext.accounts.utils import get_account_currency
 from erpnext.setup.utils import get_exchange_rate
 from erpnext.accounts.party import get_party_account
@@ -41,18 +43,14 @@ class B2CPaymentDisbursement(Document):
             
             for ref in self.references:
                 ref.payment_status = "Initiated"
-                b2c_request = frappe.get_doc({
-                    "doctype": "Mpesa B2C Request",
-                    "mpesa_settings": setting.name,
-                    "phone_number": ref.partyb,
-                    "amount": ref.allocated_amount,
-                    "b2c_payment": self.name,
-                    "b2c_payment_reference": ref.name,
-                    "reference_doctype": ref.reference_doctype,
-                    "reference_name": ref.reference_name
-                })
-                b2c_request.insert(ignore_permissions=True)
-                b2c_request.submit()
+                frappe.enqueue(
+                    "frappe_mpsa_payments.frappe_mpsa_payments.doctype.b2c_payment_disbursement.b2c_payment_disbursement.create_b2c_request",
+                    queue="short",
+                    timeout=300,
+                    ref=ref,
+                    setting=setting,
+                    b2c_disbursement=self.name
+                )
 
         self.status = "Initiated"
 
@@ -121,6 +119,70 @@ class B2CPaymentDisbursement(Document):
             frappe.throw(error_msg, frappe.DoesNotExistError)
 
         return setting
+
+    @frappe.whitelist()
+    def retry_failed_payments(self) -> None:
+        """Retry failed B2C Payment References"""
+
+        for ref in self.references:
+            if ref.payment_status == "Failed" and ref.mpesa_b2c_request:
+                try:
+                    b2c_request = frappe.get_doc("Mpesa B2C Request", ref.mpesa_b2c_request)
+                    if b2c_request.status == "Failed":
+                        b2c_request.retry_failed_payment()
+                except Exception as e:
+                    frappe.log_error(
+                        f"Retry error for B2C Request {ref.mpesa_b2c_request}: {str(e)}",
+                        "Retry Failed Payments Error"
+                    )
+
+    @frappe.whitelist()
+    def update_disbursement_status(self) -> None:
+        """
+        Update the B2C Payment Disbursement status based on all its child reference payment statuses.
+        Called from a background job to avoid contention and db locks.
+        """
+
+        try:
+            references = self.references
+
+            total = len(references)
+            paid = sum(1 for ref in references if ref.payment_status == "Paid")
+            failed = sum(1 for ref in references if ref.payment_status == "Failed")
+
+            new_status = "Not Initiated"
+            if paid == total and total > 0:
+                new_status = "Paid"
+            elif failed == total and total > 0:
+                new_status = "Failed"
+            elif paid or failed:
+                new_status = "Partially Paid"
+            elif total > 0:
+                new_status = "Initiated"
+
+            self.retry_count += 1
+            self.last_status_check = now()
+            
+            if new_status != self.status:
+                old_status = self.status
+                self.status = new_status
+                self.save(ignore_permissions=True)
+                return (
+                    f"Status changed from '{old_status}' to '{new_status}'. "
+                    f"References: {paid} Paid, {failed} Failed, {total} Total. "
+                    f"Retry #{self.retry_count}."
+                )
+            else:
+                self.save(ignore_permissions=True)
+                return (
+                    f"No status change (still '{self.status}'). "
+                    f"References: {paid} Paid, {failed} Failed, {total} Total. "
+                    f"Retry #{self.retry_count}."
+                )
+
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), f"Error updating B2C Payment Disbursement status for {self.name}")
+            frappe.throw(f"Failed to update status")
 
     @frappe.whitelist()
     def get_outstanding_reference_documents(self, args: Dict) -> List[Dict]:
@@ -217,6 +279,9 @@ class B2CPaymentDisbursement(Document):
         """
         if config.use_erpnext_function:
             return self._fetch_erpnext_entries(doctype, args)
+        
+        if doctype == "Salary Slip":
+            return self._fetch_unpaid_salary_slips(doctype, args, filters)
 
         try:
             entries = frappe.db.get_all(
@@ -248,7 +313,99 @@ class B2CPaymentDisbursement(Document):
         return entries
 
     def _fetch_unpaid_salary_slips(self, doctype: str, args: Dict, filters: Dict) -> List[Dict]:
-        pass
+        """
+        Fetch unpaid salary slips for a given Payroll Entry.
+        """
+        
+        SalarySlip = DocType("Salary Slip")
+        JournalEntry = DocType("Journal Entry")
+        JournalEntryAccount = DocType("Journal Entry Account")
+
+        if not args.get("payroll_entry"):
+            frappe.throw("Payroll Entry is required to fetch unpaid salary slips")
+
+        # Fetch all Salary Slips linked to the Payroll Entry
+        salary_slips_query = (
+            frappe.qb.from_(SalarySlip)
+            .select(
+                SalarySlip.name,
+                SalarySlip.posting_date,
+                SalarySlip.employee,
+                SalarySlip.net_pay,
+                SalarySlip.currency,
+                SalarySlip.journal_entry,
+                SalarySlip.base_rounded_total,
+                SalarySlip.payroll_entry
+            )
+            .where(SalarySlip.payroll_entry == args["payroll_entry"])
+            .where(SalarySlip.docstatus == 1)
+        )
+
+        if filters.get("from_posting_date"):
+            salary_slips_query = salary_slips_query.where(SalarySlip.posting_date >= filters["from_posting_date"])
+        if filters.get("to_posting_date"):
+            salary_slips_query = salary_slips_query.where(SalarySlip.posting_date <= filters["to_posting_date"])
+        if filters.get("outstanding_amt_greater_than"):
+            salary_slips_query = salary_slips_query.where(SalarySlip.net_pay > filters["outstanding_amt_greater_than"])
+
+        salary_slips = salary_slips_query.run(as_dict=True)
+
+        if not salary_slips:
+            frappe.msgprint(
+                _(f"No outstanding references found for the set filters"),
+                title=_("No References"),
+                indicator="blue"
+            )
+            return []
+        
+        # 2: Check for linked Bank Entries (Journal Entry)
+        journal_entries_query = (
+            frappe.qb.from_(JournalEntry)
+            .join(JournalEntryAccount)
+            .on(JournalEntry.name == JournalEntryAccount.parent)
+            .select(JournalEntry.name)
+            .where(JournalEntry.voucher_type == "Bank Entry")
+            .where(JournalEntry.docstatus == 1)
+            .where(JournalEntryAccount.reference_type == "Payroll Entry")
+            .where(JournalEntryAccount.reference_name == args["payroll_entry"])
+            .distinct()
+        )
+        journal_entries = journal_entries_query.run(as_dict=True)
+        je_names = [je.name for je in journal_entries]
+
+        if not je_names:
+            return salary_slips
+        
+        # 3: Fetch Journal Entry Accounts for these Journal Entries
+        je_accounts_query = (
+            frappe.qb.from_(JournalEntryAccount)
+            .select(
+                JournalEntryAccount.party,
+                JournalEntryAccount.debit_in_account_currency
+            )
+            .where(JournalEntryAccount.parent.isin(je_names))
+            .where(JournalEntryAccount.party_type == "Employee")
+            .where(JournalEntryAccount.debit_in_account_currency > 0)
+        )
+        je_accounts = je_accounts_query.run(as_dict=True)
+
+        paid_employees = {(acc.party, acc.debit_in_account_currency) for acc in je_accounts}
+
+        # 4: Identify unpaid Salary Slips
+        unpaid_slips = []
+        for slip in salary_slips:
+            if (slip.employee, slip.net_pay) not in paid_employees:
+                unpaid_slips.append(slip)
+
+        if not unpaid_slips:
+            frappe.msgprint(
+                _(f"All Salary Slips for Payroll Entry {args['payroll_entry']} are fully paid."),
+                title=_("All Paid"),
+                indicator="green"
+            )
+
+        return unpaid_slips
+
 
     def _fetch_erpnext_entries(self, doctype: str, args: Dict) -> List[Dict]:
         """
@@ -346,6 +503,7 @@ class B2CPaymentDisbursement(Document):
                 "reference_name": entry.get("voucher_no") or entry.get("name"),
                 "party_type": party_type,
                 "party": party,
+                "payroll_entry": entry.get("payroll_entry") if doctype == "Salary Slip" and self.transaction_to_pay_against == "Salary Slip" else None,
                 "due_date": entry.get("due_date") or entry.get("schedule_date"),
                 "total_amount": self._get_invoice_amount(entry, config),
                 "outstanding_amount": payable_amount,
@@ -362,6 +520,7 @@ class B2CPaymentDisbursement(Document):
                 "reference_name": reference["reference_name"],
                 "party_type": reference["party_type"],
                 "party": reference["party"],
+                "payroll_entry": reference["payroll_entry"],
                 "due_date": reference["due_date"],
                 "total_amount": reference["total_amount"],
                 "outstanding_amount": reference["outstanding_amount"],
@@ -422,7 +581,7 @@ class B2CPaymentDisbursement(Document):
         if party_type == "Supplier":
             contact = frappe.db.get_all(
                 "Contact", 
-                filters={"link_name": entry.supplier}, 
+                filters={"link_name": entry.party}, 
                 fields=["phone", "mobile_no"],
                 limit=1
             )
@@ -472,3 +631,18 @@ class B2CPaymentDisbursement(Document):
                 allocated_negative_outstanding = flt(allocated_negative_outstanding - abs(ref.allocated_amount), precision)
             else:
                 ref.allocated_amount = 0
+
+def create_b2c_request(ref, setting, b2c_disbursement):
+    b2c_request = frappe.get_doc({
+        "doctype": "Mpesa B2C Request",
+        "mpesa_settings": setting.name,
+        "phone_number": ref.partyb,
+        "amount": ref.allocated_amount,
+        "b2c_payment": b2c_disbursement,
+        "b2c_payment_reference": ref.name,
+        "reference_doctype": ref.reference_doctype,
+        "reference_name": ref.reference_name
+    })
+    b2c_request.insert(ignore_permissions=True)
+    b2c_request.submit()
+    frappe.db.set_value(ref.doctype, ref.name, "mpesa_b2c_request", b2c_request.name)
