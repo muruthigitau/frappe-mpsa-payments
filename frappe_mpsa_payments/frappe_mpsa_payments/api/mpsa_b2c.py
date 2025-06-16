@@ -133,13 +133,21 @@ def handle_successful_payment(b2c_disbursement, b2c_disbursement_ref):
     """
 
     try:
+        b2c_request = frappe.get_doc(MPESA_B2C_REQUEST_DOCTYPE, b2c_disbursement_ref.mpesa_b2c_request)
+
+        if not b2c_request.mpesa_settings:
+            frappe.log_error(f"No Mpesa Settings linked in B2C Request {b2c_request.name}")
+
+        mpesa_settings = frappe.get_doc("Mpesa Settings", b2c_request.mpesa_settings)
+        submit = mpesa_settings.submit_b2c_accounting_entries
+
         match b2c_disbursement_ref.reference_doctype:
             case "Salary Slip":
-                create_journal_entry(b2c_disbursement, b2c_disbursement_ref)
+                create_journal_entry(b2c_disbursement, b2c_disbursement_ref, submit)
             case "Employee Advance" | "Expense Claim" | "Purchase Invoice" | "Purchase Order":
-                create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref)
+                create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref, submit)
             case "Loan":
-                create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref)
+                create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref, submit)
             case _:
                 frappe.log_error(
                     f"Unsupported reference_doctype: {b2c_disbursement_ref.reference_doctype}",
@@ -193,7 +201,7 @@ def create_mpesa_transaction_entry(result: dict, b2c_disbursement: Document, b2c
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "B2C Payment Transaction Save Failed")
 
-def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
+def create_journal_entry(b2c_disbursement, b2c_disbursement_ref, submit=False):
     """ Create Journal Entry for Salary Slip after successful B2C payment."""
 
     try:
@@ -228,11 +236,14 @@ def create_journal_entry(b2c_disbursement, b2c_disbursement_ref):
         })
 
         journal_entry.insert(ignore_permissions=True)
+
+        if submit:
+            journal_entry.submit()
         
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Failed to create Journal Entry")
 
-def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
+def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref, submit=False):
     party_type = b2c_disbursement_ref.party_type
     party_account = b2c_disbursement.paid_to
     party = frappe.db.get_value(party_type, b2c_disbursement_ref.party, "name")
@@ -268,7 +279,7 @@ def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref):
             reference_no=reference_no,
             posting_date=nowdate(),
             cost_center=erpnext.get_default_cost_center(company),
-            submit=0,
+            submit=submit,
             references=references,
             party_account=party_account
         )

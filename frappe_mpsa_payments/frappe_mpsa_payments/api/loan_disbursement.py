@@ -2,7 +2,7 @@ import frappe
 
 from lending.loan_management.doctype.loan.loan import make_loan_disbursement
 
-def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref):
+def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref, submit):
     try:
         loan = frappe.get_doc("Loan", b2c_disbursement_ref.reference_name)
 
@@ -19,7 +19,9 @@ def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref):
         disbursement_entry.b2c_payment_disbursement = b2c_disbursement.name
 
         disbursement_entry.insert(ignore_permissions=True)
-        # disbursement_entry.submit()
+
+        if submit:
+            disbursement_entry.submit()
 
         frappe.db.commit()
 
