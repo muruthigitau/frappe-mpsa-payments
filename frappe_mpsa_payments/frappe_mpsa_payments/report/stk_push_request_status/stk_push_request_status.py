@@ -29,6 +29,7 @@ def get_columns():
             "fieldname": "transaction_id",
             "fieldtype": "Link",
             "label": "Request ID",
+            "options": "Mpesa Express Request",
             "width": 150,
         },
         {
@@ -48,6 +49,7 @@ def get_columns():
             "fieldname": "voucher_no",
             "fieldtype": "Link",
             "label": "Voucher No",
+            "options": "Sales Invoice",
             "width": 150,
         },
         {
@@ -94,6 +96,7 @@ def get_data(filters):
     MpesaExpressRequest = DocType("Mpesa Express Request")
     PaymentRequest = DocType("Payment Request")
 
+    # TODO: Delete this commented code once the query is confirmed to work.
     # query = frappe.qb.from_(MpesaExpressRequest).select(
     #     MpesaExpressRequest.name.as_("transaction_id"),
     #     MpesaExpressRequest.amount,
@@ -109,7 +112,7 @@ def get_data(filters):
     query = (
         frappe.qb.from_(MpesaExpressRequest)
         .left_join(PaymentRequest)
-        .on(MpesaExpressRequest.payment_request == PaymentRequest.name)
+        .on(MpesaExpressRequest.reference_name == PaymentRequest.name)
         .select(
             MpesaExpressRequest.name.as_("transaction_id"),
             MpesaExpressRequest.amount,
@@ -120,6 +123,7 @@ def get_data(filters):
             MpesaExpressRequest.name.as_("checkout_request_id"),
             MpesaExpressRequest.checkout_request_id,
             MpesaExpressRequest.result_desc.as_("error_message"),
+            PaymentRequest.name.as_("payment_request"),
             PaymentRequest.reference_doctype.as_("voucher_type"),
             PaymentRequest.reference_name.as_("voucher_no"),
         )
