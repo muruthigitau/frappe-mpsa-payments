@@ -62,6 +62,7 @@ class BaseMpesaConnector:
 class MpesaConnector(BaseMpesaConnector):
     
     def __init__(self, settings_name: str):
+        super().__init__()
         self.settings_name = settings_name
         self._endpoint: str | None = None
         self._payload: dict | None = None
@@ -72,6 +73,7 @@ class MpesaConnector(BaseMpesaConnector):
         self._custom_headers: dict = {}
         self._base_url: str | None = None
         self._url: str | None = None
+        self._timeout: int = 30
         self.integration_request = None
         self.doctype = self.document_name = self.error = None
 
@@ -106,6 +108,11 @@ class MpesaConnector(BaseMpesaConnector):
         frappe.db.commit()
 
 
+    def _set_timeout(self, seconds: int):
+        self._timeout = seconds
+        return self
+
+
     def authenticate(self) -> str:
         self._initialize_settings()
         s = self._get_mpesa_settings()
@@ -127,7 +134,7 @@ class MpesaConnector(BaseMpesaConnector):
         headers.update(self._custom_headers)
         return headers
 
-    def make_remote_call(self, doctype=None, document_name=None, retrying=False):
+    def make_remote_call(self, doctype=None, document_name=None, retrying=False, skip_integration_request=False):
         if not all([self._endpoint, self._method, self._success_callback]):
             frappe.throw("Missing required parameters (endpoint, method, callbacks).", frappe.MandatoryError)
 
@@ -135,7 +142,7 @@ class MpesaConnector(BaseMpesaConnector):
         self._url = f"{self._base_url}/{self._endpoint.lstrip('/')}"
         self.doctype, self.document_name = doctype, document_name
 
-        if not retrying:
+        if not retrying and not skip_integration_request:
             reuse_existing = getattr(self, "_reuse_existing_integration_request", False)
             if reuse_existing:
                 existing_request = frappe.get_all(
@@ -192,10 +199,10 @@ class MpesaConnector(BaseMpesaConnector):
     def _send_request(self) -> requests.Response:
         headers = self._get_authenticated_headers()
         method_map = {
-            "GET": lambda: requests.get(self._url, headers=headers, params=self._payload),
-            "POST": lambda: requests.post(self._url, json=self._payload, headers=headers),
-            "PATCH": lambda: requests.patch(self._url, json=self._payload, headers=headers),
-            "PUT": lambda: requests.put(self._url, json=self._payload, headers=headers),
+            "GET": lambda: requests.get(self._url, headers=headers, params=self._payload, timeout=self._timeout),
+            "POST": lambda: requests.post(self._url, json=self._payload, headers=headers, timeout=self._timeout),
+            "PATCH": lambda: requests.patch(self._url, json=self._payload, headers=headers, timeout=self._timeout),
+            "PUT": lambda: requests.put(self._url, json=self._payload, headers=headers, timeout=self._timeout),
         }
 
         if self._method in {"PATCH", "PUT"} and self._payload and "id" in self._payload:

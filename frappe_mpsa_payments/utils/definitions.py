@@ -6,7 +6,6 @@ from dataclasses import asdict, dataclass
 class B2CRequestDefinition:
     """Dataclass bearing the Request Data sent to Daraja API"""
 
-    Setting: str
     ConsumerKey: str
     ConsumerSecret: str
     OriginatorConversationID: str
@@ -31,7 +30,7 @@ class B2CRequestDefinition:
             dict: The dictionary representation of the dataclass
         """
         data_dict = asdict(self)
-        exclude_fields = {"Setting", "ConsumerKey", "ConsumerSecret"}
+        exclude_fields = {"ConsumerKey", "ConsumerSecret"}
         filtered_dict = {k: v for k, v in data_dict.items() if k not in exclude_fields}
 
         if isinstance(with_dict, dict):

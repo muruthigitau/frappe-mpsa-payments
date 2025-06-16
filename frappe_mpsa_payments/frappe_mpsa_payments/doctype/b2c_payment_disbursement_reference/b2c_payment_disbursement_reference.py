@@ -6,29 +6,34 @@ import re
 from uuid import uuid4
 
 import frappe
+from frappe.utils import flt
 from frappe.model.document import Document
 
 
-class MPesaB2CEmployeePaymentItem(Document):
+class B2CPaymentDisbursementReference(Document):
     def validate(self) -> None:
         """Validation Hook"""
-        if not self.originator_conversation_id:
-            self.originator_conversation_id = str(uuid4())
+        
+        if not self.party:
+            frappe.throw(
+                f"Row #{self.idx}: Party is mandatory",
+                frappe.ValidationError,
+                title="Validation Error"
+            )
 
-        if self.amount and self.record_amount:
-            if self.amount < 10:
-                frappe.throw(
-                    "Payment Amount cannot be less than Kshs. 10",
-                    frappe.ValidationError,
-                    title="Validation Error",
-                )
+        if self.allocated_amount is not None and flt(self.allocated_amount) < 10:
+            frappe.throw(
+                "Allocated Amount cannot be less than Kshs. 10",
+                frappe.ValidationError,
+                title="Validation Error",
+            )
 
-            if self.amount > self.record_amount:
-                frappe.throw(
-                    "Payment Amount cannot be greater than Record Amount",
-                    frappe.ValidationError,
-                    title="Validation Error",
-                )
+        if self.outstanding_amount and (self.allocated_amount > self.outstanding_amount or not self.outstanding_amount):
+            frappe.throw(
+                "Allocated Amount cannot be greater than Outstanding Amount",
+                frappe.ValidationError,
+                title="Validation Error",
+            )
 
         if self.partyb:
             mobile_no = sanitise_phone_number(self.partyb)

@@ -2,8 +2,10 @@
 # For license information, please see license.txt
 
 import frappe
+import re
 from frappe.model.document import Document
-from ...api.m_pesa_api import initiate_stk_push  # Import the stk push function
+from ...api.m_pesa_api import initiate_stk_push  # Import the STK push function
+from ....utils.utils import validate_phone_number
 
 
 class MpesaExpressRequest(Document):
@@ -12,6 +14,40 @@ class MpesaExpressRequest(Document):
             self.payment_gateway = frappe.db.get_value(
                 "Payment Gateway", {"gateway_controller": self.settings}, "name"
             )
+            
+        if self.reference_doctype == "Payment Request":
+            self.validate_payment_request_amount()
+
+        if not validate_phone_number(self.phone_number):
+            frappe.throw(
+                "Invalid phone number format. Please ensure it is in the correct format, e.g., 254712345678."
+            )
+
+
+    def validate_payment_request_amount(self):
+        payment_request = frappe.get_doc("Payment Request", self.reference_name)
+        currency = payment_request.currency
+        company = payment_request.company
+        company_currency = frappe.db.get_value("Company", company, "default_currency")
+
+        if currency != "KES":
+            if payment_request.reference_doctype and payment_request.reference_name:
+                ref_doc = frappe.get_doc(payment_request.reference_doctype, payment_request.reference_name)
+                conversion_rate = getattr(ref_doc, "conversion_rate", None)
+
+                if company_currency != "KES":
+                    frappe.throw(
+                        "STK Push can only be initiated if document or company currency is KES. "
+                        f"Current currency: {currency}, Company currency: {company_currency}"
+                    )
+
+                if not conversion_rate:
+                    frappe.throw("Conversion rate not available to convert amount to KES.")
+                
+                self.amount = float(payment_request.grand_total) * float(conversion_rate)
+            else:
+                frappe.throw("Missing reference document to determine conversion rate.")
+
 
     def on_submit(self):
         args = {
@@ -19,14 +55,13 @@ class MpesaExpressRequest(Document):
             "payment_gateway": self.payment_gateway,
             "phone_number": self.phone_number,
             "request_amount": self.amount,
-            "doctype": self.doctype, 
+            "doctype": self.doctype,
             "document_name": self.name,
             "reference_name": self.reference_name,
         }
 
         try:
             initiate_stk_push(**args)
-
         except Exception as e:
             frappe.log_error(frappe.get_traceback(), "STK Push on Submit Error")
-            frappe.throw(f"Failed to initiate STK push: {str(e)}")
+            frappe.throw(f"Failed to initiate STK Push: {str(e)}")

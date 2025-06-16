@@ -14,10 +14,13 @@ from typing import Any
 from frappe_mpsa_payments.utils.encoding_initiator_password import (
     generate_security_credential,
 )
-from frappe.utils.file_manager import get_file_path
 from frappe.model.document import Document
-from ...utils.utils import build_callback_url
-
+from ...utils.utils import (
+    build_callback_url,
+    log_and_throw_error,
+    update_mpesa_request_status,
+    handle_successful_transaction,
+)
 
 
 @frappe.whitelist(allow_guest=True)
@@ -297,47 +300,43 @@ def initiate_stk_push(**args) -> any:
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "STK Push Generation Error")
         frappe.log_error(_("Failed to generate STK push. Please check the error logs."))
+   
         
 @frappe.whitelist(allow_guest=True)
 def stk_push_callback(**kwargs) -> None:
-    """Verify the transaction result received via callback from STK."""
+    frappe.set_user("Administrator")
 
-    transaction_response = frappe._dict(kwargs["Body"]["stkCallback"])
+    try:
+        transaction_response = frappe._dict(kwargs["Body"]["stkCallback"])
+        checkout_request_id = transaction_response.get("CheckoutRequestID")
+        if not isinstance(checkout_request_id, str):
+            log_and_throw_error("Invalid Checkout Request ID")
 
-    checkout_request_id = transaction_response.get("CheckoutRequestID")
-    if not isinstance(checkout_request_id, str):
-        frappe.log_error(_("Invalid Checkout Request ID"))
+        result_code = transaction_response.get("ResultCode")
+        status = "Completed" if str(result_code) == "0" else "Failed"
 
-    result_code = transaction_response.get("ResultCode")
-    result_desc = transaction_response.get("ResultDesc")
+        callback_metadata = transaction_response.get("CallbackMetadata", {}).get("Item", [])
+        metadata_dict = {
+            item.get("Name"): item.get("Value") for item in callback_metadata if "Value" in item
+        }
 
-    callback_metadata = transaction_response.get("CallbackMetadata", {}).get("Item", [])
-    metadata_dict = {item.get("Name"): item.get("Value") for item in callback_metadata if "Value" in item}
+        request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, {
+            "checkout_request_id": checkout_request_id
+        })
+        settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
 
-    status = "Completed" if str(result_code) == "0" else "Failed"
+        if status == "Completed" and request_doc.status != "Completed":
+            handle_successful_transaction(request_doc, metadata_dict, settings, checkout_request_id)
 
-    request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id})
-    settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
+        update_mpesa_request_status(request_doc.name, {
+            "result_code": result_code,
+            "result_desc": transaction_response.get("ResultDesc"),
+            "transaction_id": metadata_dict.get("MpesaReceiptNumber"),
+            "status": status,
+        })
 
-    if status == "Completed" and request_doc.status != "Completed" and request_doc.reference_doctype == "Payment Request":
-        payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
-        try:
-            payment_request.create_payment_entry()
-        except Exception:
-            frappe.log_error(frappe.get_traceback(), f"Payment Entry Creation Error: {checkout_request_id}")
-        if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-            payment_request.make_invoice()
-            
-        frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
-
-    frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, request_doc.name, {
-        "result_code": result_code,
-        "result_desc": result_desc,
-        "transaction_id": metadata_dict.get("MpesaReceiptNumber"),
-        "status": status
-    })
-
-    frappe.publish_realtime(event="refresh_form", doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=checkout_request_id)
+    except Exception:
+        log_and_throw_error("STK Push Callback Error", checkout_request_id)
 
         
         
@@ -704,8 +703,7 @@ def verify_transaction(**kwargs) -> None:
     checkout_id = getattr(transaction_response, "CheckoutRequestID", "")
     if not isinstance(checkout_id, str):
         frappe.log_error(_("Invalid Checkout Request ID"))
-    print("=====================================")
-    print(str(transaction_response))
+
     integration_request = frappe.get_doc("Integration Request", checkout_id)
     transaction_data = frappe._dict(json.loads(integration_request.data))
     total_paid = 0  
@@ -771,3 +769,6 @@ def verify_transaction(**kwargs) -> None:
             ),
         },
     )
+
+
+
