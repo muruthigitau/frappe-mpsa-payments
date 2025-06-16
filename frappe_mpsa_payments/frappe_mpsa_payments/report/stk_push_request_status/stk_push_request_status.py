@@ -39,6 +39,18 @@ def get_columns():
             "width": 180,
         },
         {
+            "fieldname": "voucher_type",
+            "fieldtype": "Data",
+            "label": "Voucher Type",
+            "width": 150,
+        },
+        {
+            "fieldname": "voucher_no",
+            "fieldtype": "Link",
+            "label": "Voucher No",
+            "width": 150,
+        },
+        {
             "fieldname": "phone_number",
             "fieldtype": "Data",
             "label": "Phone Number",
@@ -80,17 +92,37 @@ def get_columns():
 def get_data(filters):
     """Build and execute the Mpesa Express Request query."""
     MpesaExpressRequest = DocType("Mpesa Express Request")
+    PaymentRequest = DocType("Payment Request")
 
-    query = frappe.qb.from_(MpesaExpressRequest).select(
-        MpesaExpressRequest.name.as_("transaction_id"),
-        MpesaExpressRequest.amount,
-        MpesaExpressRequest.phone_number,
-        MpesaExpressRequest.status,
-        MpesaExpressRequest.timestamp,
-        MpesaExpressRequest.account_reference.as_("merchant_request_id"),
-        MpesaExpressRequest.name.as_("checkout_request_id"),
-        MpesaExpressRequest.checkout_request_id,
-        MpesaExpressRequest.result_desc.as_("error_message"),
+    # query = frappe.qb.from_(MpesaExpressRequest).select(
+    #     MpesaExpressRequest.name.as_("transaction_id"),
+    #     MpesaExpressRequest.amount,
+    #     MpesaExpressRequest.phone_number,
+    #     MpesaExpressRequest.status,
+    #     MpesaExpressRequest.timestamp,
+    #     MpesaExpressRequest.account_reference.as_("merchant_request_id"),
+    #     MpesaExpressRequest.name.as_("checkout_request_id"),
+    #     MpesaExpressRequest.checkout_request_id,
+    #     MpesaExpressRequest.result_desc.as_("error_message"),
+    # )
+
+    query = (
+        frappe.qb.from_(MpesaExpressRequest)
+        .left_join(PaymentRequest)
+        .on(MpesaExpressRequest.payment_request == PaymentRequest.name)
+        .select(
+            MpesaExpressRequest.name.as_("transaction_id"),
+            MpesaExpressRequest.amount,
+            MpesaExpressRequest.phone_number,
+            MpesaExpressRequest.status,
+            MpesaExpressRequest.timestamp,
+            MpesaExpressRequest.account_reference.as_("merchant_request_id"),
+            MpesaExpressRequest.name.as_("checkout_request_id"),
+            MpesaExpressRequest.checkout_request_id,
+            MpesaExpressRequest.result_desc.as_("error_message"),
+            PaymentRequest.reference_doctype.as_("voucher_type"),
+            PaymentRequest.reference_name.as_("voucher_no"),
+        )
     )
 
     query = apply_filters(query, filters)
