@@ -27,9 +27,16 @@ def get_columns():
         },
         {
             "fieldname": "transaction_id",
-            "fieldtype": "Data",
+            "fieldtype": "Link",
             "label": "Request ID",
             "width": 150,
+        },
+        {
+            "fieldname": "payment_request",
+            "fieldtype": "Link",
+            "label": "Payment Request",
+            "options": "Payment Request",
+            "width": 180,
         },
         {
             "fieldname": "phone_number",
