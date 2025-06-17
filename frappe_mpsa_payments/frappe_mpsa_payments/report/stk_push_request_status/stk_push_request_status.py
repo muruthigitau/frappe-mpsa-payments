@@ -40,6 +40,13 @@ def get_columns():
             "width": 180,
         },
         {
+            "fieldname": "company",
+            "fieldtype": "Link",
+            "label": "Company",
+            "options": "Company",
+            "width": 150,
+        },
+        {
             "fieldname": "voucher_type",
             "fieldtype": "Data",
             "label": "Voucher Type",
@@ -126,6 +133,7 @@ def get_data(filters):
             PaymentRequest.name.as_("payment_request"),
             PaymentRequest.reference_doctype.as_("voucher_type"),
             PaymentRequest.reference_name.as_("voucher_no"),
+            PaymentRequest.company,
         )
     )
 
@@ -151,6 +159,9 @@ def apply_filters(query, filters):
         query = query.where(
             MpesaExpressRequest.timestamp <= f"{filters['end_date']} 23:59:59"
         )
+
+    if filters.get("company"):
+        query = query.where(PaymentRequest.company == filters["company"])
 
     if filters.get("phone_number"):
         query = query.where(MpesaExpressRequest.phone_number == filters["phone_number"])

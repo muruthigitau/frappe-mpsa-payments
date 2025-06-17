@@ -23,6 +23,14 @@ frappe.query_reports['STK Push Request Status'] = {
       default: frappe.datetime.get_today(),
     },
     {
+      fieldname: 'company',
+      label: __('Company'),
+      fieldtype: 'Link',
+      options: 'Company',
+      default: frappe.defaults.get_user_default('Company'),
+      reqd: 1,
+    },
+    {
       fieldname: 'voucher_type',
       label: __('Voucher Type'),
       fieldtype: 'Select',
