@@ -19,6 +19,7 @@
   "column_break_gtyp",
   "auto_create_sales_invoice",
   "auto_reconcile_c2b",
+  "submit_b2c_accounting_entries",
   "section_break_lkry",
   "consumer_key",
   "consumer_secret",
@@ -285,10 +286,17 @@
    "fieldname": "auto_reconcile_c2b",
    "fieldtype": "Check",
    "label": "Auto Reconcile C2B Payments"
+  },
+  {
+   "default": "0",
+   "description": "Journal Entries, Payment Entries or Loan Disbursements",
+   "fieldname": "submit_b2c_accounting_entries",
+   "fieldtype": "Check",
+   "label": "Submit B2C Accounting Entries"
   }
  ],
  "links": [],
- "modified": "2025-05-19 16:30:08.068824",
+ "modified": "2025-06-16 16:50:41.648423",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",

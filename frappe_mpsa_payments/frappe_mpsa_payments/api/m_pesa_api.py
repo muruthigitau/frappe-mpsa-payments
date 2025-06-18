@@ -488,8 +488,6 @@ def submit_mpesa_payment(mpesa_payment, customer):
 def submit_instant_mpesa_payment():
     mpesa_payment = frappe.form_dict.get("mpesa_payment")
     customer = frappe.form_dict.get("customer")
-    # pos_profile = frappe.form_dict.get("pos_profile")
-    # mode_of_payment = get_payment_method(pos_profile)
 
     try:
         process_mpesa_payment(mpesa_payment, customer, submit_payment=False)
@@ -501,7 +499,6 @@ def process_mpesa_payment(mpesa_payment, customer, submit_payment=False):
     try:
         doc = frappe.get_doc("Mpesa C2B Payment Register", mpesa_payment)
         doc.customer = customer
-        # doc.mode_of_payment = mode_of_payment
         #TODO: after testing, mode of payment
         doc.mode_of_payment = get_mode_of_payment(doc)
         doc.submit_payment=submit_payment
@@ -706,8 +703,7 @@ def verify_transaction(**kwargs) -> None:
     checkout_id = getattr(transaction_response, "CheckoutRequestID", "")
     if not isinstance(checkout_id, str):
         frappe.log_error(_("Invalid Checkout Request ID"))
-    print("=====================================")
-    print(str(transaction_response))
+
     integration_request = frappe.get_doc("Integration Request", checkout_id)
     transaction_data = frappe._dict(json.loads(integration_request.data))
     total_paid = 0  
