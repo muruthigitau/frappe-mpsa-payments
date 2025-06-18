@@ -4,6 +4,7 @@ app_publisher = "Navari Limited"
 app_description = "Frappe Mpesa Payments"
 app_email = "support@navari.co.ke"
 app_license = "agpl-3.0"
+required_apps = ["erpnext", "hrms", "lending"]
 
 # Apps
 # ------------------
