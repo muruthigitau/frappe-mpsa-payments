@@ -30,51 +30,85 @@ def get_columns():
             "width": 200,
         },
         {
-            "label": "Total Amount",
-            "fieldname": "total_amount",
-            "fieldtype": "Currency",
-            "width": 150,
+            "label": "Transaction ID",
+            "fieldname": "transid",
+            "fieldtype": "Data",
+            "width": 180,
         },
         {
-            "label": "Payment Count",
-            "fieldname": "payment_count",
-            "fieldtype": "Int",
+            "label": "Posting Date",
+            "fieldname": "posting_date",
+            "fieldtype": "Date",
             "width": 120,
         },
         {
-            "label": "Status",
-            "fieldname": "status",
-            "fieldtype": "Data",
-            "width": 100,
+            "label": "Amount",
+            "fieldname": "transamount",
+            "fieldtype": "Currency",
+            "width": 120,
         },
+        {"label": "Status", "fieldname": "status", "fieldtype": "Data", "width": 100},
     ]
 
 
 def get_data(filters):
     MpesaC2B = DocType("Mpesa C2B Payment Register")
 
+    # Fetch all payment records
     query = (
         frappe.qb.from_(MpesaC2B)
         .select(
             MpesaC2B.customer,
-            Max(MpesaC2B.customer).as_("customer_name"),
-            Sum(MpesaC2B.transamount).as_("total_amount"),
-            Count(MpesaC2B.name).as_("payment_count"),
-            Max(MpesaC2B.docstatus).as_("docstatus"),
+            MpesaC2B.full_name.as_("customer_name"),
+            MpesaC2B.transid,
+            MpesaC2B.posting_date,
+            MpesaC2B.transamount,
+            MpesaC2B.docstatus,
         )
         .where(MpesaC2B.customer.isnotnull())
-        .groupby(MpesaC2B.customer)
-        .orderby(MpesaC2B.posting_date, order=frappe.qb.desc)
+        .orderby(MpesaC2B.customer, order=frappe.qb.asc)
+        .orderby(MpesaC2B.posting_date, order=frappe.qb.asc)
     )
 
     query = apply_filters(query, MpesaC2B, filters)
 
-    data = query.run(as_dict=True)
+    records = query.run(as_dict=True)
 
     status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
 
-    for row in data:
-        row["status"] = status_map.get(row.get("docstatus"), "Unknown")
+    # Group by customer and add subtotal rows
+    data = []
+    current_customer = None
+    subtotal = 0.0
+
+    for i, row in enumerate(records):
+        row["status"] = status_map.get(row["docstatus"], "Unknown")
+
+        if current_customer and current_customer != row["customer"]:
+            # Add subtotal row for previous customer
+            data.append(
+                {
+                    "customer": f"Subtotal for {current_customer}",
+                    "transamount": subtotal,
+                    "status": "",
+                }
+            )
+            data.append({})  # empty row for spacing
+            subtotal = 0.0
+
+        current_customer = row["customer"]
+        subtotal += row["transamount"]
+        data.append(row)
+
+        # If last row, append final subtotal
+        if i == len(records) - 1:
+            data.append(
+                {
+                    "customer": f"Subtotal for {current_customer}",
+                    "transamount": subtotal,
+                    "status": "",
+                }
+            )
 
     return data
 
