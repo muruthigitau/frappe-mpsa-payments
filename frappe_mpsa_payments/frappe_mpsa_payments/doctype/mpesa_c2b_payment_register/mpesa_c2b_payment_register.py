@@ -54,11 +54,10 @@ class MpesaC2BPaymentRegister(Document):
             self.transamount,
             self.currency,
             self.mode_of_payment,
+            "Customer",
             self.posting_date,
-
             self.name,
             self.posting_date,
-            
             None,
             self.submit_payment,
         )
