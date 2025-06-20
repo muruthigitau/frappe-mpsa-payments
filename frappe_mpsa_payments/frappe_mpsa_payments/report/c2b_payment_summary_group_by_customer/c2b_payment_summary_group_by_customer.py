@@ -54,14 +54,12 @@ def get_columns():
 def get_data(filters):
     MpesaC2B = DocType("Mpesa C2B Payment Register")
 
-    # Fetch all payment records
+    # Base query (no grouping) to get individual payment rows
     query = (
         frappe.qb.from_(MpesaC2B)
         .select(
             MpesaC2B.customer,
             MpesaC2B.full_name.as_("customer_name"),
-            MpesaC2B.transid,
-            MpesaC2B.posting_date,
             MpesaC2B.transamount,
             MpesaC2B.docstatus,
         )
@@ -71,21 +69,21 @@ def get_data(filters):
     )
 
     query = apply_filters(query, MpesaC2B, filters)
-
     records = query.run(as_dict=True)
 
+    # Map docstatus to status label
     status_map = {0: "Draft", 1: "Submitted", 2: "Cancelled"}
 
-    # Group by customer and add subtotal rows
     data = []
     current_customer = None
     subtotal = 0.0
+    grand_total = 0.0
 
     for i, row in enumerate(records):
         row["status"] = status_map.get(row["docstatus"], "Unknown")
 
         if current_customer and current_customer != row["customer"]:
-            # Add subtotal row for previous customer
+            # Add subtotal row for the previous customer
             data.append(
                 {
                     "customer": f"Subtotal for {current_customer}",
@@ -93,14 +91,15 @@ def get_data(filters):
                     "status": "",
                 }
             )
-            data.append({})  # empty row for spacing
+            data.append({})  # spacer row
             subtotal = 0.0
 
         current_customer = row["customer"]
         subtotal += row["transamount"]
+        grand_total += row["transamount"]
         data.append(row)
 
-        # If last row, append final subtotal
+        # On last record, close with the final customer's subtotal
         if i == len(records) - 1:
             data.append(
                 {
@@ -109,6 +108,16 @@ def get_data(filters):
                     "status": "",
                 }
             )
+
+    # Append grand total row
+    data.append({})
+    data.append(
+        {
+            "customer": "Grand Total",
+            "transamount": grand_total,
+            "status": "",
+        }
+    )
 
     return data
 
