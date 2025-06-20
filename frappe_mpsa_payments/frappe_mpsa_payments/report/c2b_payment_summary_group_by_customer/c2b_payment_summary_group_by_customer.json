@@ -1,5 +1,5 @@
 {
- "add_total_row": 1,
+ "add_total_row": 0,
  "add_translate_data": 0,
  "columns": [],
  "creation": "2025-06-15 12:51:33.036697",
@@ -11,7 +11,7 @@
  "is_standard": "Yes",
  "letter_head": "Default",
  "letterhead": null,
- "modified": "2025-06-15 12:51:33.036697",
+ "modified": "2025-06-19 09:20:55.417263",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "C2B Payment Summary Group by Customer",
