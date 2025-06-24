@@ -38,18 +38,40 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
     },
   ],
   formatter: function (value, row, column, data, default_formatter) {
-    value = default_formatter(value, row, column, data);
+    let formatted_value = default_formatter(value, row, column, data);
+
+    const blankFields = ['amount', 'transamount', 'budget_amount'];
+
+    const isBlankableColumn =
+      blankFields.includes(column.fieldname) || /\d+$/.test(column.fieldname);
+
+    const shouldBlank =
+      data &&
+      (value === null ||
+        value === undefined ||
+        value === '' ||
+        value === 0 ||
+        value === '0%' ||
+        formatted_value === 'Sh 0.00');
+
+    if (isBlankableColumn && shouldBlank) {
+      return '';
+    }
+
     if (column.fieldname === 'status') {
       const colorMap = {
         Submitted: 'green',
         Cancelled: 'red',
         Draft: 'orange',
       };
+
       const color = colorMap[value];
+
       if (color) {
-        value = `<span style="color: ${color}; font-weight: bold;">${value}</span>`;
+        formatted_value = `<span style="color: ${color}; font-weight: bold;">${formatted_value}</span>`;
       }
     }
-    return value;
+
+    return formatted_value;
   },
 };
