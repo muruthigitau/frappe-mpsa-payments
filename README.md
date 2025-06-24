@@ -201,7 +201,7 @@ Mpesa Express (STK Push) is initiated through the **Payment Request** DocType in
 - POS
 - Webshop
 
---TODO: Insert GIF Here
+<video src="./frappe_mpsa_payments/docs/stkpush.mp4" width="800" controls></video>
 
 ### 2. 📥 Receive C2B Payments
 
@@ -221,8 +221,6 @@ C2B (Customer to Business) integration enables your system to receive and log in
 - Ensure the callbacks have been registered successfully.
 - Once a customer pays via your PayBill/Till, Daraja sends a callback to your registered URLs.
 - These callbacks are recorded in the **Mpesa C2B Payment Register**.
-
---TODO: Insert GIF Here
 
 #### Notes:
 
@@ -278,7 +276,7 @@ Use this feature to send money directly to employees or suppliers via **Mpesa B2
 6. Failed Payments?
    A **Retry Failed Payments** button is displayed to attempt the payment again for failed references.
 
---TODO: Insert a GIF here
+<video src="./frappe_mpsa_payments/docs/mpesa-b2c.mp4" width="800" controls></video>
 
 #### 🧾Accounting Entries
 
@@ -309,7 +307,7 @@ The **Mpesa Payment Reconciliation** tool simplifies matching incoming Mpesa pay
 4. Optional **Filters** can be set in the Filters Section
 5. **Allocate** the invoices against the draft Mpesa Payments
 
---TODO: Insert screenshot here
+<video src="./frappe_mpsa_payments/docs/mpesa-b2c.mp4" width="800" controls></video>
 
 ### 5. ❓Query Transaction Status
 
@@ -329,7 +327,7 @@ This feature allows you to check the status of an Mpesa transaction using its **
 - If the transaction is successful and record already exists, display the current status and inform you of the existing record.
 - If the transaction failed, it will notify you accordingly.
 
---TODO: Insert a GIF here too.
+<video src="./frappe_mpsa_payments/docs/mpesa-recon.mp4" width="800" controls></video>
 
 #### Use Cases:
 
