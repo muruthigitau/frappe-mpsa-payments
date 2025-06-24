@@ -40,7 +40,7 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
   formatter: function (value, row, column, data, default_formatter) {
     let formatted_value = default_formatter(value, row, column, data);
 
-    const blankFields = ['amount', 'transamount', 'budget_amount'];
+    const blankFields = ['amount', 'transamount'];
 
     const isBlankableColumn =
       blankFields.includes(column.fieldname) || /\d+$/.test(column.fieldname);

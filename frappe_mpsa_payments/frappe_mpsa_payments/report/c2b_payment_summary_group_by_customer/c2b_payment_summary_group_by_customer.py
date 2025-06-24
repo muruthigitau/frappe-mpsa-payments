@@ -93,6 +93,7 @@ def get_data(filters):
         frappe.qb.from_(MpesaC2B)
         .select(
             MpesaC2B.customer,
+            MpesaC2B.company,
             MpesaC2B.full_name.as_("customer_name"),
         )
         .where(MpesaC2B.customer.isnotnull())
@@ -105,12 +106,12 @@ def get_data(filters):
     data = []
 
     for customer in customers:
-        # Parent row for customer
+        # Parent row for customer (Group Header)
         data.append(
             {
                 "customer": customer["customer"],
                 "customer_name": customer["customer_name"],
-                "is_group": 1,
+                "is_group": 1,  # Mark as a group header
             }
         )
 
@@ -132,14 +133,33 @@ def get_data(filters):
                 PaymentEntry.remarks,
             )
             .where(MpesaC2B.customer == customer["customer"])
+            .orderby(
+                MpesaC2B.posting_date, order=frappe.qb.asc
+            )  # Order payments within customer group
         )
         payment_query = apply_filters(payment_query, MpesaC2B, filters)
         payments = payment_query.run(as_dict=True)
 
+        customer_total_amount = 0.0
+
         for pay in payments:
             pay["status"] = status_map.get(pay["docstatus"], "Unknown")
-            pay["is_group"] = 0
+            pay["is_group"] = 0  # Mark as a detail row
             data.append(pay)
+            customer_total_amount += pay.get("transamount", 0.0)
+
+        # Add the subtotal row after all payments for the current customer
+        data.append(
+            {
+                "transamount": customer_total_amount,
+                "is_subtotal": 1,  # Custom flag to identify subtotal rows
+                "is_group": 1,  # Mark as group for visual grouping/styling if needed
+                "transid": "SUBTOTAL",  # A placeholder for subtotal row
+                "posting_date": None,
+                "status": None,
+                "company": None,  # Set other fields to None or empty for subtotal row
+            }
+        )
 
     return data
 
