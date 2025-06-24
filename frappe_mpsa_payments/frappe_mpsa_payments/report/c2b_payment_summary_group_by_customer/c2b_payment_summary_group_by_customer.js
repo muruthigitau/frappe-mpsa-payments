@@ -30,6 +30,12 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
       fieldtype: 'Select',
       options: '\nDraft\nSubmitted\nCancelled',
     },
+    {
+      fieldname: 'group_by_customer',
+      label: __('Group by Customer'),
+      fieldtype: 'Check',
+      default: 0,
+    },
   ],
   formatter: function (value, row, column, data, default_formatter) {
     value = default_formatter(value, row, column, data);
