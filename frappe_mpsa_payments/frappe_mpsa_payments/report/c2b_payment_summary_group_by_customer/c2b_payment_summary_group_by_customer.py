@@ -30,16 +30,16 @@ def get_columns():
             "width": 200,
         },
         {
+            "label": "Customer Name",
+            "fieldname": "customer_name",
+            "fieldtype": "Data",
+            "width": 200,
+        },
+        {
             "label": "Company",
             "fieldname": "company",
             "fieldtype": "Link",
             "options": "Company",
-            "width": 200,
-        },
-        {
-            "label": "Customer Name",
-            "fieldname": "customer_name",
-            "fieldtype": "Data",
             "width": 200,
         },
         {
