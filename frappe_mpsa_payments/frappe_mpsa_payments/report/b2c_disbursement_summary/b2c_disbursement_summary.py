@@ -62,7 +62,7 @@ def get_columns():
         },
         {
             "fieldname": "party_type",
-            "fieldtype": "Link",  # TODO: Change to Link if needed
+            "fieldtype": "Link",
             "label": "Party Type",
             "options": "Party Type",
             "width": 100,
@@ -78,24 +78,27 @@ def get_columns():
 
 
 def get_data(filters):
-    query = """
-		SELECT
-			d.name,
-			d.payment_type,
-			d.posting_date,
-			d.company,
-			d.mode_of_payment,
-			d.transaction_to_pay_against,
-			r.total_amount,
-			r.currency,
-			r.party,
-			r.party_type
-		FROM
-			`tabB2C Payment Disbursement` d
-		LEFT JOIN
-			`tabB2C Payment Disbursement Reference` r
-		ON
-			d.name = r.parent
-	"""
-    data = frappe.db.sql(query, as_dict=True)
+    Disbursement = frappe.qb.DocType("B2C Payment Disbursement")
+    Reference = frappe.qb.DocType("B2C Payment Disbursement Reference")
+
+    query = (
+        frappe.qb.from_(Disbursement)
+        .left_join(Reference)
+        .on(Disbursement.name == Reference.parent)
+        .select(
+            Disbursement.name.as_("name"),
+            Disbursement.payment_type.as_("payment_type"),
+            Disbursement.posting_date.as_("posting_date"),
+            Disbursement.company.as_("company"),
+            Disbursement.mode_of_payment.as_("mode_of_payment"),
+            Disbursement.transaction_to_pay_against.as_("transaction_to_pay_against"),
+            Disbursement.status.as_("status"),
+            Reference.total_amount.as_("total_amount"),
+            Reference.currency.as_("currency"),
+            Reference.party.as_("party"),
+            Reference.party_type.as_("party_type"),
+        )
+    )
+
+    data = query.run(as_dict=True)
     return data
