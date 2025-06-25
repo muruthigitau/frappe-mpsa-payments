@@ -23,6 +23,12 @@ def get_columns():
     """
     return [
         {
+            "label": "Posting Date",
+            "fieldname": "posting_date",
+            "fieldtype": "Date",
+            "width": 120,
+        },
+        {
             "label": "Customer",
             "fieldname": "customer",
             "fieldtype": "Link",
@@ -41,12 +47,6 @@ def get_columns():
             "fieldtype": "Link",
             "options": "Company",
             "width": 200,
-        },
-        {
-            "label": "Posting Date",
-            "fieldname": "posting_date",
-            "fieldtype": "Date",
-            "width": 120,
         },
         {
             "label": "Transaction ID",
@@ -116,6 +116,7 @@ def get_distinct_customers(MpesaC2B, filters):
             MpesaC2B.customer,
             MpesaC2B.full_name.as_("customer_name"),
             MpesaC2B.company,
+            MpesaC2B.posting_date,
         )
         .where(MpesaC2B.customer.isnotnull())
         .distinct()
@@ -138,6 +139,7 @@ def get_customer_payments(customer_id, MpesaC2B, PaymentEntry, filters):
             MpesaC2B.posting_date,
             MpesaC2B.transamount,
             MpesaC2B.docstatus,
+            MpesaC2B.customer,
             PaymentEntry.name.as_("payment_entry"),
             PaymentEntry.party,
             PaymentEntry.party_name,
@@ -157,6 +159,7 @@ def create_customer_group_header(customer):
     Creates a dictionary representing a customer group header row for the report.
     """
     return {
+        "posting_date": customer["posting_date"],
         "customer": customer["customer"],
         "customer_name": customer["customer_name"],
         "company": customer["company"],
@@ -170,7 +173,8 @@ def create_subtotal_row(customer_id, customer_name, total_amount):
     """
     return {
         "transamount": total_amount,
-        "transid": "SUBTOTAL",  # Placeholder for the Transaction ID column
+        "customer_name": customer_name,
+        "is_subtotal": True,
     }
 
 
