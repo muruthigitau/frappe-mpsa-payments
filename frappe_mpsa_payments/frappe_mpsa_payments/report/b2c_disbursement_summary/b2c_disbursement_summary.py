@@ -31,7 +31,7 @@ def get_columns():
             "fieldtype": "Link",
             "label": "Mode of Payment",
             "options": "Mode of Payment",
-            "width": 150,
+            "width": 250,
         },
         {
             "fieldname": "transaction_to_pay_against",
@@ -133,7 +133,11 @@ def get_data(filters):
         for ref in references:
             final_report_data.append(
                 {
-                    "posting_date": ref.posting_date if "posting_date" in ref else None,
+                    "posting_date": (
+                        ref.posting_date
+                        if "posting_date" in ref
+                        else disburse.posting_date
+                    ),
                     "name": disburse.name,
                     "company": disburse.company,
                     "mode_of_payment": disburse.mode_of_payment,
