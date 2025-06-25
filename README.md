@@ -224,6 +224,10 @@ C2B (Customer to Business) integration enables your system to receive and log in
 - Once a customer pays via your PayBill/Till, Daraja sends a callback to your registered URLs.
 - These callbacks are recorded in the **Mpesa C2B Payment Register**.
 
+
+https://github.com/user-attachments/assets/18e790f7-5a23-472f-a9fc-ffaf0ee704ca
+
+
 #### Notes:
 
 - **Smart Matching Logic:**
