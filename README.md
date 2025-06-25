@@ -9,10 +9,10 @@ Frappe Mpesa Payments is a custom [Frappe](https://frappe.io/framework) applicat
 - [📲 Frappe Mpesa Payments](#-frappe-mpesa-payments)
 - [🚀 Project Overview](#-project-overview)
 - [Supported APIs:](#supported-apis)
-  - [1. ✅ **Mpesa Express (STK Push)**](#1---mpesa-express-stk-push)
-  - [2. ✅ **C2B (Customer to Business)**](#2---c2b-customer-to-business)
-  - [3. ✅ **B2C (Business to Customer)**](#3---b2c-business-to-customer)
-  - [4. ✅ **Transaction Status (Query status of payment)**](#4---transaction-status-query-status-of-payment)
+  - [1. ✅ **Mpesa Express (STK Push)**](#1--mpesa-express-stk-push)
+  - [2. ✅ **C2B (Customer to Business)**](#2--c2b-customer-to-business)
+  - [3. ✅ **B2C (Business to Customer)**](#3--b2c-business-to-customer)
+  - [4. ✅ **Transaction Status (Query status of payment)**](#4--transaction-status-query-status-of-payment)
 - [🛠️ Installation](#️-installation)
   - [✅ Dependencies](#-dependencies)
   - [☁️ Managed Hosting Frappe Cloud](#️-managed-hosting-frappe-cloud)
@@ -201,7 +201,9 @@ Mpesa Express (STK Push) is initiated through the **Payment Request** DocType in
 - POS
 - Webshop
 
-<video src="./frappe_mpsa_payments/docs/stkpush.mp4" width="800" controls></video>
+
+https://github.com/user-attachments/assets/260359a0-13a0-40fa-9f3c-412acdac6464
+
 
 ### 2. 📥 Receive C2B Payments
 
@@ -276,7 +278,9 @@ Use this feature to send money directly to employees or suppliers via **Mpesa B2
 6. Failed Payments?
    A **Retry Failed Payments** button is displayed to attempt the payment again for failed references.
 
-<video src="./frappe_mpsa_payments/docs/mpesa-b2c.mp4" width="800" controls></video>
+
+https://github.com/user-attachments/assets/c37f45a0-1198-43f8-a71a-ae2dcb9ead51
+
 
 #### 🧾Accounting Entries
 
@@ -307,7 +311,9 @@ The **Mpesa Payment Reconciliation** tool simplifies matching incoming Mpesa pay
 4. Optional **Filters** can be set in the Filters Section
 5. **Allocate** the invoices against the draft Mpesa Payments
 
-<video src="./frappe_mpsa_payments/docs/mpesa-b2c.mp4" width="800" controls></video>
+
+https://github.com/user-attachments/assets/19ba1eee-e61c-403f-9874-ca3a9219fe7f
+
 
 ### 5. ❓Query Transaction Status
 
@@ -327,7 +333,9 @@ This feature allows you to check the status of an Mpesa transaction using its **
 - If the transaction is successful and record already exists, display the current status and inform you of the existing record.
 - If the transaction failed, it will notify you accordingly.
 
-<video src="./frappe_mpsa_payments/docs/mpesa-recon.mp4" width="800" controls></video>
+
+https://github.com/user-attachments/assets/c31fe0fc-6843-4ba6-ac6a-504a60257964
+
 
 #### Use Cases:
 
