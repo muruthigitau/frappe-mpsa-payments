@@ -100,5 +100,21 @@ def get_data(filters):
         )
     )
 
+    query = apply_filters(query, filters, Disbursement, Reference)
+
     data = query.run(as_dict=True)
+
     return data
+
+
+def apply_filters(query, filters, Disbursement, Reference):
+    if filters:
+        if filters.get("start_date"):
+            query = query.where(Disbursement.posting_date >= filters["start_date"])
+        if filters.get("end_date"):
+            query = query.where(Disbursement.posting_date <= filters["end_date"])
+        if filters.get("company"):
+            query = query.where(Disbursement.company == filters["company"])
+        if filters.get("party_type"):
+            query = query.where(Reference.party_type == filters["party_type"])
+    return query
