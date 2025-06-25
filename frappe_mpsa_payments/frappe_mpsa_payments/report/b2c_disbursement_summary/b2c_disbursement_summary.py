@@ -129,15 +129,16 @@ def get_data(filters):
 
         references = references_query.run(as_dict=True)
 
+        if len(references) == 0:
+            # If no references, return nothing
+            final_report_data.pop()
+            return final_report_data
+
         current_disbursement_subtotal = 0.0
         for ref in references:
             final_report_data.append(
                 {
-                    "posting_date": (
-                        ref.posting_date
-                        if "posting_date" in ref
-                        else disburse.posting_date
-                    ),
+                    "posting_date": disburse.posting_date,
                     "name": disburse.name,
                     "company": disburse.company,
                     "mode_of_payment": disburse.mode_of_payment,
