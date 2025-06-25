@@ -42,13 +42,6 @@ def get_columns():
             "width": 200,
         },
         {
-            "label": "Company",
-            "fieldname": "company",
-            "fieldtype": "Link",
-            "options": "Company",
-            "width": 200,
-        },
-        {
             "label": "Transaction ID",
             "fieldname": "transid",
             "fieldtype": "Data",
@@ -98,9 +91,12 @@ def get_flat_data(MpesaC2B, filters):
     """
     Processes and formats data for flat (non-grouped) display.
     """
+    print("Fetching flat payment data with filters:", filters)
     records = _fetch_flat_payment_data(MpesaC2B, filters)
     status_map = get_docstatus_map()
+
     for row in records:
+        print(row)
         row["status"] = status_map.get(row["docstatus"], "Unknown")
     return records
 
@@ -154,18 +150,6 @@ def get_customer_payments(customer_id, MpesaC2B, PaymentEntry, filters):
     return payment_query.run(as_dict=True)
 
 
-def create_customer_group_header(customer):
-    """
-    Creates a dictionary representing a customer group header row for the report.
-    """
-    return {
-        "posting_date": customer["posting_date"],
-        "customer": customer["customer"],
-        "customer_name": customer["customer_name"],
-        "company": customer["company"],
-    }
-
-
 def create_subtotal_row(customer_id, customer_name, total_amount):
     """
     Creates a dictionary representing a subtotal row for a customer.
@@ -195,14 +179,13 @@ def get_data(filters):
     data = []
 
     for customer in customers:
-        data.append(create_customer_group_header(customer))
-
         payments = get_customer_payments(
             customer["customer"], MpesaC2B, PaymentEntry, filters
         )
         customer_total_amount = 0.0
 
         for pay in payments:
+            pay["customer_name"] = customer["customer_name"]
             pay["status"] = status_map.get(pay["docstatus"], "Unknown")
             data.append(pay)
             customer_total_amount += pay.get("transamount", 0.0)
@@ -212,6 +195,8 @@ def get_data(filters):
                 customer["customer"], customer["customer_name"], customer_total_amount
             )
         )
+
+        data.append({})
 
     return data
 
