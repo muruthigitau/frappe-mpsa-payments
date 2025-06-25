@@ -7,7 +7,7 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
       fieldname: 'start_date',
       label: __('Start Date'),
       fieldtype: 'Date',
-      default: frappe.datetime.add_months(frappe.datetime.get_today(), -1),
+      default: frappe.datetime.add_months(frappe.datetime.get_today(), -5),
       reqd: 1,
     },
     {
@@ -23,6 +23,7 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
       fieldtype: 'Link',
       options: 'Company',
       required: 1,
+      default: frappe.defaults.get_user_default('Company'),
     },
     {
       fieldname: 'status',
@@ -39,6 +40,10 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
   ],
   formatter: function (value, row, column, data, default_formatter) {
     let formatted_value = default_formatter(value, row, column, data);
+
+    if (data && data.is_subtotal) {
+      formatted_value = `<span style="font-weight: bold;">${formatted_value}</span>`;
+    }
 
     const blankFields = ['amount', 'transamount'];
 
