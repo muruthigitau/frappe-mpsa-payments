@@ -103,9 +103,15 @@ class MpesaConnector(BaseMpesaConnector):
 
     def _update_token(self, token: str, expires_in: int):
         token_expiry = datetime.now() + timedelta(seconds=int(expires_in))
-        frappe.db.set_value("Mpesa Settings", self.settings_name, "access_token", token)
-        frappe.db.set_value("Mpesa Settings", self.settings_name, "expires_in", int(expires_in))
-        frappe.db.set_value("Mpesa Settings", self.settings_name, "token_expiry", token_expiry)
+        frappe.db.set_value(
+            "Mpesa Settings", 
+            self.settings_name, 
+            {
+                "access_token": token,
+                "expires_in": int(expires_in),
+                "token_expiry": token_expiry
+            }
+        )
         frappe.db.commit()
 
 
