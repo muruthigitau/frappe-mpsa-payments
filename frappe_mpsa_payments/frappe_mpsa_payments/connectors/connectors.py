@@ -10,6 +10,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import frappe
 from frappe.integrations.utils import create_request_log
+import base64
 
 # Remote error handler for Mpesa
 def on_mpesa_error(data, url, doctype, document_name):
@@ -112,16 +113,46 @@ class MpesaConnector(BaseMpesaConnector):
         self._timeout = seconds
         return self
 
-
     def authenticate(self) -> str:
-        self._initialize_settings()
-        s = self._get_mpesa_settings()
-        url = f"{self._base_url}/oauth/v1/generate?grant_type=client_credentials"
-        r = requests.get(url, auth=HTTPBasicAuth(s["consumer_key"], s["consumer_secret"]))
-        r.raise_for_status()
-        data = r.json()
-        self._update_token(data["access_token"], data["expires_in"])
-        return data["access_token"]
+        try:
+            self._initialize_settings()
+            s = self._get_mpesa_settings()
+            url = f"{self._base_url}/oauth/v1/generate?grant_type=client_credentials"
+            auth_string = f"{s['consumer_key']}:{s['consumer_secret']}"
+            encoded_auth = base64.b64encode(auth_string.encode()).decode()
+            
+            self.integration_request = create_request_log(
+                data={"grant_type": "client_credentials"},
+                request_description="Mpesa OAuth Token Authentication",
+                is_remote_request=True,
+                service_name="Mpesa",
+                request_headers={"Authorization": f"Basic {encoded_auth}"},
+                url=url,
+                reference_docname=self.settings_name,
+                reference_doctype="Mpesa Settings",
+            )
+            r = requests.get(url, auth=HTTPBasicAuth(s["consumer_key"], s["consumer_secret"]))
+            r.raise_for_status()
+            data = r.json()
+            self._update_token(data["access_token"], data["expires_in"])
+            
+            update_integration_request(
+                self.integration_request.name, 
+                status="Completed", 
+                output=str(data)
+            )
+            
+            return data["access_token"]
+        except Exception as e:
+            if hasattr(self, 'integration_request') and self.integration_request:
+                update_integration_request(
+                    self.integration_request.name, 
+                    status="Failed", 
+                    error=str(e)
+                )
+            self.error = e
+            self.notify()
+            raise
 
     def _get_authenticated_headers(self) -> dict:
         if not self._is_token_valid():
