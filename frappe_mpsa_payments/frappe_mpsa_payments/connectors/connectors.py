@@ -15,7 +15,7 @@ import base64
 # Remote error handler for Mpesa
 def on_mpesa_error(data, url, doctype, document_name):
     error_msg = f"Remote error at {url} for {doctype} {document_name}: {data}"
-    frappe.log_error(title="Mpesa Error", message=error_msg)
+    frappe.log_error(title="Mpesa Error", message=error_msg, reference_doctype=doctype, reference_name=document_name)
 
 # Custom integration request updater
 def update_integration_request(

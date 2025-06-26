@@ -49,13 +49,8 @@ def stk_push_on_success(response: dict, payload: dict, document_name: str, **kwa
             "checkout_request_id": response.get("CheckoutRequestID", ""),
             "response_code": response.get("ResponseCode", ""),
             "response_description": response.get("ResponseDescription", ""),
-            "result_code": response.get("ResultCode", ""),
-            "result_desc": response.get("ResultDesc", ""),
             "amount": payload.get("Amount", 0.0), 
             "phone_number": payload.get("PhoneNumber", ""),
-            "account_reference": response.get("AccountReference", ""),
-            "transaction_desc": response.get("TransactionDesc", ""),
-            "transaction_id": response.get("MpesaReceiptNumber", ""),
             "timestamp": now_datetime(),
             "settings": kwargs.get("settings_name", ""),
         }
