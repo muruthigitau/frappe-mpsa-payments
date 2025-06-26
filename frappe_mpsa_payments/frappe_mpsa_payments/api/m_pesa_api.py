@@ -300,7 +300,7 @@ def initiate_stk_push(**args) -> any:
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "STK Push Generation Error")
         frappe.log_error(_("Failed to generate STK push. Please check the error logs."))
-   
+
         
 @frappe.whitelist(allow_guest=True)
 def stk_push_callback(**kwargs) -> None:
@@ -320,6 +320,15 @@ def stk_push_callback(**kwargs) -> None:
             item.get("Name"): item.get("Value") for item in callback_metadata if "Value" in item
         }
 
+        transaction_date = metadata_dict.get("TransactionDate")
+        if transaction_date:
+            if not isinstance(transaction_date, str):
+                transaction_date = str(transaction_date)
+                
+            date_obj = datetime.datetime.strptime(transaction_date, "%Y%m%d%H%M%S")
+            
+            metadata_dict["TransactionDate"] = date_obj
+
         request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, {
             "checkout_request_id": checkout_request_id
         })
@@ -332,7 +341,23 @@ def stk_push_callback(**kwargs) -> None:
             "result_code": result_code,
             "result_desc": transaction_response.get("ResultDesc"),
             "transaction_id": metadata_dict.get("MpesaReceiptNumber"),
+            "transaction_date": metadata_dict.get("TransactionDate"),
             "status": status,
+        })
+        
+        integration_req = frappe.get_doc("Integration Request", {
+            "output": ["like", f"%{checkout_request_id}%"]
+        })
+        integration_req.flags.ignore_permissions = True
+        current_output = integration_req.output or "{}"
+        output = json.dumps({
+            "stkpush_response": current_output,
+            "callback_result": transaction_response
+        }, indent=4)
+        
+        frappe.db.set_value("Integration Request", integration_req.name, {
+            "status": status,
+            "output": output,
         })
 
     except Exception:

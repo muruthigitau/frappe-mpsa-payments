@@ -14,7 +14,6 @@
   "settings",
   "reference_doctype",
   "payment_gateway",
-  "merchant_request_id",
   "transaction_desc",
   "column_break_hakd",
   "amount",
@@ -23,14 +22,19 @@
   "account_reference",
   "timestamp",
   "response_details_section",
+  "merchant_request_id",
   "response_code",
-  "result_desc",
   "response_description",
   "column_break_xort",
-  "result_code",
   "checkout_request_id",
+  "customer_message",
+  "callback_result_details_section",
   "transaction_id",
-  "amended_from"
+  "transaction_date",
+  "amended_from",
+  "column_break_nmct",
+  "result_code",
+  "result_desc"
  ],
  "fields": [
   {
@@ -190,13 +194,36 @@
    "fieldtype": "Dynamic Link",
    "label": "Reference Name",
    "options": "reference_doctype"
+  },
+  {
+   "fieldname": "customer_message",
+   "fieldtype": "Small Text",
+   "label": "Customer Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "callback_result_details_section",
+   "fieldtype": "Section Break",
+   "label": "Callback Result Details"
+  },
+  {
+   "fieldname": "column_break_nmct",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "transaction_date",
+   "fieldtype": "Datetime",
+   "in_standard_filter": 1,
+   "label": "Transaction Date",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-26 20:48:37.486569",
+ "modified": "2025-06-26 15:04:04.367462",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Express Request",
