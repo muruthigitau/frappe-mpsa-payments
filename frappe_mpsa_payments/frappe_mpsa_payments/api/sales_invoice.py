@@ -119,7 +119,7 @@ def initiate_row_stk_push(name: str = None, phone_number: str = None, amount: fl
             "message": _("Failed to initiate STK Push for payment. Please check the logs for more details.")
         }
 
-
+@frappe.whitelist()
 def get_payment_gateway_from_mop(mode_of_payment: str, company: str) -> str:
     payment_gateway = None
     try:
@@ -148,6 +148,45 @@ def get_payment_gateway_from_mop(mode_of_payment: str, company: str) -> str:
         pass
 
     return payment_gateway
+
+@frappe.whitelist()
+def get_mop_from_payment_gateway(payment_gateway: str, company: str) -> str:
+    """Get mode of payment associated with the given payment gateway"""
+    mode_of_payment = None
+    try:
+        if not payment_gateway or not frappe.db.exists("Payment Gateway", payment_gateway):
+            return None
+        
+        pg_accounts = frappe.get_all(
+            "Payment Gateway Account",
+            filters={"payment_gateway": payment_gateway},
+            fields=["payment_account"]
+        )
+        
+        if not pg_accounts:
+            return None
+            
+        for pg_account in pg_accounts:
+            payment_account = pg_account.payment_account
+            
+            mop_accounts = frappe.get_all(
+                "Mode of Payment Account",
+                filters={
+                    "default_account": payment_account,
+                    "company": company
+                },
+                fields=["parent"]
+            )
+            
+            if mop_accounts:
+                mode_of_payment = mop_accounts[0].parent
+                break
+                
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "get_mop_from_payment_gateway Error")
+        pass
+        
+    return mode_of_payment
 
 
 @frappe.whitelist()
