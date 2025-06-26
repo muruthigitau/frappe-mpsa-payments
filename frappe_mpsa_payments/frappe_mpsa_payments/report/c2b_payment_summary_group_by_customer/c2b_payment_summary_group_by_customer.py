@@ -96,58 +96,8 @@ def get_flat_data(MpesaC2B, filters):
     status_map = get_docstatus_map()
 
     for row in records:
-        print(row)
         row["status"] = status_map.get(row["docstatus"], "Unknown")
     return records
-
-
-def get_distinct_customers(MpesaC2B, filters):
-    """
-    Fetches a distinct list of customers who have made payments based on filters.
-    Includes company for the group header.
-    """
-    customer_query = (
-        frappe.qb.from_(MpesaC2B)
-        .select(
-            MpesaC2B.customer,
-            MpesaC2B.full_name.as_("customer_name"),
-            MpesaC2B.company,
-            MpesaC2B.posting_date,
-        )
-        .where(MpesaC2B.customer.isnotnull())
-        .distinct()
-    )
-    customer_query = apply_filters(customer_query, MpesaC2B, filters)
-    return customer_query.run(as_dict=True)
-
-
-def get_customer_payments(customer_id, MpesaC2B, PaymentEntry, filters):
-    """
-    Fetches all C2B payments for a given customer within the filter period,
-    joined with Payment Entry details.
-    """
-    payment_query = (
-        frappe.qb.from_(MpesaC2B)
-        .left_join(PaymentEntry)
-        .on(MpesaC2B.payment_entry == PaymentEntry.name)
-        .select(
-            MpesaC2B.transid,
-            MpesaC2B.posting_date,
-            MpesaC2B.transamount,
-            MpesaC2B.docstatus,
-            MpesaC2B.customer,
-            PaymentEntry.name.as_("payment_entry"),
-            PaymentEntry.party,
-            PaymentEntry.party_name,
-            PaymentEntry.reference_no,
-            PaymentEntry.reference_date,
-            PaymentEntry.remarks,
-        )
-        .where(MpesaC2B.customer == customer_id)
-        .orderby(MpesaC2B.posting_date, order=frappe.qb.asc)
-    )
-    payment_query = apply_filters(payment_query, MpesaC2B, filters)
-    return payment_query.run(as_dict=True)
 
 
 def create_subtotal_row(customer_id, customer_name, total_amount):
@@ -174,28 +124,70 @@ def get_data(filters):
     if not group_by_customer:
         return get_flat_data(MpesaC2B, filters)
 
-    customers = get_distinct_customers(MpesaC2B, filters)
+    # Single query for grouped data
+    query = (
+        frappe.qb.from_(MpesaC2B)
+        .left_join(PaymentEntry)
+        .on(MpesaC2B.payment_entry == PaymentEntry.name)
+        .select(
+            MpesaC2B.customer,
+            MpesaC2B.full_name.as_("customer_name"),
+            MpesaC2B.company,
+            MpesaC2B.transid,
+            MpesaC2B.posting_date,
+            MpesaC2B.transamount,
+            MpesaC2B.docstatus,
+            PaymentEntry.name.as_("payment_entry"),
+            PaymentEntry.party,
+            PaymentEntry.party_name,
+            PaymentEntry.reference_no,
+            PaymentEntry.reference_date,
+            PaymentEntry.remarks,
+        )
+        .where(MpesaC2B.customer.isnotnull())
+        .orderby(MpesaC2B.customer, order=frappe.qb.asc)
+        .orderby(MpesaC2B.posting_date, order=frappe.qb.asc)
+    )
+    query = apply_filters(query, MpesaC2B, filters)
+    all_payments = query.run(as_dict=True)
+
     status_map = get_docstatus_map()
     data = []
+    current_customer = None
+    customer_payments = []
+    customer_total_amount = 0.0
 
-    for customer in customers:
-        payments = get_customer_payments(
-            customer["customer"], MpesaC2B, PaymentEntry, filters
-        )
-        customer_total_amount = 0.0
+    for pay in all_payments:
+        if current_customer is None:
+            current_customer = pay["customer"]
 
-        for pay in payments:
-            pay["customer_name"] = customer["customer_name"]
-            pay["status"] = status_map.get(pay["docstatus"], "Unknown")
-            data.append(pay)
-            customer_total_amount += pay.get("transamount", 0.0)
+        if pay["customer"] != current_customer:
+            # New customer, append previous customer's data and subtotal
+            data.extend(customer_payments)
+            data.append(
+                create_subtotal_row(
+                    current_customer, customer_payments[0]["customer_name"], customer_total_amount
+                )
+            )
+            data.append({})  # Add an empty row for separation
 
+            # Reset for the new customer
+            current_customer = pay["customer"]
+            customer_payments = []
+            customer_total_amount = 0.0
+
+        pay["status"] = status_map.get(pay["docstatus"], "Unknown")
+        customer_payments.append(pay)
+        customer_total_amount += pay.get("transamount", 0.0)
+
+    # Append data for the last customer
+    if customer_payments:
+        data.extend(customer_payments)
         data.append(
             create_subtotal_row(
-                customer["customer"], customer["customer_name"], customer_total_amount
+                current_customer, customer_payments[0]["customer_name"], customer_total_amount
             )
         )
-
         data.append({})
 
     return data
@@ -219,8 +211,13 @@ def apply_filters(query, MpesaC2B, filters):
 
     if filters.get("status"):
         status_map = get_docstatus_map()
-        docstatus = status_map.get(filters["status"])
-        if docstatus is not None:
-            query = query.where(MpesaC2B.docstatus == docstatus)
+        docstatus_value = None
+        # Find the docstatus integer value from the human-readable status
+        for k, v in status_map.items():
+            if v == filters["status"]:
+                docstatus_value = k
+                break
+        if docstatus_value is not None:
+            query = query.where(MpesaC2B.docstatus == docstatus_value)
 
     return query
