@@ -22,7 +22,7 @@ frappe.query_reports['C2B Payment Summary Group by Customer'] = {
       label: __('Company'),
       fieldtype: 'Link',
       options: 'Company',
-      required: 1,
+      reqd: 1,
       default: frappe.defaults.get_user_default('Company'),
     },
     {
