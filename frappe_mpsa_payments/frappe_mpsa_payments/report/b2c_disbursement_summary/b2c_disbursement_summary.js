@@ -22,7 +22,7 @@ frappe.query_reports['B2C Disbursement Summary'] = {
       label: __('Company'),
       fieldtype: 'Link',
       options: 'Company',
-      required: 1,
+      reqd: 1,
       default: frappe.defaults.get_user_default('Company'),
     },
     {
