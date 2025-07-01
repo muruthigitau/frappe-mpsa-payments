@@ -25,6 +25,19 @@ def get_columns():
             "width": 250,
         },
         {
+            "fieldname": "party_type",
+            "fieldtype": "Link",
+            "label": "Party Type",
+            "options": "Party Type",
+            "width": 100,
+        },
+        {
+            "fieldname": "party",
+            "fieldtype": "Data",
+            "label": "Party",
+            "width": 150,
+        },
+        {
             "fieldname": "mode_of_payment",
             "fieldtype": "Link",
             "label": "Mode of Payment",
@@ -36,19 +49,6 @@ def get_columns():
             "fieldtype": "Link",
             "label": "Transaction to Pay Against",
             "options": "DocType",
-            "width": 150,
-        },
-        {
-            "fieldname": "party_type",
-            "fieldtype": "Link",
-            "label": "Party Type",
-            "options": "Party Type",
-            "width": 100,
-        },
-        {
-            "fieldname": "party",
-            "fieldtype": "Data",
-            "label": "Party",
             "width": 150,
         },
         {
