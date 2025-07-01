@@ -4,6 +4,14 @@
 frappe.query_reports['B2C Disbursement Summary'] = {
   filters: [
     {
+      fieldname: 'company',
+      label: __('Company'),
+      fieldtype: 'Link',
+      options: 'Company',
+      reqd: 1,
+      default: frappe.defaults.get_user_default('Company'),
+    },
+    {
       fieldname: 'start_date',
       label: __('Start Date'),
       fieldtype: 'Date',
@@ -16,14 +24,6 @@ frappe.query_reports['B2C Disbursement Summary'] = {
       fieldtype: 'Date',
       default: frappe.datetime.get_today(),
       reqd: 1,
-    },
-    {
-      fieldname: 'company',
-      label: __('Company'),
-      fieldtype: 'Link',
-      options: 'Company',
-      reqd: 1,
-      default: frappe.defaults.get_user_default('Company'),
     },
     {
       fieldname: 'party_type',
