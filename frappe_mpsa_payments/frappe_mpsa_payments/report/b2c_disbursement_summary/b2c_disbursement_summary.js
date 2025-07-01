@@ -29,7 +29,32 @@ frappe.query_reports['B2C Disbursement Summary'] = {
       fieldname: 'party_type',
       label: __('Party Type'),
       fieldtype: 'Select',
-      options: '\nEmployee\nSupplier\nCustomer',
+      options: '\nEmployee\nSupplier',
+    },
+    {
+      fieldname: 'party',
+      label: __('Party'),
+      fieldtype: 'Dynamic Link',
+      options: 'party_type',
+      depends_on: 'eval:doc.party_type',
+      mandatory_depends_on: 'eval:doc.party_type',
+    },
+    {
+      fieldname: 'transaction_to_pay_against',
+      label: __('Transaction to Pay Against'),
+      fieldtype: 'Link',
+      options: 'DocType',
+      get_query: function () {
+        const doctypes =
+          frappe.query_report.get_filter_value('party_type') === 'Employee'
+            ? ['Salary Slip', 'Employee Advance', 'Expense Claim', 'Loan']
+            : ['Purchase Invoice', 'Purchase Order'];
+        return {
+          filters: {
+            name: ['in', doctypes],
+          },
+        };
+      },
     },
   ],
   formatter: function (value, row, column, data, default_formatter) {
