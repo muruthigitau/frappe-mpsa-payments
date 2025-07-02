@@ -1,6 +1,6 @@
 frappe.ui.form.on("Sales Invoice", {
   refresh(frm) {
-    if (frm.doc.is_pos || frm.doc.docstatus === 0) {
+    if (!frm.is_new() && frm.doc.is_pos && frm.doc.docstatus === 0) {
       if (frm.doc.outstanding_amount > 0) {
         frappe.call({
           method:
@@ -198,6 +198,9 @@ frappe.ui.form.on("Sales Invoice Payment", {
 });
 
 function setup_stk_push_button_logic(frm) {
+  if (frm.is_new()) {
+    return;
+  }
   const child_table = frm.doc.payments || [];
 
   child_table.forEach((row) => {
