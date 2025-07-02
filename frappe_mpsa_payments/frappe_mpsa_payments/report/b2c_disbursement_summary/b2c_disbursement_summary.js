@@ -43,6 +43,18 @@ frappe.query_reports["B2C Disbursement Summary"] = {
       label: __("Party"),
       fieldtype: "Dynamic Link",
       options: "party_type",
+      get_query: function () {
+        const selected_party_type =
+          frappe.query_report.get_filter_value("party_type");
+
+        if (selected_party_type == "Employee") {
+          return {
+            filters: {
+              status: "Active",
+            },
+          };
+        }
+      },
       depends_on: "eval:doc.party_type",
       mandatory_depends_on: "eval:doc.party_type",
     },
