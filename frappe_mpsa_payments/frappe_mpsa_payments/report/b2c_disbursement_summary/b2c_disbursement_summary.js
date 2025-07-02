@@ -1,64 +1,64 @@
 // Copyright (c) 2025, Navari Limited and contributors
 // For license information, please see license.txt
 
-frappe.query_reports['B2C Disbursement Summary'] = {
+frappe.query_reports["B2C Disbursement Summary"] = {
   filters: [
     {
-      fieldname: 'company',
-      label: __('Company'),
-      fieldtype: 'Link',
-      options: 'Company',
+      fieldname: "company",
+      label: __("Company"),
+      fieldtype: "Link",
+      options: "Company",
       reqd: 1,
-      default: frappe.defaults.get_user_default('Company'),
+      default: frappe.defaults.get_user_default("Company"),
     },
     {
-      fieldname: 'start_date',
-      label: __('Start Date'),
-      fieldtype: 'Date',
+      fieldname: "start_date",
+      label: __("Start Date"),
+      fieldtype: "Date",
       default: frappe.datetime.add_months(frappe.datetime.get_today(), -5),
       reqd: 1,
     },
     {
-      fieldname: 'end_date',
-      label: __('End Date'),
-      fieldtype: 'Date',
+      fieldname: "end_date",
+      label: __("End Date"),
+      fieldtype: "Date",
       default: frappe.datetime.get_today(),
       reqd: 1,
     },
     {
-      fieldname: 'party_type',
-      label: __('Party Type'),
-      fieldtype: 'Link',
-      options: 'DocType',
+      fieldname: "party_type",
+      label: __("Party Type"),
+      fieldtype: "Link",
+      options: "DocType",
       get_query: function () {
         return {
           filters: {
-            name: ['in', ['Supplier', 'Employee']],
+            name: ["in", ["Supplier", "Employee"]],
           },
         };
       },
     },
     {
-      fieldname: 'party',
-      label: __('Party'),
-      fieldtype: 'Dynamic Link',
-      options: 'party_type',
-      depends_on: 'eval:doc.party_type',
-      mandatory_depends_on: 'eval:doc.party_type',
+      fieldname: "party",
+      label: __("Party"),
+      fieldtype: "Dynamic Link",
+      options: "party_type",
+      depends_on: "eval:doc.party_type",
+      mandatory_depends_on: "eval:doc.party_type",
     },
     {
-      fieldname: 'transaction_to_pay_against',
-      label: __('Transaction to Pay Against'),
-      fieldtype: 'Link',
-      options: 'DocType',
+      fieldname: "transaction_to_pay_against",
+      label: __("Transaction to Pay Against"),
+      fieldtype: "Link",
+      options: "DocType",
       get_query: function () {
         const doctypes =
-          frappe.query_report.get_filter_value('party_type') === 'Employee'
-            ? ['Salary Slip', 'Employee Advance', 'Expense Claim', 'Loan']
-            : ['Purchase Invoice', 'Purchase Order'];
+          frappe.query_report.get_filter_value("party_type") === "Employee"
+            ? ["Salary Slip", "Employee Advance", "Expense Claim", "Loan"]
+            : ["Purchase Invoice", "Purchase Order"];
         return {
           filters: {
-            name: ['in', doctypes],
+            name: ["in", doctypes],
           },
         };
       },
@@ -71,7 +71,7 @@ frappe.query_reports['B2C Disbursement Summary'] = {
       formatted_value = `<span style="font-weight: bold;">${formatted_value}</span>`;
     }
 
-    const blankFields = ['total_amount'];
+    const blankFields = ["total_amount"];
 
     const isBlankableColumn =
       blankFields.includes(column.fieldname) || /\d+$/.test(column.fieldname);
@@ -80,13 +80,13 @@ frappe.query_reports['B2C Disbursement Summary'] = {
       data &&
       (value === null ||
         value === undefined ||
-        value === '' ||
+        value === "" ||
         value === 0 ||
-        value === '0%' ||
-        formatted_value === 'Sh 0.00');
+        value === "0%" ||
+        formatted_value === "Sh 0.00");
 
     if (isBlankableColumn && shouldBlank) {
-      return '';
+      return "";
     }
 
     return formatted_value;
