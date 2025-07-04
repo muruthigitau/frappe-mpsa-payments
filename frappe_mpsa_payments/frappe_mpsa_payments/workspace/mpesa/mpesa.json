@@ -201,12 +201,13 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 1,
-   "label": "B2C Disbursement Report",
+   "is_query_report": 0,
+   "label": "STK Push Request Status Report",
    "link_count": 0,
-   "link_to": "B2C Disbursement Summary",
+   "link_to": "STK Push Request Status",
    "link_type": "Report",
    "onboard": 0,
+   "report_ref_doctype": "Mpesa Express Request",
    "type": "Link"
   },
   {
@@ -231,17 +232,16 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
-   "label": "STK Push Request Status Report",
+   "is_query_report": 1,
+   "label": "B2C Disbursement Report",
    "link_count": 0,
-   "link_to": "STK Push Request Status",
+   "link_to": "B2C Disbursement Summary",
    "link_type": "Report",
    "onboard": 0,
-   "report_ref_doctype": "Mpesa Express Request",
    "type": "Link"
   }
  ],
- "modified": "2025-07-04 11:33:41.477113",
+ "modified": "2025-07-04 11:39:53.323666",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa",
