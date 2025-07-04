@@ -103,19 +103,6 @@ def get_data(filters):
     MpesaExpressRequest = DocType("Mpesa Express Request")
     PaymentRequest = DocType("Payment Request")
 
-    # TODO: Delete this commented code once the query is confirmed to work.
-    # query = frappe.qb.from_(MpesaExpressRequest).select(
-    #     MpesaExpressRequest.name.as_("transaction_id"),
-    #     MpesaExpressRequest.amount,
-    #     MpesaExpressRequest.phone_number,
-    #     MpesaExpressRequest.status,
-    #     MpesaExpressRequest.timestamp,
-    #     MpesaExpressRequest.account_reference.as_("merchant_request_id"),
-    #     MpesaExpressRequest.name.as_("checkout_request_id"),
-    #     MpesaExpressRequest.checkout_request_id,
-    #     MpesaExpressRequest.result_desc.as_("error_message"),
-    # )
-
     query = (
         frappe.qb.from_(MpesaExpressRequest)
         .left_join(PaymentRequest)
