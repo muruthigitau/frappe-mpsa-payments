@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"nu2bkf51Ir\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">Mpesa</span>\",\"col\":12}},{\"id\":\"v5xMov9fuY\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"L2zasfpoOs\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Disbursed B2C\",\"col\":4}},{\"id\":\"7jnhj5XLgU\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Received C2B\",\"col\":4}},{\"id\":\"IitgNsFwsJ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"gvenJof67-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Settings\",\"col\":3}},{\"id\":\"0da8pdMCsQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Integration Request\",\"col\":3}},{\"id\":\"UdyOBPCeG1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Error Log\",\"col\":3}},{\"id\":\"LxbqU74dB5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"B2c Payment Disbursement\",\"col\":3}},{\"id\":\"dee9XfjZYm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Payment Reconciliation\",\"col\":3}},{\"id\":\"AgIlCNBsXy\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Bl25BRZWzc\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}},{\"id\":\"Eqauc23rby\",\"type\":\"card\",\"data\":{\"card_name\":\"Payments\",\"col\":4}},{\"id\":\"U7swFux4jx\",\"type\":\"card\",\"data\":{\"card_name\":\"Disbursements\",\"col\":4}},{\"id\":\"LIITib9evX\",\"type\":\"paragraph\",\"data\":{\"text\":\"Reports\",\"col\":12}}]",
+ "content": "[{\"id\":\"nu2bkf51Ir\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">Mpesa</span>\",\"col\":12}},{\"id\":\"v5xMov9fuY\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"L2zasfpoOs\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Disbursed B2C\",\"col\":4}},{\"id\":\"7jnhj5XLgU\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Received C2B\",\"col\":4}},{\"id\":\"IitgNsFwsJ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"gvenJof67-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Settings\",\"col\":3}},{\"id\":\"0da8pdMCsQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Integration Request\",\"col\":3}},{\"id\":\"UdyOBPCeG1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Error Log\",\"col\":3}},{\"id\":\"LxbqU74dB5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"B2c Payment Disbursement\",\"col\":3}},{\"id\":\"dee9XfjZYm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Payment Reconciliation\",\"col\":3}},{\"id\":\"AgIlCNBsXy\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Bl25BRZWzc\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}},{\"id\":\"Eqauc23rby\",\"type\":\"card\",\"data\":{\"card_name\":\"Payments\",\"col\":4}},{\"id\":\"U7swFux4jx\",\"type\":\"card\",\"data\":{\"card_name\":\"Disbursements\",\"col\":4}},{\"id\":\"aBHUw7-kkd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"NGfRDMvXcQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2025-03-06 09:26:13.194859",
  "custom_blocks": [],
  "docstatus": 0,
@@ -189,9 +189,59 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "STK Push Request Status Report",
+   "link_count": 0,
+   "link_to": "STK Push Request Status",
+   "link_type": "Report",
+   "onboard": 0,
+   "report_ref_doctype": "Mpesa Express Request",
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "C2B Payment Report",
+   "link_count": 0,
+   "link_to": "C2B Payment Summary Group by Customer",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "C2B Reconciliation Report",
+   "link_count": 0,
+   "link_to": "C2B Reconciliation Report",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "B2C Disbursement Report",
+   "link_count": 0,
+   "link_to": "B2C Disbursement Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-06-16 12:48:46.011805",
+ "modified": "2025-07-04 11:39:53.323666",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa",
