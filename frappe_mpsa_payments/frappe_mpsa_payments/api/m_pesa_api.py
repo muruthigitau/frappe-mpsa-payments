@@ -1,20 +1,24 @@
-
 from __future__ import unicode_literals
-import frappe, requests
-from frappe import _
-from requests.auth import HTTPBasicAuth
-import base64
-import datetime
 import json
 import time
+import base64
+import datetime
+from typing import Any
+
+import requests
+from requests.auth import HTTPBasicAuth
+
+import frappe
+from frappe import _
+from frappe.utils import flt
+from frappe.model.document import Document
+
 from .process_request import process_request
 from .mpesa_response_handler import stk_push_on_success, transaction_status_on_success, balance_query_on_success
 from ...utils.doctype_names import MPESA_SETTINGS_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
-from typing import Any
-from frappe_mpsa_payments.utils.encoding_initiator_password import (
+from ...utils.encoding_initiator_password import (
     generate_security_credential,
 )
-from frappe.model.document import Document
 from ...utils.utils import (
     build_callback_url,
     log_and_throw_error,
@@ -385,11 +389,14 @@ def get_token(app_key, app_secret, base_url):
 def confirmation(**kwargs):
     try:
         args = frappe._dict(kwargs)
+
+        frappe.set_user("Administrator")
+
         doc = frappe.new_doc("Mpesa C2B Payment Register")
         doc.transactiontype = args.get("TransactionType")
         doc.transid = args.get("TransID")
         doc.transtime = args.get("TransTime")
-        doc.transamount = args.get("TransAmount")
+        doc.transamount = flt(args.get("TransAmount"))
         doc.businessshortcode = args.get("BusinessShortCode")
         doc.billrefnumber = args.get("BillRefNumber")
         doc.invoicenumber = args.get("InvoiceNumber")
@@ -407,6 +414,8 @@ def confirmation(**kwargs):
         frappe.log_error(frappe.get_traceback(), str(e)[:140])
         context = {"ResultCode": 1, "ResultDesc": "Rejected"}
         return dict(context)
+    finally:
+        frappe.set_user("Guest")
 
 
 @frappe.whitelist(allow_guest=True)
