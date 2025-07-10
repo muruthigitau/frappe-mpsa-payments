@@ -195,50 +195,65 @@ frappe.ui.form.on("Sales Invoice Payment", {
   mode_of_payment: function (frm, cdt, cdn) {
     setup_stk_push_button_logic(frm);
   },
+  phone_number: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
+  amount: function (frm, cdt, cdn) {
+    setup_stk_push_button_logic(frm);
+  },
 });
 
 function setup_stk_push_button_logic(frm) {
-  if (frm.is_new()) {
-    return;
-  }
-  const child_table = frm.doc.payments || [];
+  if (frm.is_new()) return;
 
-  child_table.forEach((row) => {
-    const cdt = "Sales Invoice Payment";
-    const cdn = row.name;
+  const payments = frm.doc.payments || [];
+  const was_dirty = frm.doc.__unsaved;
 
-    if (row.type === "Phone" && !row.reference_no) {
-      frappe.model.set_value(
-        cdt,
-        cdn,
-        "initiate_stk_push",
-        `
+  payments.forEach((row) => {
+    const is_mpesa_or_phone =
+      (row.mode_of_payment &&
+        row.mode_of_payment.toLowerCase().includes("mpesa")) ||
+      row.type === "Phone";
+
+    if (
+      is_mpesa_or_phone &&
+      row.phone_number &&
+      row.amount > 0 &&
+      !row.reference_no
+    ) {
+      row.initiate_stk_push = `
         <div style="margin-top:5px;">
-          <button class="btn btn-primary btn-xs stk-button" data-row-name="${cdn}">
+          <button class="btn btn-primary btn-xs stk-button" data-row-name="${row.name}">
             Initiate STK Push
           </button>
         </div>
-      `
-      );
+      `;
     } else {
-      frappe.model.set_value(cdt, cdn, "initiate_stk_push", "");
+      row.initiate_stk_push = "";
+    }
+
+    if (frm.fields_dict.payments?.grid) {
+      const grid_row =
+        frm.fields_dict.payments.grid.grid_rows_by_docname[row.name];
+      if (grid_row) {
+        grid_row.doc.initiate_stk_push = row.initiate_stk_push;
+        grid_row.refresh_field("initiate_stk_push");
+      }
     }
   });
 
-  setTimeout(() => {
-    frm.fields_dict.payments.grid.grid_rows.forEach((grid_row) => {
-      const $btn = $(grid_row.wrapper).find(".stk-button");
+  frm.doc.__unsaved = was_dirty;
 
-      $btn.off("click").on("click", function () {
+  setTimeout(() => {
+    $(frm.fields_dict.payments.wrapper)
+      .find(".stk-button")
+      .off("click")
+      .on("click", function () {
         const row_name = $(this).data("row-name");
         const row = frm.doc.payments.find((r) => r.name === row_name);
-
-        if (row) {
-          initiate_stk_push_child(frm, row);
-        }
+        if (row) initiate_stk_push_child(frm, row);
       });
-    });
-  }, 300);
+  }, 100);
 }
 
 function initiate_stk_push_child(frm, row) {
@@ -259,6 +274,8 @@ function initiate_stk_push_child(frm, row) {
       payment_name: row.name,
       company: frm.doc.company,
     },
+    freeze: true,
+    freeze_message: __("Calculating amount for STK Push..."),
     callback(amount_res) {
       const final_amount = amount_res.message;
 
@@ -281,6 +298,8 @@ function initiate_stk_push_child(frm, row) {
           mode_of_payment: row.mode_of_payment,
           company: frm.doc.company,
         },
+        freeze: true,
+        freeze_message: __("Initiating STK Push..."),
         callback(r) {
           if (!r.exc) {
             frappe.msgprint(__("STK Push initiated successfully."));
