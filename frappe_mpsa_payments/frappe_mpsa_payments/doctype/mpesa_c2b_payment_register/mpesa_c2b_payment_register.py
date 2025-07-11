@@ -8,6 +8,23 @@ from frappe_mpsa_payments.frappe_mpsa_payments.api.payment_entry import create_p
 
 class MpesaC2BPaymentRegister(Document):
 	def before_insert(self):
+		if self.thirdpartytransid:
+			er = frappe.db.get_value(
+				"Mpesa Express Request",
+				{ "merchant_request_id": self.thirdpartytransid },
+				["name", "status"],
+				as_dict=True
+			)
+			if er:
+				frappe.log_error(
+					message=f"Blocked C2B because matching Express Request {er.name} "
+							f"already exists (status={er.status})",
+					title="Mpesa C2B Insert Blocked"
+				)
+				frappe.throw(
+					_("Cannot record C2B payment: Express Request {0} already exists").format(er.name)
+				)
+
 		self.set_missing_values()
 
 	def after_insert(self):
