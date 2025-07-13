@@ -54,11 +54,15 @@ class StanbicSettings(Document):
         frappe.db.commit()
 
         self._ensure_mode_of_payment(
-            mode_label="Stanbic-Mobile", gateway=gateway_name, payment_type="Phone"
+            mode_label=f"{gateway_name}-Mobile",
+            gateway=gateway_name,
+            payment_type="Phone",
         )
 
         self._ensure_mode_of_payment(
-            mode_label="Stanbic-PesaLink", gateway=gateway_name, payment_type="Bank"
+            mode_label=f"{gateway_name}-PesaLink",
+            gateway=gateway_name,
+            payment_type="Bank",
         )
 
     def _ensure_mode_of_payment(self, mode_label: str, gateway: str, payment_type: str):
