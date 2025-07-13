@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import Literal
 
 import frappe
@@ -72,19 +73,12 @@ class ErrorObserver:
             notifier: The connector instance that encountered an error.
         """
         if notifier.error:
-            ir_name = notifier.integration_request.name
-            if ir_name:
-                update_integration_request(
-                    ir_name,
-                    status="Failed",
-                    error=str(notifier.error),
-                )
-                frappe.db.commit()
-            frappe.log_error(
-                title=f"{notifier.provider} Fatal Error",
-                message=str(notifier.error),
-                reference_doctype=notifier.doctype,
-                reference_name=notifier.document_name,
+            on_remote_error(
+                notifier.provider,
+                notifier.error,
+                notifier._url,
+                notifier.doctype,
+                notifier.document_name,
             )
             frappe.throw(
                 "A fatal error occurred. Check the Error Log.",
@@ -176,8 +170,28 @@ class BaseAPIConnector:
         self.doctype = doctype or self.settings_doctype
         self.document_name = document_name or self.settings_name
 
+        scrubbed = deepcopy(self._payload or {})
+
+        # 1.) Find all fields in that DocType declared as type “Password”
+        try:
+            meta = frappe.get_meta(self.doctype)
+            password_fields = {
+                f.fieldname for f in meta.fields if f.fieldtype == "Password"
+            }
+        except Exception:
+            password_fields = set()
+
+        # 2.) Mask every key that’s a real password field (or still catch anything with "secret"/"password")
+        for key in list(scrubbed):
+            if (
+                key in password_fields
+                or "secret" in key.lower()
+                or "password" in key.lower()
+            ):
+                scrubbed[key] = "****"
+
         self.integration_request = create_request_log(
-            data=self._payload,
+            data=scrubbed,
             request_description=self._description,
             is_remote_request=True,
             service_name=self.provider,
@@ -199,6 +213,7 @@ class BaseAPIConnector:
             status="Completed",
             output=str(data),
         )
+        frappe.db.commit()
 
     def _finalize_error(self, data) -> None:
         """
@@ -212,17 +227,7 @@ class BaseAPIConnector:
             status="Failed",
             error=str(data),
         )
-
-        on_remote_error(
-            self.provider,
-            data,
-            self._url,
-            self.settings_doctype,
-            self.settings_name,
-        )
-
-        self.error = data
-        self.notify()
+        frappe.db.commit()
 
     def use_form_data(self, flag: bool = True) -> BaseAPIConnector:
         """
