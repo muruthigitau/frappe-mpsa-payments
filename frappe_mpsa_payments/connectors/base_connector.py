@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from json.decoder import JSONDecodeError
 from typing import Callable, Literal
 
 import frappe
@@ -293,13 +294,16 @@ class BaseAPIConnector:
                     json=self._payload,
                     timeout=self.timeout,
                 )
-            data = resp.json()
         except Exception as e:
             self.error = e
             if self._error_callback:
                 self._error_callback(error=e, **self._callback_context())
-            self.notify()
             return None
+
+        try:
+            data = resp.json()
+        except JSONDecodeError:
+            data = {"_raw": resp.text or ""}
 
         if resp.status_code < 300:
             if self._success_callback:
@@ -314,6 +318,5 @@ class BaseAPIConnector:
                     response=resp, data=data, **self._callback_context()
                 )
             self._finalize_error(data)
-            self.notify()
 
         return data
