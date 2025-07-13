@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Literal
+from typing import Callable, Literal
 
 import frappe
 import requests
@@ -126,6 +126,8 @@ class BaseAPIConnector:
         self._reuse_existing: bool = False
         self._url: str | None = None
         self._use_form_data: bool = False
+        self._success_callback: Callable | None = None
+        self._error_callback: Callable | None = None
 
     def notify(self) -> None:
         for observer in self._observers:
@@ -154,6 +156,22 @@ class BaseAPIConnector:
     def reuse_existing_request(self, flag: bool = True) -> BaseAPIConnector:
         self._reuse_existing = flag
         return self
+
+    def on_success(self, callback: Callable) -> BaseAPIConnector:
+        self._success_callback = callback
+        return self
+
+    def on_error(self, callback: Callable) -> BaseAPIConnector:
+        self._error_callback = callback
+        return self
+
+    def _callback_context(self) -> dict:
+        return {
+            "doctype": self.doctype,
+            "document_name": self.document_name,
+            "integration_request": self.integration_request,
+            "endpoint": self._endpoint,
+        }
 
     def _prepare_request_log(
         self, url: str, doctype: str | None = None, document_name: str | None = None
@@ -278,13 +296,23 @@ class BaseAPIConnector:
             data = resp.json()
         except Exception as e:
             self.error = e
+            if self._error_callback:
+                self._error_callback(error=e, **self._callback_context())
             self.notify()
             return None
 
         if resp.status_code < 300:
+            if self._success_callback:
+                self._success_callback(
+                    response=resp, data=data, **self._callback_context()
+                )
             self._finalize_success(data)
         else:
             self.error = data
+            if self._error_callback:
+                self._error_callback(
+                    response=resp, data=data, **self._callback_context()
+                )
             self._finalize_error(data)
             self.notify()
 
