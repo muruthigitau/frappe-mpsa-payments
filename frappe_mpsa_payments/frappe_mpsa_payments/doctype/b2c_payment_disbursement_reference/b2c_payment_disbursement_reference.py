@@ -1,24 +1,24 @@
 # Copyright (c) 2024, Navari Limited and contributors
 # For license information, please see license.txt
 
-# import frappe
 import re
-from uuid import uuid4
 
 import frappe
-from frappe.utils import flt
 from frappe.model.document import Document
+from frappe.utils import flt
 
 
 class B2CPaymentDisbursementReference(Document):
     def validate(self) -> None:
         """Validation Hook"""
-        
+        parent_doc = getattr(self, "parent_doc", None)
+        payment_type = parent_doc.payment_type
+
         if not self.party:
             frappe.throw(
                 f"Row #{self.idx}: Party is mandatory",
                 frappe.ValidationError,
-                title="Validation Error"
+                title="Validation Error",
             )
 
         if self.allocated_amount is not None and flt(self.allocated_amount) < 10:
@@ -28,19 +28,22 @@ class B2CPaymentDisbursementReference(Document):
                 title="Validation Error",
             )
 
-        if self.outstanding_amount and (self.allocated_amount > self.outstanding_amount or not self.outstanding_amount):
+        if self.outstanding_amount and (
+            self.allocated_amount > self.outstanding_amount
+            or not self.outstanding_amount
+        ):
             frappe.throw(
                 "Allocated Amount cannot be greater than Outstanding Amount",
                 frappe.ValidationError,
                 title="Validation Error",
             )
 
-        if self.partyb:
+        if payment_type != "Stanbic PesaLink" and self.partyb:
             mobile_no = sanitise_phone_number(self.partyb)
 
             if not is_valid_receiver_contact(mobile_no):
                 frappe.throw(
-                    f"Incorrect Receiver's Mobile Number: {self.partyb}",
+                    f"Row #{self.idx}: Incorrect Receiver's Mobile Number: {self.partyb}",
                     frappe.ValidationError,
                     title="Incorrect Contact",
                 )

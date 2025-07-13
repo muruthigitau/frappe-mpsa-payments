@@ -111,7 +111,7 @@
    "fieldname": "payment_type",
    "fieldtype": "Select",
    "label": "Payment Type",
-   "options": "Mpesa Disbursement",
+   "options": "Mpesa Disbursement\nStanbic Mobile\nStanbic PesaLink",
    "reqd": 1
   },
   {
@@ -301,8 +301,8 @@
  "links": [
   {
    "group": "B2C Requests",
-   "link_doctype": "Mpesa B2C Request",
-   "link_fieldname": "b2c_payment"
+   "link_doctype": "B2C Disbursement Request",
+   "link_fieldname": "b2c_payment_disbursement"
   },
   {
    "group": "Accounting Entries",
@@ -324,7 +324,7 @@
    "link_fieldname": "b2c_payment_disbursement"
   }
  ],
- "modified": "2025-06-16 16:19:21.703350",
+ "modified": "2025-07-13 17:26:26.598182",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement",
