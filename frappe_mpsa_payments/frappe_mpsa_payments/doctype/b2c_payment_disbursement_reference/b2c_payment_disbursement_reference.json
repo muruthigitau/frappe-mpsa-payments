@@ -170,7 +170,6 @@
    "allow_on_submit": 1,
    "fieldname": "b2c_disbursement_request",
    "fieldtype": "Link",
-   "hidden": 1,
    "label": "B2C Disbursement Request",
    "options": "B2C Disbursement Request",
    "read_only": 1
@@ -179,7 +178,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-13 16:03:57.799062",
+ "modified": "2025-07-14 18:36:46.409498",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement Reference",

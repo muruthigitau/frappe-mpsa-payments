@@ -60,6 +60,7 @@ class B2CPaymentDisbursement(Document):
                 ref=ref,
                 settings=settings,
                 b2c_disbursement=self,
+                enqueue_after_commit=True,
             )
 
         self.status = "Initiated"
@@ -687,31 +688,43 @@ class B2CPaymentDisbursement(Document):
     ) -> str:
         """
         Return either the mobile (for Mpesa or Stanbic Mobile)
-        or the bank account number (for Stanbic PesaLink)
+        or the bank account number (for Stanbic PesaLink) by
+        fetching it from the Bank Account doctype via the
+        Supplier.default_bank_account field.
         """
-        if party_type == "Employee":
-            if payment_type == "Stanbic PesaLink":
+
+        if payment_type == "Stanbic PesaLink":
+            if party_type == "Supplier":
+                bank_account_name = frappe.db.get_value(
+                    "Supplier", entry.party, "default_bank_account"
+                )
+                if bank_account_name:
+                    return (
+                        frappe.db.get_value(
+                            "Bank Account", bank_account_name, "account_number"
+                        )
+                        or ""
+                    )
+                return ""
+            elif party_type == "Employee":
                 return (
                     frappe.db.get_value("Employee", entry.employee, "bank_ac_no") or ""
                 )
-            else:
-                return (
-                    frappe.db.get_value("Employee", entry.employee, "cell_number") or ""
-                )
+
+        # Mobile Payouts
+        if party_type == "Employee":
+            return frappe.db.get_value("Employee", entry.employee, "cell_number") or ""
 
         if party_type == "Supplier":
-            if payment_type == "Stanbic PesaLink":
-                return frappe.db.get_value("Supplier", entry.party, "bank_ac_no") or ""
-            else:
-                contact = frappe.db.get_all(
-                    "Contact",
-                    filters={"link_name": entry.party},
-                    fields=["phone", "mobile_no"],
-                    limit=1,
-                )
-                if contact:
-                    return contact[0].get("phone") or contact[0].get("mobile_no") or ""
-                return ""
+            contact = frappe.db.get_all(
+                "Contact",
+                filters={"link_name": entry.party},
+                fields=["phone", "mobile_no"],
+                limit=1,
+            )
+            if contact:
+                return contact[0].get("phone") or contact[0].get("mobile_no") or ""
+            return ""
 
         return ""
 
@@ -803,7 +816,7 @@ def create_b2c_request(ref, settings, b2c_disbursement):
 
         b2c_request = frappe.get_doc(data)
         b2c_request.insert(ignore_permissions=True)
-        # b2c_request.submit()
+        b2c_request.submit()
         frappe.db.set_value(
             ref.doctype, ref.name, "b2c_disbursement_request", b2c_request.name
         )
