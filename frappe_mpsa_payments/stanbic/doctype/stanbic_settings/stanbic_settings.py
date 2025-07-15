@@ -7,12 +7,12 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from ....connectors.stanbic.b2c_connector import StanbicConnector
 from ....utils.utils import (
     create_payment_gateway,
     create_payment_gateway_account,
     validate_phone_number,
 )
-from .stanbic_connector import StanbicConnector
 
 
 class StanbicSettings(Document):

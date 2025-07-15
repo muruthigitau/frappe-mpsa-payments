@@ -6,8 +6,8 @@ from typing import Any
 import frappe
 from frappe.utils import add_to_date, now_datetime
 
-from ....connectors.base_connector import BaseAPIConnector
-from ....utils.doctype_names import STANBIC_SETTINGS_DOCTYPE
+from ...utils.doctype_names import STANBIC_SETTINGS_DOCTYPE
+from ..base_connector import BaseAPIConnector
 
 
 class Baseurl(Enum):
