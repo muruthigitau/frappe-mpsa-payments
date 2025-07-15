@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "MB2C.-.YY.-.MM.-.######",
+ "autoname": "B2C.-.YY.-.MM.-.######",
  "creation": "2023-11-07 14:25:41.290770",
  "default_view": "List",
  "doctype": "DocType",
@@ -9,21 +9,25 @@
  "engine": "InnoDB",
  "field_order": [
   "request_details_section",
+  "payment_provider",
   "phone_number",
-  "mpesa_settings",
   "originator_conversation_id",
-  "commandid",
+  "amended_from",
   "column_break_uaay",
-  "amount",
-  "status",
-  "occassion",
+  "posting_date",
   "remarks",
+  "status",
+  "section_break_apgb",
+  "currency",
+  "amount",
   "b2c_payment_disbursement_section",
-  "b2c_payment",
+  "b2c_payment_disbursement",
   "reference_doctype",
+  "party_type",
   "column_break_xxuq",
-  "b2c_payment_reference",
+  "b2c_payment_disbursement_reference",
   "reference_name",
+  "party",
   "section_break_ovxt",
   "conversation_id",
   "response_code",
@@ -36,15 +40,27 @@
   "result_type",
   "result_code",
   "result_desc",
-  "column_break_iset",
+  "column_break_euqn",
   "transaction_id",
-  "receiver_public_name",
+  "mpesa_tab",
+  "section_break_adaq",
+  "mpesa_settings",
+  "commandid",
+  "occassion",
+  "column_break_iset",
   "recipient_is_registered_customer",
+  "receiver_public_name",
   "charges_paid_acct_avlbl_funds",
   "utility_acct_avlbl_funds",
   "working_acct_avlbl_funds",
   "transaction_completed_datetime",
-  "amended_from"
+  "bank_details_tab",
+  "column_break_kown",
+  "stanbic_settings",
+  "column_break_zmjb",
+  "bank_name",
+  "bank_code",
+  "bank_ac_no"
  ],
  "fields": [
   {
@@ -122,16 +138,16 @@
    "fieldname": "phone_number",
    "fieldtype": "Data",
    "label": "Phone Number",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
+   "depends_on": "eval: doc.payment_provider === \"Mpesa B2C\"",
    "fieldname": "mpesa_settings",
    "fieldtype": "Link",
    "label": "Mpesa Settings",
+   "mandatory_depends_on": "eval: doc.payment_provider === \"Mpesa B2C\"",
    "options": "Mpesa Settings",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -168,24 +184,8 @@
    "label": "B2C Payment Disbursement"
   },
   {
-   "fieldname": "b2c_payment",
-   "fieldtype": "Link",
-   "label": "B2C Payment",
-   "options": "B2C Payment Disbursement",
-   "read_only": 1,
-   "reqd": 1
-  },
-  {
    "fieldname": "column_break_xxuq",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "b2c_payment_reference",
-   "fieldtype": "Link",
-   "label": "B2C Payment Reference",
-   "options": "B2C Payment Disbursement Reference",
-   "read_only": 1,
-   "reqd": 1
   },
   {
    "allow_on_submit": 1,
@@ -220,7 +220,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Mpesa B2C Request",
+   "options": "B2C Disbursement Request",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
@@ -246,8 +246,7 @@
    "hidden": 1,
    "label": "Command ID",
    "options": "\nSalaryPayment\nBusinessPayment\nPromotionPayment",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "amount",
@@ -306,20 +305,128 @@
    "fieldtype": "Data",
    "label": "Request Id",
    "read_only": 1
+  },
+  {
+   "default": "Mpesa B2C",
+   "fieldname": "payment_provider",
+   "fieldtype": "Select",
+   "label": "Payment Provider",
+   "options": "Mpesa B2C\nStanbic Mobile\nStanbic Pesalink",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date",
+   "options": "Today",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_apgb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_adaq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_euqn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mpesa_tab",
+   "fieldtype": "Tab Break",
+   "label": "Mpesa"
+  },
+  {
+   "fieldname": "bank_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Bank Details"
+  },
+  {
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "label": "Bank Name"
+  },
+  {
+   "fieldname": "bank_code",
+   "fieldtype": "Data",
+   "label": "Bank Code"
+  },
+  {
+   "fieldname": "b2c_payment_disbursement",
+   "fieldtype": "Link",
+   "label": "B2C Payment Disbursement",
+   "options": "B2C Payment Disbursement",
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "b2c_payment_disbursement_reference",
+   "fieldtype": "Link",
+   "label": "B2C Payment Disbursement Reference",
+   "options": "B2C Payment Disbursement Reference",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_kown",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stanbic_settings",
+   "fieldtype": "Link",
+   "label": "Stanbic Settings",
+   "options": "Stanbic Settings"
+  },
+  {
+   "fieldname": "column_break_zmjb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bank_ac_no",
+   "fieldtype": "Data",
+   "label": "Bank A/C No."
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Link",
+   "label": "Party Type",
+   "link_filters": "[[\"DocType\",\"name\",\"in\",[\"Employee\",\"Supplier\"]]]",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Party",
+   "options": "party_type",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-04 18:26:21.136288",
+ "modified": "2025-07-15 08:15:41.431360",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
- "name": "Mpesa B2C Request",
+ "name": "B2C Disbursement Request",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
    "delete": 1,
    "email": 1,
@@ -329,6 +436,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -343,7 +451,10 @@
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -351,10 +462,14 @@
    "report": 1,
    "role": "Accounts Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
+   "amend": 1,
+   "cancel": 1,
    "create": 1,
+   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
@@ -362,6 +477,7 @@
    "report": 1,
    "role": "HR Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {

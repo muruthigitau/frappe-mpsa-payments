@@ -2,24 +2,16 @@
 # For license information, please see license.txt
 
 import uuid
-import pdb
 
-# import frappe
-import datetime
 import frappe
-from frappe.utils import getdate
 from frappe.model.document import Document
 
-from .. import app_logger
-from ..custom_exceptions import (
-    InformationMismatchError,
-    UnExistentB2CPaymentRecordError,
-)
-from ...api.mpsa_b2c import make_b2c_payment_request
 from ....utils.definitions import B2CRequestDefinition
+from ...api.b2c import make_b2c_payment_request
+from .. import app_logger
 
 
-class MpesaB2CRequest(Document):
+class B2CDisbursementRequest(Document):
     """B2C Payments Transactions"""
 
     def before_insert(self) -> None:
@@ -32,12 +24,11 @@ class MpesaB2CRequest(Document):
             self.originator_conversation_id = self._generate_uuid_v4()
 
     def on_submit(self):
-        
-        any_errors = self._process_mpesa_b2c_request()        
+        make_b2c_payment_request(self.name)
 
     def _generate_uuid_v4(self) -> str:
         return str(uuid.uuid4())
-    
+
     def _prepare_request_data(self, setting) -> None:
         """Prepares the B2C request payload"""
         setting = frappe.get_doc("Mpesa Settings", self.mpesa_settings)
@@ -59,14 +50,13 @@ class MpesaB2CRequest(Document):
     def _process_payment_ref(self, is_retry=False) -> bool:
         """Handles a single B2C payment reference"""
         try:
-
             request_data = self._prepare_request_data(self.mpesa_settings)
 
             response = make_b2c_payment_request(
                 request_data=request_data,
                 doctype=self.doctype,
                 document_name=self.name,
-                mpesa_settings=self.mpesa_settings
+                mpesa_settings=self.mpesa_settings,
             )
 
             if response.get("ResultCode") == "0":
@@ -83,8 +73,10 @@ class MpesaB2CRequest(Document):
             return False
 
         return True
-    
-    def _process_mpesa_b2c_request(self, only_failed=False, is_retry=False) -> bool:
+
+    def _process_b2c_disbursement_request(
+        self, only_failed=False, is_retry=False
+    ) -> bool:
         any_errors = False
 
         if only_failed and self.status != "Failed":
@@ -104,10 +96,14 @@ class MpesaB2CRequest(Document):
     def retry_failed_payment(self) -> None:
         """Retry only failed payments"""
 
-        any_errors = self._process_mpesa_b2c_request(only_failed=True, is_retry=True)
+        any_errors = self._process_b2c_disbursement_request(
+            only_failed=True, is_retry=True
+        )
 
         frappe.msgprint(
-            msg="B2C Payment request retry failed. Please Retry." if any_errors else "B2C Payment Request Initiated.",
+            msg="B2C Payment request retry failed. Please Retry."
+            if any_errors
+            else "B2C Payment Request Initiated.",
             title="Payment Request Error" if any_errors else "Payment Request",
-            indicator="red" if any_errors else "green"
+            indicator="red" if any_errors else "green",
         )
