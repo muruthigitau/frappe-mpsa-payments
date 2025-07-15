@@ -1,12 +1,19 @@
 import base64
+import json
 from datetime import datetime, timedelta
 from enum import Enum
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import get_datetime
 
-from ..utils.doctype_names import B2C_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
-from .base_connector import BaseAPIConnector, update_integration_request
+from ...utils.doctype_names import B2C_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
+from ..abstract import B2CConnector
+from ..base_connector import (
+    BaseAPIConnector,
+    create_request_log,
+    update_integration_request,
+)
 
 
 class BaseUrl(Enum):
@@ -14,10 +21,12 @@ class BaseUrl(Enum):
     LIVE_URL = "https://api.safaricom.co.ke"
 
 
-class MpesaB2CConnector(BaseAPIConnector):
+class MpesaB2CConnector(BaseAPIConnector, B2CConnector):
     """
     Handles OAuth token + B2C endpoint for Mpesa using BaseAPIConnector hooks.
     """
+
+    provider_name = "Mpesa"
 
     def __init__(self, settings_name: str):
         super().__init__(
@@ -28,7 +37,9 @@ class MpesaB2CConnector(BaseAPIConnector):
         self._load_settings()
 
     def _load_settings(self):
-        s = frappe.get_doc(self.settings_doctype, self.settings_name)
+        s = frappe.get_doc(
+            self.settings_doctype, self.settings_name, ignore_permissions=True
+        )
         self.consumer_key = s.consumer_key
         self.consumer_secret = s.get_password("consumer_secret")
         self.initiator_name = s.initiator_name
@@ -77,7 +88,7 @@ class MpesaB2CConnector(BaseAPIConnector):
             self._refresh_token()
         return self._token
 
-    def send_b2c(self, b2c_request_doc: Document, callback_url: str) -> dict:
+    def send_b2c_request(self, b2c_request_doc: Document, callback_url: str) -> dict:
         """
         Dispatch a B2C payment request. Returns the raw JSON response.
         """
@@ -195,4 +206,77 @@ class MpesaB2CConnector(BaseAPIConnector):
         frappe.db.commit()
         frappe.publish_realtime(
             event="refresh_form", doctype=B2C_REQUEST_DOCTYPE, docname=document_name
+        )
+
+    def handle_callback(self, payload: dict) -> None:
+        """
+        Process the full B2C callback payload, update the request doc,
+        log to Integration Request, and enqueue downstream jobs.
+        """
+
+        result = frappe._dict(payload)
+        occ_id = result.get("OriginatorConversationID")
+        req = frappe.get_doc(
+            B2C_REQUEST_DOCTYPE, {"originator_conversation_id": occ_id}
+        )
+
+        self.integration_request = create_request_log(
+            data=payload,
+            request_description="Mpesa B2C Callback",
+            is_remote_request=True,
+            service_name=self.provider,
+            request_headers={},
+            url=f"{self._base_url}/b2c/callback",
+            reference_doctype=req.doctype,
+            reference_docname=req.name,
+        )
+
+        params = result.get("ResultParameters", {}).get("ResultParameter", [])
+        result_dict = {p.get("Key"): p.get("Value") for p in params}
+
+        update_map = {
+            "status": "Paid" if str(result.get("ResultCode")) == "0" else "Failed",
+            "result_code": result.get("ResultCode"),
+            "result_desc": result.get("ResultDesc"),
+            "conversation_id": result.get("ConversationID"),
+            "transaction_id": result.get("TransactionID"),
+            "recipient_is_registered_customer": result_dict.get(
+                "B2CRecipientIsRegisteredCustomer"
+            ),
+            "charges_paid_acct_avlbl_funds": result_dict.get(
+                "B2CChargesPaidAccountAvailableFunds"
+            ),
+            "utility_acct_avlbl_funds": result_dict.get(
+                "B2CUtilityAccountAvailableFunds"
+            ),
+            "working_acct_avlbl_funds": result_dict.get(
+                "B2CWorkingAccountAvailableFunds"
+            ),
+            "receiver_public_name": result_dict.get("ReceiverPartyPublicName"),
+        }
+
+        tcd = result_dict.get("TransactionCompletedDateTime")
+        if tcd:
+            update_map["transaction_completed_datetime"] = get_datetime(tcd)
+
+        for k, v in update_map.items():
+            if v is not None:
+                setattr(req, k, v)
+        req.save(ignore_permissions=True)
+
+        if self.integration_request:
+            update_integration_request(
+                self.integration_request.name,
+                status=req.status,
+                output=json.dumps(payload),
+            )
+        else:
+            frappe.log_error(f"No integration_request on connector for {req.name}")
+
+        frappe.enqueue(
+            "frappe_mpsa_payments.services.b2c_response_service.update_b2c_reference_status",
+            queue="short",
+            timeout=300,
+            b2c_request_name=req.name,
+            enqueue_next=True,
         )
