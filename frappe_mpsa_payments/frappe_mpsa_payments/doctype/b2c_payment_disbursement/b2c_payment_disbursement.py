@@ -854,6 +854,11 @@ def create_b2c_request(ref, settings, b2c_disbursement):
         elif settings.meta.name == "Stanbic Settings":
             data["stanbic_settings"] = settings.name
 
+        if b2c_disbursement.payment_type == "Mpesa Disbursement":
+            data["payment_provider"] = "Mpesa"
+        elif b2c_disbursement.payment_type in ("Stanbic Mobile", "Stanbic PesaLink"):
+            data["payment_provider"] = "Stanbic"
+
         b2c_request = frappe.get_doc(data)
         b2c_request.insert(ignore_permissions=True)
         b2c_request.submit()

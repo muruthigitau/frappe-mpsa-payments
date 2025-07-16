@@ -309,11 +309,11 @@
    "read_only": 1
   },
   {
-   "default": "Mpesa B2C",
+   "default": "Mpesa",
    "fieldname": "payment_provider",
    "fieldtype": "Select",
    "label": "Payment Provider",
-   "options": "Mpesa B2C\nStanbic Mobile\nStanbic Pesalink",
+   "options": "Mpesa\nStanbic",
    "reqd": 1
   },
   {
@@ -431,7 +431,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-16 05:28:21.840428",
+ "modified": "2025-07-16 06:44:32.312411",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Disbursement Request",
