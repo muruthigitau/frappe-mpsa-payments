@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
 
 import frappe
 from frappe.utils import add_to_date, now_datetime
 
 from ...utils.doctype_names import STANBIC_SETTINGS_DOCTYPE
+from ..abstract import B2CConnector
 from ..base_connector import BaseAPIConnector
 
 
@@ -15,12 +15,14 @@ class Baseurl(Enum):
     LIVE_URL = "https://api.connect.stanbicbank.co.ke/api/sandbox"
 
 
-class StanbicConnector(BaseAPIConnector):
+class StanbicConnector(BaseAPIConnector, B2CConnector):
     """
     Connector for Stanbic Bank PesaLink and Mobile Money APIs.
     Handles OAuth2 token retrieval, caching, and executing requests
     with full audit logging and error handling.
     """
+
+    provider_name = "Stanbic"
 
     def __init__(self, settings_name):
         """
@@ -29,9 +31,11 @@ class StanbicConnector(BaseAPIConnector):
         Args:
             settings_name: The name of the Stanbic Settings document.
         """
-        super().__init__("Stanbic", STANBIC_SETTINGS_DOCTYPE, settings_name)
-        self._token: str | None = None
-        self._token_expirty: Any = None
+        super().__init__(
+            provider="Stanbic",
+            settings_doctype=STANBIC_SETTINGS_DOCTYPE,
+            settings_name=settings_name,
+        )
         self._load_settings()
 
     def _load_settings(self):
@@ -45,7 +49,9 @@ class StanbicConnector(BaseAPIConnector):
         - scope
         - token_expiry
         """
-        s = frappe.get_doc(STANBIC_SETTINGS_DOCTYPE, self.settings_name)
+        s = frappe.get_doc(
+            STANBIC_SETTINGS_DOCTYPE, self.settings_name, ignore_permissions=True
+        )
         self.client_id = s.client_id
         self.client_secret = s.get_password("client_secret")
         self._token = s.access_token
@@ -62,11 +68,11 @@ class StanbicConnector(BaseAPIConnector):
         Returns:
             True if a valid token is cached, False otherwise.
         """
-        if not self._token or not self._token_expiry:
-            return False
-        return now_datetime() < self._token_expiry
+        return (
+            self._token and self._token_expiry and now_datetime() < self._token_expiry
+        )
 
-    def _get_token(self, manual_refresh=False) -> str:
+    def _refresh_token(self, manual_refresh=False) -> str:
         """
         Retrieve or refresh the OAuth2 token from Stanbic.
 
@@ -114,3 +120,8 @@ class StanbicConnector(BaseAPIConnector):
         self._token = token
         self._token_expiry = expiry
         return token
+
+    def _get_valid_token(self) -> str:
+        if not self._is_token_valid():
+            self._refresh_token()
+        return self._token

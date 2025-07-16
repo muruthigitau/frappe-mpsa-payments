@@ -103,7 +103,7 @@ class StanbicSettings(Document):
 
         conn = StanbicConnector(self.name)
         try:
-            new_token = conn._get_token(manual_refresh=True)
+            new_token = conn._get_valid_token(manual_refresh=True)
             expiry = conn._token_expiry
             frappe.msgprint(
                 _("Token refreshed successfully."), title=_("Stanbic Token")
