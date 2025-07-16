@@ -178,6 +178,13 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
                     "counterparty": {
                         "name": request_doc.party,
                         "mobileNumber": request_doc.phone_number,
+                        "postalAddress": {
+                            "addressLine1": "",
+                            "addressLine2": "",
+                            "postCode": "",
+                            "town": "",
+                            "country": "",
+                        },
                     },
                 }
             )
@@ -185,7 +192,7 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
         elif request_doc.get("bank_ac_no"):
             endpoint = "/pesalink-payments"
 
-            base_payload.update({"sendMoneyTo": request_doc.bank_ac_no})
+            base_payload.update({"sendMoneyTo": "ACCOUNT.NUMBER"})
             base_payload["transferTransactionInformation"].update(
                 {
                     "counterpartyAccount": {
@@ -194,7 +201,15 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
                             "recipientBankCode": request_doc.bank_code,
                         }
                     },
-                    "counterparty": {"name": request_doc.party},
+                    "counterparty": {
+                        "name": request_doc.party,
+                        "postalAddress": {
+                            "addressLine": "",
+                            "postCode": "",
+                            "town": "",
+                            "country": "",
+                        },
+                    },
                 }
             )
 
@@ -283,8 +298,9 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
 
         fields = {
             "status": "Failed",
-            "error_code": data.get("reasonCode", ""),
-            "response_description": data.get("reasonText", ""),
+            "error_code": data.get("httpCode", ""),
+            "request_id": data.get("httpMessage"),
+            "error_message": data.get("moreInformation", ""),
         }
         for key, val in fields.items():
             frappe.db.set_value(B2C_REQUEST_DOCTYPE, document_name, key, val)
