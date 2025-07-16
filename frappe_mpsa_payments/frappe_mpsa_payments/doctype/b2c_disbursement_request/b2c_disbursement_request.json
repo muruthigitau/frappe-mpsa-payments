@@ -57,6 +57,8 @@
   "bank_details_tab",
   "column_break_kown",
   "stanbic_settings",
+  "dbs_reference_id",
+  "next_execution_date",
   "column_break_zmjb",
   "bank_name",
   "bank_code",
@@ -411,13 +413,25 @@
    "label": "Party",
    "options": "party_type",
    "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.stanbic_settings",
+   "fieldname": "dbs_reference_id",
+   "fieldtype": "Data",
+   "label": "Dbs Reference Id"
+  },
+  {
+   "depends_on": "eval: doc.stanbic_settings",
+   "fieldname": "next_execution_date",
+   "fieldtype": "Date",
+   "label": "Next Execution Date"
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-15 08:15:41.431360",
+ "modified": "2025-07-16 05:28:21.840428",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Disbursement Request",
