@@ -18,7 +18,7 @@ frappe.ui.form.on("B2C Disbursement Request", {
 						},
 					});
 				},
-				"Mpesa Actions"
+				"Actions"
 			);
 		}
 	},

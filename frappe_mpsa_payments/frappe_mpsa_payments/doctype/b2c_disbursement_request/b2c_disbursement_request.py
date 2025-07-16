@@ -33,5 +33,4 @@ class B2CDisbursementRequest(Document):
     @frappe.whitelist()
     def retry_failed_payment(self) -> None:
         """Retry only failed payments"""
-        # TODO: we-write this part to accommodate the new classes.
-        pass
+        make_b2c_payment_request(self.name)
