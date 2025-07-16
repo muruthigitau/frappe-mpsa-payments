@@ -312,6 +312,14 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
         )
         frappe.db.commit()
 
+        frappe.enqueue(
+            "frappe_mpsa_payments.services.b2c_response_service.update_b2c_reference_status",
+            queue="short",
+            timeout=300,
+            b2c_request_name=document_name,
+            enqueue_next=True,
+        )
+
         frappe.publish_realtime(
             event="refresh_form", doctype=B2C_REQUEST_DOCTYPE, docname=document_name
         )
