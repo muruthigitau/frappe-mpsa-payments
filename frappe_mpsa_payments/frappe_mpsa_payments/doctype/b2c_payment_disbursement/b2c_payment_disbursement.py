@@ -587,12 +587,24 @@ class B2CPaymentDisbursement(Document):
             party, party_type = party_info["party"], party_info["party_type"]
 
             # Get phone number or bank_ac_no (required field)
-            partyb = self.get_party_identifier(entry, party_type, self.payment_type)
-            if not partyb:
+            party_details = self.get_party_identifier(
+                entry, party_type, self.payment_type
+            )
+
+            if not party_details.get("account_number"):
                 frappe.log_error(
                     title=f"Missing Phone - {party}"[:140],
                     message=f"Skipping entry due to missing phone number for {party}: {entry}",
                 )
+
+            if self.payment_type == "Stanbic PesaLink":
+                if not (
+                    party_details.get("bank_name") and party_details.get("bank_code")
+                ):
+                    frappe.log_error(
+                        title=f"Missing Bank Details - {party}"[:140],
+                        message=f"Skipping entry due to missing bank name or code for {party}: {entry}",
+                    )
 
             currency = entry.get("currency") or self.company_currency
             if not entry.get("currency"):
@@ -615,7 +627,9 @@ class B2CPaymentDisbursement(Document):
                 "allocated_amount": 0,
                 "currency": currency,
                 "exchange_rate": self._get_exchange_rate(entry, doctype),
-                "partyb": partyb,
+                "partyb": party_details.get("account_number"),
+                "bank_name": party_details.get("bank_name"),
+                "bank_code": party_details.get("bank_code"),
                 "payment_status": "Not Initiated",
             }
             references.append(reference)
@@ -635,6 +649,8 @@ class B2CPaymentDisbursement(Document):
                     "currency": reference["currency"],
                     "exchange_rate": reference["exchange_rate"],
                     "partyb": reference["partyb"],
+                    "bank_name": reference["bank_name"],
+                    "bank_code": reference["bank_code"],
                 },
             )
 
@@ -685,13 +701,14 @@ class B2CPaymentDisbursement(Document):
 
     def get_party_identifier(
         self, entry: Dict, party_type: str, payment_type: str
-    ) -> str:
+    ) -> dict:
         """
-        Return either the mobile (for Mpesa or Stanbic Mobile)
-        or the bank account number (for Stanbic PesaLink) by
-        fetching it from the Bank Account doctype via the
-        Supplier.default_bank_account field.
+        Return a dictionary containing the mobile number (for Mpesa or Stanbic Mobile)
+        or the bank account details (account number, bank name, and bank code for Stanbic PesaLink)
+        by fetching it from the Bank Account doctype via the Supplier.default_bank_account field.
         """
+
+        result = {"account_number": "", "bank_name": "", "bank_code": ""}
 
         if payment_type == "Stanbic PesaLink":
             if party_type == "Supplier":
@@ -699,21 +716,40 @@ class B2CPaymentDisbursement(Document):
                     "Supplier", entry.party, "default_bank_account"
                 )
                 if bank_account_name:
-                    return (
-                        frappe.db.get_value(
-                            "Bank Account", bank_account_name, "account_number"
-                        )
-                        or ""
+                    bank_details = frappe.db.get_value(
+                        "Bank Account",
+                        bank_account_name,
+                        ["account_number", "bank", "branch_code"],
+                        as_dict=True,
                     )
-                return ""
+                    if bank_details:
+                        result["account_number"] = (
+                            bank_details.get("account_number") or ""
+                        )
+                        result["bank_name"] = bank_details.get("bank") or ""
+                        result["bank_code"] = bank_details.get("branch_code") or ""
+                        return result
+                return result
+
             elif party_type == "Employee":
-                return (
-                    frappe.db.get_value("Employee", entry.employee, "bank_ac_no") or ""
+                bank_details = frappe.db.get_value(
+                    "Employee",
+                    entry.employee,
+                    ["bank_ac_no", "bank_name", "branch_code"],
+                    as_dict=True,
                 )
+                if bank_details:
+                    result["account_number"] = bank_details.get("bank_ac_no") or ""
+                    result["bank_name"] = bank_details.get("bank_name") or ""
+                    result["bank_code"] = bank_details.get("branch_code") or ""
+                return result
 
         # Mobile Payouts
         if party_type == "Employee":
-            return frappe.db.get_value("Employee", entry.employee, "cell_number") or ""
+            result["account_number"] = (
+                frappe.db.get_value("Employee", entry.employee, "cell_number") or ""
+            )
+            return result
 
         if party_type == "Supplier":
             contact = frappe.db.get_all(
@@ -723,10 +759,12 @@ class B2CPaymentDisbursement(Document):
                 limit=1,
             )
             if contact:
-                return contact[0].get("phone") or contact[0].get("mobile_no") or ""
-            return ""
+                result["account_number"] = (
+                    contact[0].get("phone") or contact[0].get("mobile_no") or ""
+                )
+            return result
 
-        return ""
+        return result
 
     @frappe.whitelist()
     def allocate_amount_to_references(
@@ -808,6 +846,8 @@ def create_b2c_request(ref, settings, b2c_disbursement):
             data["phone_number"] = ref.partyb
         elif b2c_disbursement.payment_type == "Stanbic PesaLink":
             data["bank_ac_no"] = ref.partyb
+            data["bank_name"] = ref.bank_name
+            data["bank_code"] = ref.bank_code
 
         if settings.meta.name == "Mpesa Settings":
             data["mpesa_settings"] = settings.name
