@@ -50,6 +50,14 @@ class B2CPaymentDisbursementReference(Document):
 
             self.partyb = mobile_no
 
+        if payment_type == "Stanbic PesaLink":
+            if not self.bank_code:
+                frappe.throw(
+                    f"Row #{self.idx}: Bank Code is Required",
+                    frappe.ValidationError,
+                    title="Validation Error",
+                )
+
 
 def sanitise_phone_number(phone_number: str) -> str:
     """Sanitises a given phone_number string"""
