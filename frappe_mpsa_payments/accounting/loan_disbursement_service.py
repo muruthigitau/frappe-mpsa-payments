@@ -1,6 +1,6 @@
 import frappe
-
 from lending.loan_management.doctype.loan.loan import make_loan_disbursement
+
 
 def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref, submit):
     try:
@@ -11,7 +11,7 @@ def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref, submit):
             company=loan.company,
             applicant_type=loan.applicant_type,
             applicant=loan.applicant,
-            pending_amount=b2c_disbursement_ref.allocated_amount
+            pending_amount=b2c_disbursement_ref.allocated_amount,
         )
 
         disbursement_entry.reference_date = b2c_disbursement_ref.reference_date
@@ -25,5 +25,5 @@ def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref, submit):
 
         frappe.db.commit()
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "Loan Disbursement Creation Failed")

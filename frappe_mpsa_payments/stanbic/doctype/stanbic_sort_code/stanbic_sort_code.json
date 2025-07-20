@@ -1,0 +1,45 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-20 15:59:37.929661",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "bank_name",
+  "column_break_rmfp",
+  "sort_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bank Name"
+  },
+  {
+   "fieldname": "column_break_rmfp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sort_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sort Code"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-07-20 16:01:35.332330",
+ "modified_by": "Administrator",
+ "module": "Stanbic",
+ "name": "Stanbic Sort Code",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

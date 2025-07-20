@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:payment_gateway_name",
+ "creation": "2025-07-11 09:56:01.254005",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "payment_gateway_name",
+  "company",
+  "column_break_pmkk",
+  "sandbox",
+  "section_break_vimd",
+  "client_id",
+  "mobile_number",
+  "column_break_yzhl",
+  "client_secret",
+  "pesa_link_bank_codes_section",
+  "bank_codes",
+  "token_details_section",
+  "access_token",
+  "column_break_rxjp",
+  "scope",
+  "column_break_rlyn",
+  "token_expiry"
+ ],
+ "fields": [
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Client ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "payment_gateway_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Payment Gateway Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_pmkk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sandbox",
+   "fieldtype": "Check",
+   "label": "Sandbox"
+  },
+  {
+   "fieldname": "section_break_vimd",
+   "fieldtype": "Section Break",
+   "label": "Credentials"
+  },
+  {
+   "fieldname": "column_break_yzhl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Client Secret",
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "token_details_section",
+   "fieldtype": "Section Break",
+   "label": "Token Details"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Text",
+   "label": "Access Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rxjp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scope",
+   "fieldtype": "Data",
+   "label": "Scope",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_rlyn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "token_expiry",
+   "fieldtype": "Datetime",
+   "label": "Token Expiry",
+   "read_only": 1
+  },
+  {
+   "description": "Mobile No. associated with your account",
+   "fieldname": "mobile_number",
+   "fieldtype": "Data",
+   "label": "Mobile Number",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "pesa_link_bank_codes_section",
+   "fieldtype": "Section Break",
+   "label": "Pesa Link Bank Codes"
+  },
+  {
+   "fieldname": "bank_codes",
+   "fieldtype": "Table",
+   "label": "Bank Codes",
+   "options": "Stanbic Sort Code"
+  }
+ ],
+ "grid_page_length": 50,
+ "links": [],
+ "modified": "2025-07-20 16:02:03.975231",
+ "modified_by": "Administrator",
+ "module": "Stanbic",
+ "name": "Stanbic Settings",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts User",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

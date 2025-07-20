@@ -7,6 +7,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "payment_status_section",
   "payment_status",
   "column_break_jkda",
   "section_break_erqv",
@@ -23,17 +24,22 @@
   "allocated_amount",
   "currency",
   "exchange_rate",
+  "section_break_lvmh",
+  "bank_name",
+  "column_break_htke",
+  "bank_code",
   "transaction_id_section",
   "reference_no",
   "column_break_hvei",
   "reference_date",
   "section_break_apzo",
-  "mpesa_b2c_request"
+  "b2c_disbursement_request"
  ],
  "fields": [
   {
    "fieldname": "section_break_erqv",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Details"
   },
   {
    "fieldname": "reference_doctype",
@@ -51,7 +57,7 @@
    "fieldname": "partyb",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Mobile No.",
+   "label": "Mobile / AC No.",
    "reqd": 1
   },
   {
@@ -160,26 +166,49 @@
    "read_only": 1
   },
   {
-   "allow_on_submit": 1,
-   "fieldname": "mpesa_b2c_request",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Mpesa B2C Request",
-   "options": "Mpesa B2C Request",
-   "read_only": 1
-  },
-  {
    "depends_on": "eval: doc.reference_doctype === \"Salary Slip\"",
    "fieldname": "payroll_entry",
    "fieldtype": "Link",
    "label": "Payroll Entry",
    "options": "Payroll Entry"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "b2c_disbursement_request",
+   "fieldtype": "Link",
+   "label": "B2C Disbursement Request",
+   "options": "B2C Disbursement Request",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_status_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Status"
+  },
+  {
+   "fieldname": "section_break_lvmh",
+   "fieldtype": "Section Break",
+   "label": "Bank Details"
+  },
+  {
+   "fieldname": "bank_name",
+   "fieldtype": "Data",
+   "label": "Bank Name"
+  },
+  {
+   "fieldname": "column_break_htke",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bank_code",
+   "fieldtype": "Data",
+   "label": "Bank Code"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-15 13:39:40.000139",
+ "modified": "2025-07-16 05:58:21.392896",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Payment Disbursement Reference",
