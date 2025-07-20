@@ -15,6 +15,14 @@ frappe.ui.form.on("Stanbic Settings", {
 				},
 				"Actions"
 			).addClass("btn-primary");
+
+			frm.add_custom_button(
+				__("Fetch All Sort Codes"),
+				() => {
+					frm.call("fetch_all_sort_codes").then(() => frm.reload_doc());
+				},
+				"Actions"
+			);
 		}
 	},
 });

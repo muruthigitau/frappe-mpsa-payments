@@ -15,6 +15,8 @@
   "mobile_number",
   "column_break_yzhl",
   "client_secret",
+  "pesa_link_bank_codes_section",
+  "bank_codes",
   "token_details_section",
   "access_token",
   "column_break_rxjp",
@@ -107,13 +109,23 @@
    "fieldname": "mobile_number",
    "fieldtype": "Data",
    "label": "Mobile Number",
-   "options": "Phone",
-   "reqd": 1
+   "options": "Phone"
+  },
+  {
+   "fieldname": "pesa_link_bank_codes_section",
+   "fieldtype": "Section Break",
+   "label": "Pesa Link Bank Codes"
+  },
+  {
+   "fieldname": "bank_codes",
+   "fieldtype": "Table",
+   "label": "Bank Codes",
+   "options": "Stanbic Sort Code"
   }
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2025-07-13 10:02:52.868169",
+ "modified": "2025-07-20 16:02:03.975231",
  "modified_by": "Administrator",
  "module": "Stanbic",
  "name": "Stanbic Settings",

@@ -116,3 +116,39 @@ class StanbicSettings(Document):
                 indicator="red",
             )
             raise
+
+    @frappe.whitelist()
+    def fetch_all_sort_codes(self):
+        """
+        Fetches the full list of sort codes and populates the child table
+        """
+
+        try:
+            conn = StanbicConnector(self.name)
+            codes = conn.fetch_pesalink_sort_codes()
+        except Exception as e:
+            frappe.throw(_("Could not fetch sort codes: {0}").format(e))
+
+        if isinstance(codes, dict) and codes.get("httpCode"):
+            code = codes.get("httpCode")
+            msg = codes.get("httpMessage", "")
+            more = codes.get("moreInformation", "")
+            frappe.throw(
+                _("Stanbic Fetch Sort Codes failed (HTTP {0}): {1}\n{2}").format(
+                    code, msg, more
+                )
+            )
+
+        self.set("bank_codes", [])
+
+        for entry in codes:
+            self.append(
+                "bank_codes",
+                {
+                    "bank_name": entry.get("bankName"),
+                    "sort_code": entry.get("sortCodeId"),
+                },
+            )
+
+        self.save(ignore_permissions=True)
+        frappe.msgprint(_("Fetched {0} sort codes.").format(len(codes)))
