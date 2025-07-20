@@ -128,9 +128,9 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
         self._token_expiry = expiry
         return token
 
-    def _get_valid_token(self) -> str:
-        if not self._is_token_valid():
-            self._refresh_token()
+    def _get_valid_token(self, manual_refresh=False) -> str:
+        if not self._is_token_valid() or manual_refresh:
+            self._refresh_token(manual_refresh=manual_refresh)
         return self._token
 
     def send_b2c_request(self, request_doc: Document, callback_url: str) -> dict:
@@ -376,3 +376,30 @@ class StanbicConnector(BaseAPIConnector, B2CConnector):
             b2c_request_name=req.name,
             enqueue_next=True,
         )
+
+    def fetch_pesalink_sort_codes(self) -> list[dict]:
+        """
+        Fetch the list of Pesalink sort codes from Stanbic.
+        Returns:
+            A list of {"bankName": str, "sortCodeId": str} dicts.
+        """
+
+        token = self._get_valid_token()
+
+        data = (
+            self.describe("Fetch Sort Codes")
+            .set_endpoint("/fetch-sortcodes")
+            .set_method("POST")
+            .set_headers(
+                {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                }
+            )
+            .set_payload({"transactionType": "PESALINK"})
+            .reuse_existing_request(False)
+            .make_remote_call(self._base_url)
+        )
+
+        return data
