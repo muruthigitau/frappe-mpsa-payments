@@ -719,15 +719,17 @@ class B2CPaymentDisbursement(Document):
                     bank_details = frappe.db.get_value(
                         "Bank Account",
                         bank_account_name,
-                        ["account_number", "bank", "branch_code"],
+                        ["bank_account_no", "bank"],
                         as_dict=True,
                     )
                     if bank_details:
                         result["account_number"] = (
-                            bank_details.get("account_number") or ""
+                            bank_details.get("bank_account_no") or ""
                         )
                         result["bank_name"] = bank_details.get("bank") or ""
-                        result["bank_code"] = bank_details.get("branch_code") or ""
+                        result["bank_code"] = frappe.db.get_value(
+                            "Bank", bank_details.get("bank"), "pesa_link_bank_code"
+                        )
                         return result
                 return result
 
@@ -735,13 +737,15 @@ class B2CPaymentDisbursement(Document):
                 bank_details = frappe.db.get_value(
                     "Employee",
                     entry.employee,
-                    ["bank_ac_no", "bank_name", "branch_code"],
+                    ["bank_ac_no", "bank_name"],
                     as_dict=True,
                 )
                 if bank_details:
                     result["account_number"] = bank_details.get("bank_ac_no") or ""
                     result["bank_name"] = bank_details.get("bank_name") or ""
-                    result["bank_code"] = bank_details.get("branch_code") or ""
+                    result["bank_code"] = frappe.db.get_value(
+                        "Bank", bank_details.get("bank_name"), "pesa_link_bank_code"
+                    )
                 return result
 
         # Mobile Payouts
