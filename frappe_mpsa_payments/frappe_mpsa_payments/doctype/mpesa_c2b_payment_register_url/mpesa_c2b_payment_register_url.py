@@ -2,11 +2,13 @@
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
-import frappe, requests
+
+import frappe
+import requests
 from frappe.model.document import Document
 from frappe.utils import get_request_site_address
+
 from frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api import get_token
-from ..mpesa_settings.mpesa_connector import MpesaConnector
 
 
 class MpesaC2BPaymentRegisterURL(Document):
@@ -33,14 +35,16 @@ class MpesaC2BPaymentRegisterURL(Document):
 
         site_url = get_request_site_address(True)
         validation_url = (
-            #site_url + "/api/method/payments.payment_gateways.doctype.mpesa_c2b_payment_register_url.mpesa_api.validation"
-            site_url + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.validation"
+            # site_url + "/api/method/payments.payment_gateways.doctype.mpesa_c2b_payment_register_url.mpesa_api.validation"
+            site_url
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.validation"
         )
         confirmation_url = (
             # site_url + "/api/method/payments.payment_gateways.doctype.mpesa_c2b_payment_register_url.mpesa_api.confirmation"
-            site_url + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.confirmation"
+            site_url
+            + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.confirmation"
         )
-        register_url = base_url + "/mpesa/c2b/v2/registerurl"
+        register_url = base_url + "/mpesa/c2b/v1/registerurl"
 
         payload = {
             "ShortCode": business_shortcode,
@@ -64,7 +68,7 @@ class MpesaC2BPaymentRegisterURL(Document):
                 frappe.msgprint(str(res))
         except requests.exceptions.HTTPError as errh:
             # Handle HTTP errors
-            #frappe.msgprint(f"HTTP Error: {errh}")
+            # frappe.msgprint(f"HTTP Error: {errh}")
             frappe.msgprint(f"Response Content: {errh.response.content}")
         except requests.exceptions.ConnectionError as errc:
             # Handle Connection errors
