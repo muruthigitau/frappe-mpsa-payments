@@ -44,7 +44,7 @@ class MpesaC2BPaymentRegisterURL(Document):
             site_url
             + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.confirmation"
         )
-        register_url = base_url + "/mpesa/c2b/v1/registerurl"
+        register_url = base_url + "/mpesa/c2b/v2/registerurl"
 
         payload = {
             "ShortCode": business_shortcode,
