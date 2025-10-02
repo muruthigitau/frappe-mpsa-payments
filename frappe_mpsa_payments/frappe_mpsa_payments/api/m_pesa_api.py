@@ -223,11 +223,11 @@ def check_transaction_status(name: str) -> Any:
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, express_request.settings)
 
         endpoint = "/mpesa/stkpushquery/v1/query"
-        time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         payload = {
             "BusinessShortCode": settings.business_shortcode,
-            "Password": generate_request_password(settings, time),
-            "Timestamp": time,
+            "Password": generate_request_password(settings, timestamp),
+            "Timestamp": timestamp,
             "CheckoutRequestID": express_request.checkout_request_id,
         }
 
@@ -252,11 +252,12 @@ def check_transaction_status(name: str) -> Any:
         )
 
 
-def generate_request_password(settings: Document, time: str) -> str:
+def generate_request_password(settings: Document, timestamp: str) -> str:
     """Generate the password for making a request to the M-Pesa API."""
-    return base64.b64encode(
-        f"{settings.business_shortcode}{settings.get_password('online_passkey')}{time}".encode()
-    ).decode()
+    shortcode = str(settings.business_shortcode).strip()
+    passkey = str(settings.get_password("online_passkey")).strip()
+    data_to_encode = f"{shortcode}{passkey}{timestamp}"
+    return base64.b64encode(data_to_encode.encode("utf-8")).decode("utf-8")
 
 
 def transaction_status_error_callback(
