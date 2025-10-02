@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import base64
 import datetime
 import json
+import time
 from typing import Any
 
 import frappe
@@ -457,21 +458,28 @@ def confirmation(**kwargs):
 
         frappe.set_user("Administrator")
 
-        doc = frappe.new_doc("Mpesa C2B Payment Register")
-        doc.transactiontype = args.get("TransactionType")
-        doc.transid = args.get("TransID")
-        doc.transtime = args.get("TransTime")
-        doc.transamount = flt(args.get("TransAmount"))
-        doc.businessshortcode = args.get("BusinessShortCode")
-        doc.billrefnumber = args.get("BillRefNumber")
-        doc.invoicenumber = args.get("InvoiceNumber")
-        doc.orgaccountbalance = args.get("OrgAccountBalance")
-        doc.thirdpartytransid = args.get("ThirdPartyTransID")
-        doc.msisdn = args.get("MSISDN")
-        doc.firstname = args.get("FirstName")
-        doc.middlename = args.get("MiddleName")
-        doc.lastname = args.get("LastName")
-        doc.insert(ignore_permissions=True)
+        frappe.enqueue(
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.delayed_insert_c2b",
+            queue="short",
+            timeout=300,
+            is_async=True,
+            c2b_data={
+                "transactiontype": args.get("TransactionType"),
+                "transid": args.get("TransID"),
+                "transtime": args.get("TransTime"),
+                "transamount": flt(args.get("TransAmount")),
+                "businessshortcode": args.get("BusinessShortCode"),
+                "billrefnumber": args.get("BillRefNumber"),
+                "invoicenumber": args.get("InvoiceNumber"),
+                "orgaccountbalance": args.get("OrgAccountBalance"),
+                "thirdpartytransid": args.get("ThirdPartyTransID"),
+                "msisdn": args.get("MSISDN"),
+                "firstname": args.get("FirstName"),
+                "middlename": args.get("MiddleName"),
+                "lastname": args.get("LastName"),
+            },
+        )
+
         frappe.db.commit()
         context = {"ResultCode": 0, "ResultDesc": "Accepted"}
         return dict(context)
@@ -487,6 +495,37 @@ def confirmation(**kwargs):
 def validation(**kwargs):
     context = {"ResultCode": 0, "ResultDesc": "Accepted"}
     return dict(context)
+
+
+def delayed_insert_c2b(c2b_data: dict) -> None:
+    """
+    Insert C2B Payment Register after a small delay.
+    This ensures that any Express Request with the same transaction_id
+    is already created and can be prioritized.
+    """
+    try:
+        time.sleep(1)
+
+        if c2b_data.get("transid"):
+            express_exists = frappe.db.exists(
+                "Mpesa Express Request", {"transaction_id": c2b_data["transid"]}
+            )
+            if express_exists:
+                frappe.log_error(
+                    f"C2B {c2b_data['transid']} blocked due to existing Express Request",
+                    "C2B Insert Skipped",
+                )
+                return
+
+        doc = frappe.new_doc("Mpesa C2B Payment Register")
+        for k, v in c2b_data.items():
+            setattr(doc, k, v)
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Delayed C2B Insert Error")
 
 
 @frappe.whitelist()
