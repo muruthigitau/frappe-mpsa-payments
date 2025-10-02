@@ -1,30 +1,34 @@
 from __future__ import unicode_literals
-import json
-import time
+
 import base64
 import datetime
+import json
+import time
 from typing import Any
 
+import frappe
 import requests
+from frappe import _
+from frappe.model.document import Document
+from frappe.utils import flt
 from requests.auth import HTTPBasicAuth
 
-import frappe
-from frappe import _
-from frappe.utils import flt
-from frappe.model.document import Document
-
-from .process_request import process_request
-from .mpesa_response_handler import stk_push_on_success, transaction_status_on_success, balance_query_on_success
-from ...utils.doctype_names import MPESA_SETTINGS_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
+from ...utils.doctype_names import MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
 from ...utils.encoding_initiator_password import (
     generate_security_credential,
 )
 from ...utils.utils import (
     build_callback_url,
+    handle_successful_transaction,
     log_and_throw_error,
     update_mpesa_request_status,
-    handle_successful_transaction,
 )
+from .mpesa_response_handler import (
+    balance_query_on_success,
+    stk_push_on_success,
+    transaction_status_on_success,
+)
+from .process_request import process_request
 
 
 @frappe.whitelist(allow_guest=True)
@@ -34,38 +38,43 @@ def balance_query_callback(**kwargs) -> None:
     args = frappe._dict(kwargs)
     result_data = args.get("Result")
     if not result_data:
-        frappe.log_error("M-Pesa Balance Query Error", "Missing 'Result' in callback response")
+        frappe.log_error(
+            "M-Pesa Balance Query Error", "Missing 'Result' in callback response"
+        )
         return
 
     result_code = result_data.get("ResultCode")
     result_desc = result_data.get("ResultDesc", "No description provided")
 
     if result_code is None:
-        frappe.log_error("M-Pesa Balance Query Error", "Missing 'ResultCode' in callback response")
+        frappe.log_error(
+            "M-Pesa Balance Query Error", "Missing 'ResultCode' in callback response"
+        )
         return
 
     conversation_id = result_data.get("ConversationID")
     if not conversation_id:
-        frappe.log_error("M-Pesa Balance Query Error", "ConversationID missing in callback response")
+        frappe.log_error(
+            "M-Pesa Balance Query Error", "ConversationID missing in callback response"
+        )
         return
 
     integration_request = frappe.get_list(
         "Integration Request",
         filters=[["output", "like", f"%{conversation_id}%"]],
         fields=["name", "output", "reference_docname"],
-        ignore_permissions=True
+        ignore_permissions=True,
     )
 
     if not integration_request:
         frappe.log_error(
             "M-Pesa Balance Query Error",
-            f"No matching Integration Request found for ConversationID: {conversation_id}"
+            f"No matching Integration Request found for ConversationID: {conversation_id}",
         )
         return
 
     request_doc = frappe.get_doc("Integration Request", integration_request[0].name)
     request_doc.flags.ignore_permissions = True
-
 
     if str(result_code) != "0":
         request_doc.status = "Failed"
@@ -73,7 +82,7 @@ def balance_query_callback(**kwargs) -> None:
         request_doc.save(ignore_permissions=True)
         frappe.log_error(
             title="M-Pesa Balance Query Error",
-            message=f"ResultCode: {result_code}, ResultDesc: {result_desc}, Data: {json.dumps(result_data, indent=4)}"
+            message=f"ResultCode: {result_code}, ResultDesc: {result_desc}, Data: {json.dumps(result_data, indent=4)}",
         )
         return
 
@@ -89,12 +98,17 @@ def balance_query_callback(**kwargs) -> None:
             break
 
     if not account_balance:
-        frappe.log_error("M-Pesa Balance Query Error", "AccountBalance missing in callback response")
+        frappe.log_error(
+            "M-Pesa Balance Query Error", "AccountBalance missing in callback response"
+        )
         return
 
     settings_docname = integration_request[0].get("reference_docname")
     if not settings_docname:
-        frappe.log_error("M-Pesa Balance Query Error", "Reference document name missing in Integration Request")
+        frappe.log_error(
+            "M-Pesa Balance Query Error",
+            "Reference document name missing in Integration Request",
+        )
         return
 
     settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, settings_docname)
@@ -102,8 +116,9 @@ def balance_query_callback(**kwargs) -> None:
 
     update_account_balances(account_balance, settings)
 
-    frappe.publish_realtime(event="refresh_form", doctype=MPESA_SETTINGS_DOCTYPE, docname=settings_docname)
-
+    frappe.publish_realtime(
+        event="refresh_form", doctype=MPESA_SETTINGS_DOCTYPE, docname=settings_docname
+    )
 
 
 def update_account_balances(account_balance, settings):
@@ -119,52 +134,61 @@ def update_account_balances(account_balance, settings):
         "Loan Disbursement Account": "loan_disbursement_account",
         "Organization Settlement Account": "organization_settlement_account",
         "Advanced Deduction Account": "advanced_deduction_account",
-        "Savings Deduction Account": "savings_deduction_account"
+        "Savings Deduction Account": "savings_deduction_account",
     }
 
-    balances = account_balance.split("&") 
+    balances = account_balance.split("&")
     for balance in balances:
-        details = balance.split("|") 
+        details = balance.split("|")
         if len(details) >= 3:
             account_name = details[0]
             try:
-                available_balance = float(details[2]) 
+                available_balance = float(details[2])
             except ValueError:
-                available_balance = 0.0 
-                
+                available_balance = 0.0
+
             field_name = account_mapping.get(account_name)
             if field_name:
-                frappe.db.set_value(MPESA_SETTINGS_DOCTYPE, settings.name, field_name, available_balance)
+                frappe.db.set_value(
+                    MPESA_SETTINGS_DOCTYPE, settings.name, field_name, available_balance
+                )
 
     return {"status": "success", "message": "Account balances updated successfully"}
 
-    
+
 @frappe.whitelist()
 def get_account_balance(name: str) -> Any:
-    """Call account balance API to send the request to the Mpesa Servers."""        
+    """Call account balance API to send the request to the Mpesa Servers."""
     try:
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, name)
         certs = frappe.get_single("Mpesa Public Key Certificate")
         cert_url = ""
-        
+
         if settings.sandbox:
             cert_url = certs.sandbox_certificate
         else:
             cert_url = certs.production_certificate
-            
+
         security_credential = generate_security_credential(
-            settings.get_password("initiator_password", "") if settings.initiator_password else "",
-            cert_url
+            settings.get_password("initiator_password", "")
+            if settings.initiator_password
+            else "",
+            cert_url,
         )
 
         endpoint = "/mpesa/accountbalance/v1/query"
-        
-        callback_url = build_callback_url("frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.balance_query_callback")
-        timeout_url = build_callback_url("frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout")
-                
+
+        callback_url = build_callback_url(
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.balance_query_callback"
+        )
+        timeout_url = build_callback_url(
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_queue_timeout"
+        )
+
         payload = {
             "Initiator": settings.initiator_name,
-            "SecurityCredential": settings.get_password("security_credential") or security_credential, 
+            "SecurityCredential": settings.get_password("security_credential")
+            or security_credential,
             "CommandID": "AccountBalance",
             "PartyA": settings.business_shortcode,
             "IdentifierType": "4",
@@ -185,9 +209,11 @@ def get_account_balance(name: str) -> Any:
         )
         return response
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "Mpesa Balance Query Error")
-        frappe.log_error(_("Failed to check mpesa balance. Please check the error logs."))
+        frappe.log_error(
+            _("Failed to check mpesa balance. Please check the error logs.")
+        )
 
 
 @frappe.whitelist()
@@ -198,11 +224,11 @@ def check_transaction_status(name: str) -> Any:
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, express_request.settings)
 
         endpoint = "/mpesa/stkpushquery/v1/query"
-        time = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         payload = {
             "BusinessShortCode": settings.business_shortcode,
-            "Password": generate_request_password(settings, time),
-            "Timestamp": time,
+            "Password": generate_request_password(settings, timestamp),
+            "Timestamp": timestamp,
             "CheckoutRequestID": express_request.checkout_request_id,
         }
 
@@ -220,25 +246,42 @@ def check_transaction_status(name: str) -> Any:
         )
         return response
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "STK Push Query Error")
-        frappe.log_error(_("Failed to check transaction status. Please check the error logs."))
-        
-def generate_request_password(settings: Document, time: str ) -> str:
+        frappe.log_error(
+            _("Failed to check transaction status. Please check the error logs.")
+        )
+
+
+def generate_request_password(settings: Document, timestamp: str) -> str:
     """Generate the password for making a request to the M-Pesa API."""
-    return base64.b64encode(
-        f"{settings.business_shortcode}{settings.get_password('online_passkey')}{time}".encode()
-        ).decode()
-    
-def transaction_status_error_callback(response: dict, payload: dict, document_name: str, **kwargs) -> None:
-    time.sleep(5)
-    frappe.enqueue(
-        "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.check_transaction_status",
-        name=document_name,
-        enqueue_after_commit=True,
-        timeout=300
+    shortcode = str(settings.business_shortcode).strip()
+    passkey = str(settings.get_password("online_passkey")).strip()
+    data_to_encode = f"{shortcode}{passkey}{timestamp}"
+    return base64.b64encode(data_to_encode.encode("utf-8")).decode("utf-8")
+
+
+def transaction_status_error_callback(
+    response: dict, payload: dict, document_name: str, **kwargs
+) -> None:
+    """Mark transaction as failed immediately if query fails."""
+    frappe.log_error(
+        message=f"Transaction {document_name} query failed.\nResponse: {frappe.as_json(response)}",
+        title="Mpesa Transaction Status Query Error",
     )
-            
+
+    frappe.db.set_value(
+        MPESA_EXPRESS_REQUEST_DOCTYPE,
+        document_name,
+        {
+            "status": "Failed",
+            "result_desc": response.get("errorMessage")
+            if isinstance(response, dict)
+            else "Unknown error",
+        },
+    )
+
+
 @frappe.whitelist()
 def initiate_stk_push(**args) -> any:
     """Generate STK push by making an API call to the STK push API."""
@@ -259,14 +302,20 @@ def initiate_stk_push(**args) -> any:
     required_fields = ["payment_gateway", "phone_number", "request_amount"]
     missing_fields = [field for field in required_fields if not args.get(field)]
     if missing_fields:
-        frappe.log_error(_("Missing required fields: {0}").format(", ".join(missing_fields)))
+        frappe.log_error(
+            _("Missing required fields: {0}").format(", ".join(missing_fields))
+        )
 
     try:
-        callback_url =  build_callback_url("frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.stk_push_callback")
-        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, args.payment_gateway[6:])
+        callback_url = build_callback_url(
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.stk_push_callback"
+        )
+        mpesa_settings = frappe.get_doc(
+            MPESA_SETTINGS_DOCTYPE, args.payment_gateway[6:]
+        )
         mobile_number = sanitize_mobile_number(args.phone_number or args.sender)
         amount = args.request_amount
-        business_shortcode =  mpesa_settings.business_shortcode
+        business_shortcode = mpesa_settings.business_shortcode
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         reference_name = args.get("reference_name", "Online Payment")
 
@@ -276,7 +325,8 @@ def initiate_stk_push(**args) -> any:
             "Timestamp": timestamp,
             "Amount": amount,
             "PartyA": int(mobile_number),
-            "PartyB": business_shortcode if mpesa_settings.paybill_type == "Pay Bill"
+            "PartyB": business_shortcode
+            if mpesa_settings.paybill_type == "Pay Bill"
             else mpesa_settings.till_number,
             "PhoneNumber": int(mobile_number),
             "CallBackURL": callback_url,
@@ -288,7 +338,7 @@ def initiate_stk_push(**args) -> any:
         }
 
         endpoint = "/mpesa/stkpush/v1/processrequest"
-        
+
         response = process_request(
             endpoint=endpoint,
             method="POST",
@@ -301,11 +351,11 @@ def initiate_stk_push(**args) -> any:
         )
         return response
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "STK Push Generation Error")
         frappe.log_error(_("Failed to generate STK push. Please check the error logs."))
 
-        
+
 @frappe.whitelist(allow_guest=True)
 def stk_push_callback(**kwargs) -> None:
     frappe.set_user("Administrator")
@@ -319,61 +369,77 @@ def stk_push_callback(**kwargs) -> None:
         result_code = transaction_response.get("ResultCode")
         status = "Completed" if str(result_code) == "0" else "Failed"
 
-        callback_metadata = transaction_response.get("CallbackMetadata", {}).get("Item", [])
+        callback_metadata = transaction_response.get("CallbackMetadata", {}).get(
+            "Item", []
+        )
         metadata_dict = {
-            item.get("Name"): item.get("Value") for item in callback_metadata if "Value" in item
+            item.get("Name"): item.get("Value")
+            for item in callback_metadata
+            if "Value" in item
         }
 
         transaction_date = metadata_dict.get("TransactionDate")
         if transaction_date:
             if not isinstance(transaction_date, str):
                 transaction_date = str(transaction_date)
-                
+
             date_obj = datetime.datetime.strptime(transaction_date, "%Y%m%d%H%M%S")
-            
+
             metadata_dict["TransactionDate"] = date_obj
 
-        request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, {
-            "checkout_request_id": checkout_request_id
-        })
+        request_doc = frappe.get_doc(
+            MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id}
+        )
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
 
         if status == "Completed" and request_doc.status != "Completed":
-            handle_successful_transaction(request_doc, metadata_dict, settings, checkout_request_id)
+            handle_successful_transaction(
+                request_doc, metadata_dict, settings, checkout_request_id
+            )
 
-        update_mpesa_request_status(request_doc.name, {
-            "result_code": result_code,
-            "result_desc": transaction_response.get("ResultDesc"),
-            "transaction_id": metadata_dict.get("MpesaReceiptNumber"),
-            "transaction_date": metadata_dict.get("TransactionDate"),
-            "status": status,
-        })
-        
-        integration_req = frappe.get_doc("Integration Request", {
-            "output": ["like", f"%{checkout_request_id}%"]
-        })
+        update_mpesa_request_status(
+            request_doc.name,
+            {
+                "result_code": result_code,
+                "result_desc": transaction_response.get("ResultDesc"),
+                "transaction_id": metadata_dict.get("MpesaReceiptNumber"),
+                "transaction_date": metadata_dict.get("TransactionDate"),
+                "status": status,
+            },
+        )
+
+        request_doc.validate_duplicate_c2b_records()
+
+        integration_req = frappe.get_doc(
+            "Integration Request", {"output": ["like", f"%{checkout_request_id}%"]}
+        )
         integration_req.flags.ignore_permissions = True
         current_output = integration_req.output or "{}"
-        output = json.dumps({
-            "stkpush_response": current_output,
-            "callback_result": transaction_response
-        }, indent=4)
-        
-        frappe.db.set_value("Integration Request", integration_req.name, {
-            "status": status,
-            "output": output,
-        })
+        output = json.dumps(
+            {
+                "stkpush_response": current_output,
+                "callback_result": transaction_response,
+            },
+            indent=4,
+        )
+
+        frappe.db.set_value(
+            "Integration Request",
+            integration_req.name,
+            {
+                "status": status,
+                "output": output,
+            },
+        )
 
     except Exception:
         log_and_throw_error("STK Push Callback Error", checkout_request_id)
 
-        
-        
+
 def sanitize_mobile_number(number: str) -> str:
     """Strip all non-digit characters, take the last 9 digits, and add country code."""
-    sanitized_number = ''.join(filter(str.isdigit, number))[-9:]
+    sanitized_number = "".join(filter(str.isdigit, number))[-9:]
     return "254" + sanitized_number
-
 
 
 def get_token(app_key, app_secret, base_url):
@@ -392,21 +458,28 @@ def confirmation(**kwargs):
 
         frappe.set_user("Administrator")
 
-        doc = frappe.new_doc("Mpesa C2B Payment Register")
-        doc.transactiontype = args.get("TransactionType")
-        doc.transid = args.get("TransID")
-        doc.transtime = args.get("TransTime")
-        doc.transamount = flt(args.get("TransAmount"))
-        doc.businessshortcode = args.get("BusinessShortCode")
-        doc.billrefnumber = args.get("BillRefNumber")
-        doc.invoicenumber = args.get("InvoiceNumber")
-        doc.orgaccountbalance = args.get("OrgAccountBalance")
-        doc.thirdpartytransid = args.get("ThirdPartyTransID")
-        doc.msisdn = args.get("MSISDN")
-        doc.firstname = args.get("FirstName")
-        doc.middlename = args.get("MiddleName")
-        doc.lastname = args.get("LastName")
-        doc.insert(ignore_permissions=True)
+        frappe.enqueue(
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.delayed_insert_c2b",
+            queue="short",
+            timeout=300,
+            is_async=True,
+            c2b_data={
+                "transactiontype": args.get("TransactionType"),
+                "transid": args.get("TransID"),
+                "transtime": args.get("TransTime"),
+                "transamount": flt(args.get("TransAmount")),
+                "businessshortcode": args.get("BusinessShortCode"),
+                "billrefnumber": args.get("BillRefNumber"),
+                "invoicenumber": args.get("InvoiceNumber"),
+                "orgaccountbalance": args.get("OrgAccountBalance"),
+                "thirdpartytransid": args.get("ThirdPartyTransID"),
+                "msisdn": args.get("MSISDN"),
+                "firstname": args.get("FirstName"),
+                "middlename": args.get("MiddleName"),
+                "lastname": args.get("LastName"),
+            },
+        )
+
         frappe.db.commit()
         context = {"ResultCode": 0, "ResultDesc": "Accepted"}
         return dict(context)
@@ -424,6 +497,37 @@ def validation(**kwargs):
     return dict(context)
 
 
+def delayed_insert_c2b(c2b_data: dict) -> None:
+    """
+    Insert C2B Payment Register after a small delay.
+    This ensures that any Express Request with the same transaction_id
+    is already created and can be prioritized.
+    """
+    try:
+        time.sleep(1)
+
+        if c2b_data.get("transid"):
+            express_exists = frappe.db.exists(
+                "Mpesa Express Request", {"transaction_id": c2b_data["transid"]}
+            )
+            if express_exists:
+                frappe.log_error(
+                    f"C2B {c2b_data['transid']} blocked due to existing Express Request",
+                    "C2B Insert Skipped",
+                )
+                return
+
+        doc = frappe.new_doc("Mpesa C2B Payment Register")
+        for k, v in c2b_data.items():
+            setattr(doc, k, v)
+
+        doc.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Delayed C2B Insert Error")
+
+
 @frappe.whitelist()
 def get_mpesa_mode_of_payment(company):
     modes = frappe.get_all(
@@ -436,6 +540,7 @@ def get_mpesa_mode_of_payment(company):
         if mode.mode_of_payment not in modes_of_payment:
             modes_of_payment.append(mode.mode_of_payment)
     return modes_of_payment
+
 
 @frappe.whitelist(allow_guest=True)
 def get_mpesa_draft_c2b_payments(
@@ -457,7 +562,7 @@ def get_mpesa_draft_c2b_payments(
     ]
 
     filters = {"company": company, "docstatus": 0}
-    order_by="posting_date desc, posting_time desc"
+    order_by = "posting_date desc, posting_time desc"
 
     if mode_of_payment:
         filters["mode_of_payment"] = mode_of_payment
@@ -473,21 +578,26 @@ def get_mpesa_draft_c2b_payments(
         filters["posting_date"] = ["<=", to_date]
 
     payments = frappe.get_all(
-        "Mpesa C2B Payment Register", 
-        filters=filters, fields=fields,order_by=order_by
+        "Mpesa C2B Payment Register", filters=filters, fields=fields, order_by=order_by
     )
-    
+
     return payments
-    
+
+
 @frappe.whitelist(allow_guest=True)
 def get_draft_pos_invoice(search_term=None):
-    from frappe.query_builder import DocType
-    from frappe.query_builder.functions import Concat
     from frappe import qb
+    from frappe.query_builder import DocType
 
     SalesInvoice = DocType("Sales Invoice")
     fields = ["*"]
-    status_filters = ["Overdue", "Partially Paid", "Unpaid", "Overdue and Discounted", "Partially Paid and Discounted"]
+    status_filters = [
+        "Overdue",
+        "Partially Paid",
+        "Unpaid",
+        "Overdue and Discounted",
+        "Partially Paid and Discounted",
+    ]
 
     # Create the base query
     query = (
@@ -499,15 +609,15 @@ def get_draft_pos_invoice(search_term=None):
     )
 
     if search_term:
-        search_filter = (
-            (SalesInvoice.customer.like(f"%{search_term}%")) |
-            (SalesInvoice.name.like(f"%{search_term}%"))
+        search_filter = (SalesInvoice.customer.like(f"%{search_term}%")) | (
+            SalesInvoice.name.like(f"%{search_term}%")
         )
         query = query.where(search_filter)
 
     invoices = query.run(as_dict=True)
 
-    frappe.response['message'] = invoices
+    frappe.response["message"] = invoices
+
 
 @frappe.whitelist()
 def submit_mpesa_payment(mpesa_payment, customer):
@@ -517,6 +627,7 @@ def submit_mpesa_payment(mpesa_payment, customer):
     except Exception as e:
         frappe.log_error(f"Error: {str(e)}", "submit_mpesa_payment")
         raise
+
 
 @frappe.whitelist()
 def submit_instant_mpesa_payment():
@@ -529,23 +640,25 @@ def submit_instant_mpesa_payment():
         frappe.log_error(f"Error: {str(e)}", "submit_instant_mpesa_payment")
         raise
 
+
 def process_mpesa_payment(mpesa_payment, customer, submit_payment=False):
     try:
         doc = frappe.get_doc("Mpesa C2B Payment Register", mpesa_payment)
         doc.customer = customer
-        #TODO: after testing, mode of payment
+        # TODO: after testing, mode of payment
         doc.mode_of_payment = get_mode_of_payment(doc)
-        doc.submit_payment=submit_payment
+        doc.submit_payment = submit_payment
         doc.save()
         doc.submit()
-        frappe.db.commit()  
+        frappe.db.commit()
 
-        doc.reload()  
+        doc.reload()
 
         return doc
     except Exception as e:
         frappe.log_error(f"Error: {str(e)}", "process_mpesa_payment")
         raise
+
 
 def get_payment_method(pos_profile):
     pos_profile_doc = frappe.get_doc("POS Profile", pos_profile)
@@ -554,13 +667,23 @@ def get_payment_method(pos_profile):
             return payment.mode_of_payment
     return None
 
+
 def get_mode_of_payment(mpesa_doc):
-    business_short_code=mpesa_doc.businessshortcode
-    mode_of_payment = frappe.get_value("Mpesa C2B Payment Register URL", {"business_shortcode": business_short_code, "register_status": "Success"}, "mode_of_payment")
+    business_short_code = mpesa_doc.businessshortcode
+    mode_of_payment = frappe.get_value(
+        "Mpesa C2B Payment Register URL",
+        {"business_shortcode": business_short_code, "register_status": "Success"},
+        "mode_of_payment",
+    )
     if mode_of_payment is None:
-        mode_of_payment = frappe.get_value("Mpesa C2B Payment Register URL", {"till_number": business_short_code, "register_status": "Success"}, "mode_of_payment")
+        mode_of_payment = frappe.get_value(
+            "Mpesa C2B Payment Register URL",
+            {"till_number": business_short_code, "register_status": "Success"},
+            "mode_of_payment",
+        )
     return mode_of_payment
-    
+
+
 @frappe.whitelist(allow_guest=True)
 def handle_transaction_status_result():
     """Handle the transaction status response from Mpesa"""
@@ -568,16 +691,18 @@ def handle_transaction_status_result():
         response = frappe.request.data
         response_data = json.loads(response)
 
-        integration_request = frappe.get_doc({
-            "doctype": "Integration Request",
-            "is_remote_request": 1,
-            "integration_request_service": "Mpesa Transaction Status Result Callback",
-            "reference_doctype": "Mpesa C2B Payment Register",
-            "status": "Queued",
-            "data": json.dumps(response_data),
-            "url": frappe.request.url,
-            "method": "POST"
-        }).insert(ignore_permissions=True)
+        integration_request = frappe.get_doc(
+            {
+                "doctype": "Integration Request",
+                "is_remote_request": 1,
+                "integration_request_service": "Mpesa Transaction Status Result Callback",
+                "reference_doctype": "Mpesa C2B Payment Register",
+                "status": "Queued",
+                "data": json.dumps(response_data),
+                "url": frappe.request.url,
+                "method": "POST",
+            }
+        ).insert(ignore_permissions=True)
         frappe.db.commit()
 
         frappe.enqueue(
@@ -586,50 +711,62 @@ def handle_transaction_status_result():
             timeout=300,
             job_id=f"mpesa_process_{integration_request.name}",
             integration_request_name=integration_request.name,
-            deduplicate=True
+            deduplicate=True,
         )
 
         return {"status": "queued", "message": "Transaction queued for processing"}
-    
+
     except json.JSONDecodeError as e:
-        frappe.log_error(f"Failed to decode JSON from Mpesa response: {str(e)}", "Mpesa API Error")
+        frappe.log_error(
+            f"Failed to decode JSON from Mpesa response: {str(e)}", "Mpesa API Error"
+        )
         return {"status": "error", "message": "Invalid JSON data"}
     except Exception as e:
         frappe.log_error(f"Error in Mpesa webhook: {str(e)}", "Mpesa API Error")
         return {"status": "error", "message": f"Webhook error: {str(e)}"}
-         
+
 
 def process_mpesa_integration_request(integration_request_name):
     """Process the Mpesa Integration Request and publish updates in real-time"""
     try:
         # Fetch the Integration Request
-        integration_request = frappe.get_doc("Integration Request", integration_request_name)
-        
+        integration_request = frappe.get_doc(
+            "Integration Request", integration_request_name
+        )
+
         # Parse the stored data
         response_data = json.loads(integration_request.data)
         result_data = response_data.get("Result", {})
-        result_parameters = result_data.get("ResultParameters", {}).get("ResultParameter", [])
-        result_params = {param.get("Key", ""): param.get("Value", "") for param in result_parameters if "Key" in param}
-        
+        result_parameters = result_data.get("ResultParameters", {}).get(
+            "ResultParameter", []
+        )
+        result_params = {
+            param.get("Key", ""): param.get("Value", "")
+            for param in result_parameters
+            if "Key" in param
+        }
+
         result_code = result_data.get("ResultCode", None)
         receipt_no = result_params.get("ReceiptNo", "")
         business_shortcode = result_params.get("CreditPartyName", "").split("-")
 
         if result_code == 0:
             if frappe.db.exists("Mpesa C2B Payment Register", {"transid": receipt_no}):
-                error_msg = f"Duplicate transaction: Receipt No {receipt_no} already exists"
+                error_msg = (
+                    f"Duplicate transaction: Receipt No {receipt_no} already exists"
+                )
                 integration_request.status = "Failed"
                 integration_request.output = error_msg
                 integration_request.save(ignore_permissions=True)
                 frappe.db.commit()
-                
+
                 frappe.publish_realtime(
                     event="mpesa_transaction_status",
                     message={"status": "error", "message": error_msg},
-                    user=frappe.session.user
+                    user=frappe.session.user,
                 )
                 return
-            
+
             # Create the Mpesa document
             mpesa_doc = frappe.new_doc("Mpesa C2B Payment Register")
             mpesa_doc.full_name = result_params.get("DebitPartyName", "")
@@ -641,11 +778,15 @@ def process_mpesa_integration_request(integration_request_name):
             mpesa_doc.billrefnumber = result_params.get("ReceiptNo", "")
             mpesa_doc.invoicenumber = result_params.get("TransactionID", "")
             mpesa_doc.orgaccountbalance = result_params.get("DebitAccountType", "")
-            mpesa_doc.thirdpartytransid = result_params.get("OriginatorConversationID", "")
+            mpesa_doc.thirdpartytransid = result_params.get(
+                "OriginatorConversationID", ""
+            )
 
             debit_party = result_params.get("DebitPartyName", "").split(" - ")
             mpesa_doc.msisdn = debit_party[0] if len(debit_party) > 0 else ""
-            name_parts = debit_party[1].split(" ") if len(debit_party) > 1 else ["", "", ""]
+            name_parts = (
+                debit_party[1].split(" ") if len(debit_party) > 1 else ["", "", ""]
+            )
             mpesa_doc.firstname = name_parts[0]
             mpesa_doc.middlename = name_parts[1] if len(name_parts) > 1 else ""
             mpesa_doc.lastname = name_parts[-1] if len(name_parts) > 2 else ""
@@ -662,10 +803,14 @@ def process_mpesa_integration_request(integration_request_name):
 
             frappe.publish_realtime(
                 event="mpesa_transaction_status",
-                message={"status": "success", "message": success_msg, "doc_name": mpesa_doc.name},
-                user=frappe.session.user
+                message={
+                    "status": "success",
+                    "message": success_msg,
+                    "doc_name": mpesa_doc.name,
+                },
+                user=frappe.session.user,
             )
-        
+
         else:
             error_msg = "Transaction failed with non-zero result code"
             integration_request.status = "Failed"
@@ -676,7 +821,7 @@ def process_mpesa_integration_request(integration_request_name):
             frappe.publish_realtime(
                 event="mpesa_transaction_status",
                 message={"status": "error", "message": error_msg},
-                user=frappe.session.user
+                user=frappe.session.user,
             )
 
     except Exception as e:
@@ -686,11 +831,14 @@ def process_mpesa_integration_request(integration_request_name):
         integration_request.save(ignore_permissions=True)
         frappe.db.commit()
 
-        frappe.log_error(f"{error_message}\nData: {integration_request.data}", "Mpesa Integration Error")
+        frappe.log_error(
+            f"{error_message}\nData: {integration_request.data}",
+            "Mpesa Integration Error",
+        )
         frappe.publish_realtime(
             event="mpesa_transaction_status",
             message={"status": "error", "message": error_message},
-            user=frappe.session.user
+            user=frappe.session.user,
         )
 
 
@@ -703,7 +851,7 @@ def handle_queue_timeout():
 
         frappe.log_error(
             title="Mpesa Queue Timeout",
-            message=f"Timeout response received: {frappe.as_json(response_data)}"
+            message=f"Timeout response received: {frappe.as_json(response_data)}",
         )
 
         return {"status": "timeout", "message": "Timeout response logged successfully."}
@@ -711,27 +859,24 @@ def handle_queue_timeout():
     except json.JSONDecodeError:
         frappe.log_error(
             title="Mpesa Timeout Error",
-            message="Failed to decode JSON from timeout response."
+            message="Failed to decode JSON from timeout response.",
         )
         return {"status": "error", "message": "Invalid JSON received."}
 
     except Exception as e:
         error_message = f"Mpesa Timeout Error: {str(e)}"
-        frappe.log_error(
-            title="Mpesa Timeout Error",
-            message=error_message
-        )
+        frappe.log_error(title="Mpesa Timeout Error", message=error_message)
         return {"status": "error", "message": str(e)}
+
 
 @frappe.whitelist(allow_guest=True)
 def verify_transaction(**kwargs) -> None:
     """Verify the transaction result received via callback from stk."""
     from ..doctype.mpesa_settings.mpesa_settings import (
-        get_completed_integration_requests_info,
         fetch_param_value,
-        
+        get_completed_integration_requests_info,
     )
-    
+
     transaction_response = frappe._dict(kwargs["Body"]["stkCallback"])
 
     checkout_id = getattr(transaction_response, "CheckoutRequestID", "")
@@ -740,7 +885,7 @@ def verify_transaction(**kwargs) -> None:
 
     integration_request = frappe.get_doc("Integration Request", checkout_id)
     transaction_data = frappe._dict(json.loads(integration_request.data))
-    total_paid = 0  
+    total_paid = 0
     success = False  # for reporting successfull callback to point of sale ui
 
     if transaction_response["ResultCode"] == 0:
@@ -803,6 +948,3 @@ def verify_transaction(**kwargs) -> None:
             ),
         },
     )
-
-
-
