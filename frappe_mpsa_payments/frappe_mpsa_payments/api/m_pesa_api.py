@@ -407,6 +407,8 @@ def stk_push_callback(**kwargs) -> None:
             },
         )
 
+        request_doc.validate_duplicate_c2b_records()
+
         integration_req = frappe.get_doc(
             "Integration Request", {"output": ["like", f"%{checkout_request_id}%"]}
         )
