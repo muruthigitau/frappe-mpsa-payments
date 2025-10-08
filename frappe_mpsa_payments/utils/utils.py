@@ -68,103 +68,139 @@ def save_access_token(
         frappe.throw("Error Encountered")
         return False
 
+
 def get_payment_gateway_controller(payment_gateway):
-	"""Return payment gateway controller"""
-	gateway = frappe.get_doc("Payment Gateway", payment_gateway)
-	if gateway.gateway_controller is None:
-		try:
-			return frappe.get_doc(f"{payment_gateway} Settings")
-		except Exception:
-			frappe.throw(_("{0} Settings not found").format(payment_gateway))
-	else:
-		try:
-			return frappe.get_doc(gateway.gateway_settings, gateway.gateway_controller)
-		except Exception:
-			frappe.throw(_("{0} Settings not found").format(payment_gateway))
+    """Return payment gateway controller"""
+    gateway = frappe.get_doc("Payment Gateway", payment_gateway)
+    if gateway.gateway_controller is None:
+        try:
+            return frappe.get_doc(f"{payment_gateway} Settings")
+        except Exception:
+            frappe.throw(_("{0} Settings not found").format(payment_gateway))
+    else:
+        try:
+            return frappe.get_doc(gateway.gateway_settings, gateway.gateway_controller)
+        except Exception:
+            frappe.throw(_("{0} Settings not found").format(payment_gateway))
 
 
 def create_payment_gateway_account(gateway, payment_channel="Email", company=None):
-	from erpnext.setup.setup_wizard.operations.install_fixtures import create_bank_account
+    from erpnext.setup.setup_wizard.operations.install_fixtures import (
+        create_bank_account,
+    )
 
-	company = company or frappe.get_cached_value("Global Defaults", "Global Defaults", "default_company")
-	if not company:
-		return
+    company = company or frappe.get_cached_value(
+        "Global Defaults", "Global Defaults", "default_company"
+    )
+    if not company:
+        return
 
-	# NOTE: we translate Payment Gateway account name because that is going to be used by the end user
-	bank_account = frappe.db.get_value(
-		"Account",
-		{"account_name": _(gateway), "company": company},
-		["name", "account_currency"],
-		as_dict=1,
-	)
+    # NOTE: we translate Payment Gateway account name because that is going to be used by the end user
+    bank_account = frappe.db.get_value(
+        "Account",
+        {"account_name": _(gateway), "company": company},
+        ["name", "account_currency"],
+        as_dict=1,
+    )
 
-	if not bank_account:
-		# check for untranslated one
-		bank_account = frappe.db.get_value(
-			"Account",
-			{"account_name": gateway, "company": company},
-			["name", "account_currency"],
-			as_dict=1,
-		)
+    if not bank_account:
+        # check for untranslated one
+        bank_account = frappe.db.get_value(
+            "Account",
+            {"account_name": gateway, "company": company},
+            ["name", "account_currency"],
+            as_dict=1,
+        )
 
-	if not bank_account:
-		# try creating one
-		bank_account = create_bank_account({"company_name": company, "bank_account": _(gateway)})
+    if not bank_account:
+        # try creating one
+        bank_account = create_bank_account(
+            {"company_name": company, "bank_account": _(gateway)}
+        )
 
-	if not bank_account:
-		frappe.msgprint(_("Payment Gateway Account not created, please create one manually."))
-		return
+    if not bank_account:
+        frappe.msgprint(
+            _("Payment Gateway Account not created, please create one manually.")
+        )
+        return
 
-	# if payment gateway account exists, return
-	if frappe.db.exists(
-		"Payment Gateway Account",
-		{"payment_gateway": gateway, "currency": bank_account.account_currency},
-	):
-		return
+    # if payment gateway account exists, return
+    if frappe.db.exists(
+        "Payment Gateway Account",
+        {"payment_gateway": gateway, "currency": bank_account.account_currency},
+    ):
+        return
 
-	try:
-		frappe.get_doc(
-			{
-				"doctype": "Payment Gateway Account",
-				"is_default": 1,
-				"payment_gateway": gateway,
-				"payment_account": bank_account.name,
-				"currency": bank_account.account_currency,
-				"payment_channel": payment_channel,
-			}
-		).insert(ignore_permissions=True, ignore_if_duplicate=True)
+    try:
+        frappe.get_doc(
+            {
+                "doctype": "Payment Gateway Account",
+                "is_default": 1,
+                "payment_gateway": gateway,
+                "payment_account": bank_account.name,
+                "currency": bank_account.account_currency,
+                "payment_channel": payment_channel,
+            }
+        ).insert(ignore_permissions=True, ignore_if_duplicate=True)
 
-	except frappe.DuplicateEntryError:
-		# already exists, due to a reinstall?
-		pass
+    except frappe.DuplicateEntryError:
+        # already exists, due to a reinstall?
+        pass
+
 
 def build_callback_url(endpoint: str) -> str:
     base_url = get_request_site_address(True)
     parsed_url = urlparse(base_url)
 
-    if not (parsed_url.hostname == "localhost" or parsed_url.hostname.replace(".", "").isdigit()):
+    if not (
+        parsed_url.hostname == "localhost"
+        or parsed_url.hostname.replace(".", "").isdigit()
+    ):
         base_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
 
     return f"{base_url}/api/method/{endpoint}"
+
 
 def log_and_throw_error(err_msg, context=None):
     frappe.log_error(frappe.get_traceback(), err_msg)
     if context:
         frappe.throw(_(f"{err_msg}: {context}"))
 
-def handle_successful_transaction(request_doc, metadata_dict, settings, checkout_request_id):
+
+def handle_successful_transaction(
+    request_doc, metadata_dict, settings, checkout_request_id
+):
     """Handle actions for a successful transaction"""
     if request_doc.reference_doctype == "Payment Request":
         payment_request = frappe.get_doc("Payment Request", request_doc.reference_name)
+        if payment_request.reference_doctype == "Sales Invoice":
+            invoice = frappe.get_doc(
+                "Sales Invoice", payment_request.reference_name
+            )
+            if invoice.docstatus == 0:
+                try:
+                    invoice.submit()
+                except Exception:
+                    log_and_throw_error(
+                        "Payment Request Submission Error", checkout_request_id
+                    )
         try:
             payment_request.create_payment_entry()
         except Exception:
             log_and_throw_error("Payment Entry Creation Error", checkout_request_id)
 
         try:
-            if settings.auto_create_sales_invoice and payment_request.reference_doctype == "Sales Order":
-                from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-                si = make_sales_invoice(payment_request.reference_name, ignore_permissions=True)
+            if (
+                settings.auto_create_sales_invoice
+                and payment_request.reference_doctype == "Sales Order"
+            ):
+                from erpnext.selling.doctype.sales_order.sales_order import (
+                    make_sales_invoice,
+                )
+
+                si = make_sales_invoice(
+                    payment_request.reference_name, ignore_permissions=True
+                )
                 si.allocate_advances_automatically = True
                 si = si.insert(ignore_permissions=True)
                 si.submit()
@@ -173,8 +209,15 @@ def handle_successful_transaction(request_doc, metadata_dict, settings, checkout
 
         frappe.db.set_value("Payment Request", payment_request.name, "status", "Paid")
 
-    elif request_doc.reference_doctype == "Sales Invoice":          
+    elif request_doc.reference_doctype == "Sales Invoice":
         sales_invoice = frappe.get_doc("Sales Invoice", request_doc.reference_name)
+        if sales_invoice.docstatus == 0:
+            try:
+                sales_invoice.submit()
+            except Exception:
+                log_and_throw_error(
+                    "Sales Invoice Submission Error", checkout_request_id
+                )
         try:
             payment_row = sales_invoice.append("payments", {})
             payment_row.amount = float(metadata_dict.get("Amount", 0))
@@ -184,8 +227,8 @@ def handle_successful_transaction(request_doc, metadata_dict, settings, checkout
             sales_invoice.save(ignore_permissions=True)
         except Exception:
             log_and_throw_error("Payment Creation Error", checkout_request_id)
-            
-    elif request_doc.reference_doctype == "Sales Invoice Payment":    
+
+    elif request_doc.reference_doctype == "Sales Invoice Payment":
         try:
             frappe.db.set_value(
                 "Sales Invoice Payment",
@@ -195,31 +238,34 @@ def handle_successful_transaction(request_doc, metadata_dict, settings, checkout
                 },
             )
         except Exception:
-            log_and_throw_error("Sales Invoice Payment Update Error", checkout_request_id)  
+            log_and_throw_error(
+                "Sales Invoice Payment Update Error", checkout_request_id
+            )
 
 
 def update_mpesa_request_status(name, status_data):
     """Update the Mpesa Express Request DocType with callback status"""
     frappe.db.set_value(MPESA_EXPRESS_REQUEST_DOCTYPE, name, status_data)
-    frappe.publish_realtime(event="refresh_form", doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=name)
+    frappe.publish_realtime(
+        event="refresh_form", doctype=MPESA_EXPRESS_REQUEST_DOCTYPE, docname=name
+    )
+
 
 def validate_phone_number(phone_number):
-    if not phone_number or len(phone_number) < 9: 
+    if not phone_number or len(phone_number) < 9:
         return False
-        
+
     number = phone_number.strip().replace(" ", "")
     if not re.match(r"^(?:\+254|254|0)(7\d{8}|1\d{8})$", number):
         return False
-    
+
     return True
+
 
 @frappe.whitelist()
 def get_mode_of_payment_account(mode_of_payment: str, company: str) -> str:
-	return frappe.db.get_value(
-		"Mode of Payment Account",
-		{
-			"parent": mode_of_payment,
-			"company": company
-		},
-		"default_account"
-	)
+    return frappe.db.get_value(
+        "Mode of Payment Account",
+        {"parent": mode_of_payment, "company": company},
+        "default_account",
+    )
