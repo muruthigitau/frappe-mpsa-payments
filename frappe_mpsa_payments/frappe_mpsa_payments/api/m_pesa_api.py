@@ -170,9 +170,11 @@ def get_account_balance(name: str) -> Any:
             cert_url = certs.production_certificate
 
         security_credential = generate_security_credential(
-            settings.get_password("initiator_password", "")
-            if settings.initiator_password
-            else "",
+            (
+                settings.get_password("initiator_password", "")
+                if settings.initiator_password
+                else ""
+            ),
             cert_url,
         )
 
@@ -275,9 +277,11 @@ def transaction_status_error_callback(
         document_name,
         {
             "status": "Failed",
-            "result_desc": response.get("errorMessage")
-            if isinstance(response, dict)
-            else "Unknown error",
+            "result_desc": (
+                response.get("errorMessage")
+                if isinstance(response, dict)
+                else "Unknown error"
+            ),
         },
     )
 
@@ -325,16 +329,20 @@ def initiate_stk_push(**args) -> any:
             "Timestamp": timestamp,
             "Amount": amount,
             "PartyA": int(mobile_number),
-            "PartyB": business_shortcode
-            if mpesa_settings.paybill_type == "Pay Bill"
-            else mpesa_settings.till_number,
+            "PartyB": (
+                business_shortcode
+                if mpesa_settings.paybill_type == "Pay Bill"
+                else mpesa_settings.till_number
+            ),
             "PhoneNumber": int(mobile_number),
             "CallBackURL": callback_url,
             "AccountReference": reference_name,
             "TransactionDesc": reference_name,
-            "TransactionType": "CustomerPayBillOnline"
-            if mpesa_settings.paybill_type == "Pay Bill"
-            else "CustomerBuyGoodsOnline",
+            "TransactionType": (
+                "CustomerPayBillOnline"
+                if mpesa_settings.paybill_type == "Pay Bill"
+                else "CustomerBuyGoodsOnline"
+            ),
         }
 
         endpoint = "/mpesa/stkpush/v1/processrequest"
@@ -390,6 +398,10 @@ def stk_push_callback(**kwargs) -> None:
         request_doc = frappe.get_doc(
             MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id}
         )
+
+        if request_doc and request_doc.reference_doctype == "Payment Request":
+            publish_stk_status(status, request_doc.reference_name)
+
         settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
 
         if status == "Completed" and request_doc.status != "Completed":
@@ -434,6 +446,27 @@ def stk_push_callback(**kwargs) -> None:
 
     except Exception:
         log_and_throw_error("STK Push Callback Error", checkout_request_id)
+
+
+def publish_stk_status(status: str, payment_request):
+
+    expected_token = frappe.db.get_value(
+        "Payment Request", payment_request, "payment_token"
+    )
+
+    if not expected_token:
+        return
+
+    room = "website"
+
+    frappe.publish_realtime(
+        "stk_payment_complete",
+        {
+            "status": status,
+            "expected_token": expected_token,
+        },
+        room=room,
+    )
 
 
 def sanitize_mobile_number(number: str) -> str:
