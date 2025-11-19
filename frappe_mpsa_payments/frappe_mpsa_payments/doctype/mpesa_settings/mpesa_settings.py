@@ -7,32 +7,36 @@ from json import dumps, loads
 from typing import Any
 from urllib.parse import urlparse
 
+import frappe
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.x509 import load_pem_x509_certificate
-
-import frappe
 from frappe import _, get_single
 from frappe.integrations.utils import create_request_log
 from frappe.model.document import Document
 from frappe.utils import (
-    call_hook_method,
     fmt_money,
     get_request_site_address,
-    get_link_to_form,
 )
 from frappe.utils.file_manager import get_file_path
 
-from ....utils.doctype_names import PUBLIC_CERTIFICATES_DOCTYPE, MPESA_EXPRESS_REQUEST_DOCTYPE
-from ....utils.utils import erpnext_app_import_guard, create_payment_gateway_account, validate_phone_number
-from .mpesa_connector import MpesaConnector
-from .mpesa_custom_fields import create_custom_pos_fields
 from frappe_mpsa_payments.utils.encoding_initiator_password import (
     generate_security_credential,
 )
 
+from ....utils.doctype_names import (
+    MPESA_EXPRESS_REQUEST_DOCTYPE,
+    PUBLIC_CERTIFICATES_DOCTYPE,
+)
+from ....utils.utils import (
+    create_payment_gateway_account,
+    erpnext_app_import_guard,
+    validate_phone_number,
+)
 from ...api.m_pesa_api import get_account_balance
+from .mpesa_connector import MpesaConnector
+
 
 class MpesaSettings(Document):
     supported_currencies = ["KES"]
@@ -50,7 +54,9 @@ class MpesaSettings(Document):
 
         # If company is provided, check if its default currency is KES
         if self.company:
-            default_currency = frappe.db.get_value("Company", self.company, "default_currency")
+            default_currency = frappe.db.get_value(
+                "Company", self.company, "default_currency"
+            )
             if default_currency in self.supported_currencies:
                 return
 
@@ -60,7 +66,6 @@ class MpesaSettings(Document):
                 "Please select another payment method. Mpesa does not support transactions in currency '{0}'."
             ).format(currency)
         )
-
 
     def before_insert(self) -> None:
         """Before Insertion hook"""
@@ -98,15 +103,12 @@ class MpesaSettings(Document):
         """On Update Hook"""
         from ....utils.utils import create_payment_gateway
 
-        if "erpnext" in frappe.get_installed_apps():
-            create_custom_pos_fields()
-
         create_payment_gateway(
             "Mpesa-" + self.payment_gateway_name,
             settings="Mpesa Settings",
             controller=self.payment_gateway_name,
         )
-        
+
         # erpnext create_payment_gateway_account doesn't allow for company to be passed, ovveriden
         # call_hook_method(
         #     "payment_gateway_enabled",
@@ -122,54 +124,64 @@ class MpesaSettings(Document):
         # required to fetch the bank account details from the payment gateway account
         frappe.db.commit()  # nosemgrep
         create_mode_of_payment(
-            "Mpesa-" + self.payment_gateway_name, payment_type="Phone", company=self.company
+            "Mpesa-" + self.payment_gateway_name,
+            payment_type="Phone",
+            company=self.company,
         )
-        
-    def validate(self) -> None:   
-        if self.initiator_password and not self.security_credential:     
+
+    def validate(self) -> None:
+        if self.initiator_password and not self.security_credential:
             certs = frappe.get_single("Mpesa Public Key Certificate")
             cert_url = ""
             if self.sandbox:
                 cert_url = certs.sandbox_certificate
             else:
                 cert_url = certs.production_certificate
-                
+
             self.security_credential = generate_security_credential(
-                self.get_password("initiator_password", "") if self.initiator_password else "",
-                cert_url
+                self.get_password("initiator_password", "")
+                if self.initiator_password
+                else "",
+                cert_url,
             )
 
     def request_for_payment(self, **kwargs) -> None:
         args = frappe._dict(kwargs)
         request_amounts = self.split_request_amount_according_to_transaction_limit(args)
         phone_number = args.get("phone_number")
-        
-        if not validate_phone_number(phone_number) :
+
+        if not validate_phone_number(phone_number):
             sender = args.get("sender", "")
-            if isinstance(sender, str) and sender and (sender.startswith(("0", "254", "+", "7", "1"))):
+            if (
+                isinstance(sender, str)
+                and sender
+                and (sender.startswith(("0", "254", "+", "7", "1")))
+            ):
                 phone_number = sender
         if not phone_number:
             frappe.throw(_("A valid phone number is required for Mpesa payment."))
         else:
             phone_number = sanitize_mobile_number(phone_number)
-            
+
         for i, amount in enumerate(request_amounts):
             args.request_amount = amount
             if frappe.flags.in_test:
                 from .test_mpesa_settings import get_payment_request_response_payload
 
-                response = frappe._dict(get_payment_request_response_payload(amount))
+                _response = frappe._dict(get_payment_request_response_payload(amount))
             else:
                 stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
-                stk_request.update({
-                    "amount": args.get("request_amount", 0.0),
-                    "phone_number": phone_number,
-                    "timestamp": frappe.utils.now(),
-                    "settings": args.payment_gateway[6:],
-                    "payment_gateway": args.get("payment_gateway"),
-                    "reference_doctype": args.get("reference_doctype"),
-                    "reference_name": args.get("reference_docname"),
-                })
+                stk_request.update(
+                    {
+                        "amount": args.get("request_amount", 0.0),
+                        "phone_number": phone_number,
+                        "timestamp": frappe.utils.now(),
+                        "settings": args.payment_gateway[6:],
+                        "payment_gateway": args.get("payment_gateway"),
+                        "reference_doctype": args.get("reference_doctype"),
+                        "reference_name": args.get("reference_docname"),
+                    }
+                )
                 stk_request.flags.ignore_permissions = True
                 stk_request.insert(ignore_permissions=True)
                 stk_request.submit()
@@ -309,7 +321,6 @@ def get_completed_integration_requests_info(
     return mpesa_receipts, completed_payments
 
 
-
 @frappe.whitelist(allow_guest=True)
 def process_balance_info(**kwargs) -> None:
     """Process and store account balance information received via callback from the account balance API call."""
@@ -386,7 +397,9 @@ def fetch_param_value(response: dict, key: str, key_field: str) -> str | None:
             return param["Value"]
 
 
-def create_mode_of_payment(gateway: str, payment_type: str = "General", company: str = None) -> Document:
+def create_mode_of_payment(
+    gateway: str, payment_type: str = "General", company: str = None
+) -> Document:
     with erpnext_app_import_guard():
         from erpnext import get_default_company
 
@@ -420,11 +433,7 @@ def create_mode_of_payment(gateway: str, payment_type: str = "General", company:
 
 @frappe.whitelist()
 def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
-
     try:
-
-        settings = frappe.get_doc("Mpesa Settings", mpesa_settings)
-
         site_address = get_request_site_address(True)
         parsed_url = urlparse(site_address)
         site_url = f"{parsed_url.scheme}://{parsed_url.hostname}"
@@ -438,21 +447,25 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
             + "/api/method/frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.handle_transaction_status_result"
         )
 
-        integration_request = frappe.get_doc({
-            "doctype": "Integration Request",
-            "is_remote_request": 1,
-            "integration_request_service": "Mpesa Transaction Status",
-            "reference_doctype": "Mpesa C2B Payment Register",
-            "status": "Queued",
-            "data": dumps({
-                "mpesa_settings": mpesa_settings,
-                "transaction_id": transaction_id,
-                "remarks": remarks,
-                "queue_timeout_url": queue_timeout_url,
-                "result_url": result_url
-            }),
-            "method": "POST"
-        }).insert(ignore_permissions=True)
+        integration_request = frappe.get_doc(
+            {
+                "doctype": "Integration Request",
+                "is_remote_request": 1,
+                "integration_request_service": "Mpesa Transaction Status",
+                "reference_doctype": "Mpesa C2B Payment Register",
+                "status": "Queued",
+                "data": dumps(
+                    {
+                        "mpesa_settings": mpesa_settings,
+                        "transaction_id": transaction_id,
+                        "remarks": remarks,
+                        "queue_timeout_url": queue_timeout_url,
+                        "result_url": result_url,
+                    }
+                ),
+                "method": "POST",
+            }
+        ).insert(ignore_permissions=True)
         frappe.db.commit()
 
         frappe.enqueue(
@@ -461,13 +474,16 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
             timeout=300,
             job_id=f"mpesa_status_{integration_request.name}",
             integration_request_name=integration_request.name,
-            deduplicate=True
+            deduplicate=True,
         )
 
         frappe.publish_realtime(
             event="mpesa_transaction_status",
-            message={"status": "queued", "message": _("Transaction status check queued for processing")},
-            user=frappe.session.user
+            message={
+                "status": "queued",
+                "message": _("Transaction status check queued for processing"),
+            },
+            user=frappe.session.user,
         )
         return {"status": "queued", "message": "Transaction status check queued"}
 
@@ -479,8 +495,9 @@ def trigger_transaction_status(mpesa_settings, transaction_id, remarks="OK"):
 def process_transaction_status(integration_request_name):
     """Process the Mpesa transaction status check in the background"""
     try:
-
-        integration_request = frappe.get_doc("Integration Request", integration_request_name)
+        integration_request = frappe.get_doc(
+            "Integration Request", integration_request_name
+        )
         data = loads(integration_request.data)
 
         mpesa_settings = data["mpesa_settings"]
@@ -502,7 +519,9 @@ def process_transaction_status(integration_request_name):
             initiator=settings.initiator_name,
             security_credential=settings.security_credential,
             transaction_id=transaction_id,
-            party_a=settings.business_shortcode if not settings.sandbox else settings.till_number,
+            party_a=settings.business_shortcode
+            if not settings.sandbox
+            else settings.till_number,
             identifier_type=4,  # Organization Short Code
             remarks=remarks,
             occasion="",
@@ -520,9 +539,9 @@ def process_transaction_status(integration_request_name):
                 event="mpesa_transaction_status",
                 message={
                     "status": "success",
-                    "message": f"Transaction Status: {response.get('ResponseDescription')}"
+                    "message": f"Transaction Status: {response.get('ResponseDescription')}",
                 },
-                user=frappe.session.user
+                user=frappe.session.user,
             )
         else:
             error_msg = f"{response.get('errorCode', 'Unknown')}: {response.get('errorMessage', 'Unknown error')}"
@@ -534,7 +553,7 @@ def process_transaction_status(integration_request_name):
             frappe.publish_realtime(
                 event="mpesa_transaction_status",
                 message={"status": "error", "message": error_msg},
-                user=frappe.session.user
+                user=frappe.session.user,
             )
 
     except Exception as e:
@@ -547,5 +566,5 @@ def process_transaction_status(integration_request_name):
         frappe.publish_realtime(
             event="mpesa_transaction_status",
             message={"status": "error", "message": f"Error checking status: {str(e)}"},
-            user=frappe.session.user
+            user=frappe.session.user,
         )
