@@ -159,6 +159,9 @@ class MpesaC2BPaymentRegister(Document):
                     frappe.db.rollback(save_point="before_c2b_submit")
                     raise
 
+        if frappe.db.get_global("is_manual_reconciliation") == "1":
+            return
+
         try:
             self._reconcile_payment()
 
