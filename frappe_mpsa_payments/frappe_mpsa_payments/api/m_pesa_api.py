@@ -114,46 +114,14 @@ def balance_query_callback(**kwargs) -> None:
     settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, settings_docname)
     settings.flags.ignore_permissions = True
 
-    update_account_balances(account_balance, settings)
+    if account_balance:
+        frappe.db.set_value(
+            MPESA_SETTINGS_DOCTYPE, settings.name, "account_balance", account_balance
+        )
 
     frappe.publish_realtime(
         event="refresh_form", doctype=MPESA_SETTINGS_DOCTYPE, docname=settings_docname
     )
-
-
-def update_account_balances(account_balance, settings):
-    if not account_balance or not settings:
-        frappe.log_error("Missing required parameters: account_balance or settings")
-
-    account_mapping = {
-        "Working Account": "working_account",
-        "Utility Account": "utility_account",
-        "Merchant Account": "merchant_account",
-        "Charges Paid Account": "charges_paid_account",
-        "Airtime Purchase Account": "airtime_purchase_account",
-        "Loan Disbursement Account": "loan_disbursement_account",
-        "Organization Settlement Account": "organization_settlement_account",
-        "Advanced Deduction Account": "advanced_deduction_account",
-        "Savings Deduction Account": "savings_deduction_account",
-    }
-
-    balances = account_balance.split("&")
-    for balance in balances:
-        details = balance.split("|")
-        if len(details) >= 3:
-            account_name = details[0]
-            try:
-                available_balance = float(details[2])
-            except ValueError:
-                available_balance = 0.0
-
-            field_name = account_mapping.get(account_name)
-            if field_name:
-                frappe.db.set_value(
-                    MPESA_SETTINGS_DOCTYPE, settings.name, field_name, available_balance
-                )
-
-    return {"status": "success", "message": "Account balances updated successfully"}
 
 
 @frappe.whitelist()

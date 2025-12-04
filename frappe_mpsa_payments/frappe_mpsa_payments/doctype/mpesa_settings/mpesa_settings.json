@@ -31,17 +31,7 @@
   "initiator_name",
   "initiator_password",
   "balance_details_section",
-  "utility_account",
-  "working_account",
-  "merchant_account",
-  "column_break_erio",
-  "charges_paid_account",
-  "airtime_purchase_account",
-  "loan_disbursement_account",
-  "column_break_mcmq",
-  "organization_settlement_account",
-  "advanced_deduction_account",
-  "savings_deduction_account",
+  "account_balance",
   "token_details_section",
   "access_token",
   "column_break_bcac",
@@ -184,76 +174,7 @@
   {
    "collapsible": 1,
    "fieldname": "balance_details_section",
-   "fieldtype": "Section Break",
-   "label": "Balance Details"
-  },
-  {
-   "fieldname": "working_account",
-   "fieldtype": "Currency",
-   "label": "Working Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "utility_account",
-   "fieldtype": "Currency",
-   "label": "Utility Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_erio",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "charges_paid_account",
-   "fieldtype": "Currency",
-   "label": "Charges Paid Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "organization_settlement_account",
-   "fieldtype": "Currency",
-   "label": "Organization Settlement Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "loan_disbursement_account",
-   "fieldtype": "Currency",
-   "label": "Loan Disbursement Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "merchant_account",
-   "fieldtype": "Currency",
-   "label": "Merchant Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "airtime_purchase_account",
-   "fieldtype": "Currency",
-   "label": "Airtime Purchase Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "advanced_deduction_account",
-   "fieldtype": "Currency",
-   "label": "Advanced Deduction Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "savings_deduction_account",
-   "fieldtype": "Currency",
-   "label": "Savings Deduction Account",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_mcmq",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "label": "Company",
-   "options": "Company"
+   "fieldtype": "Section Break"
   },
   {
    "depends_on": "eval:doc.paybill_type == \"Buy Goods\"",
@@ -292,10 +213,16 @@
    "fieldname": "submit_b2c_accounting_entries",
    "fieldtype": "Check",
    "label": "Submit B2C Accounting Entries"
+  },
+  {
+   "fieldname": "account_balance",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Account Balance"
   }
  ],
  "links": [],
- "modified": "2025-06-16 16:50:41.648423",
+ "modified": "2025-12-03 22:48:47.513243",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",
