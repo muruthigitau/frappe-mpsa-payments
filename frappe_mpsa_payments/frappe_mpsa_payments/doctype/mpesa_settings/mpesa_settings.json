@@ -8,7 +8,6 @@
  "field_order": [
   "payment_gateway_name",
   "api_type",
-  "company",
   "column_break_nhvr",
   "sandbox",
   "paybill_type",

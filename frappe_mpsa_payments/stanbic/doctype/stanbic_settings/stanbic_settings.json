@@ -7,7 +7,6 @@
  "engine": "InnoDB",
  "field_order": [
   "payment_gateway_name",
-  "company",
   "column_break_pmkk",
   "sandbox",
   "section_break_vimd",
@@ -39,12 +38,6 @@
    "label": "Payment Gateway Name",
    "reqd": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "company",
-   "fieldtype": "Link",
-   "label": "Company",
-   "options": "Company"
   },
   {
    "fieldname": "column_break_pmkk",
@@ -125,8 +118,8 @@
  ],
  "grid_page_length": 50,
  "links": [],
- "modified": "2025-07-20 16:02:03.975231",
- "modified_by": "Administrator",
+ "modified": "2025-12-04 17:45:01.507494",
+ "modified_by": "a@d.com",
  "module": "Stanbic",
  "name": "Stanbic Settings",
  "naming_rule": "By fieldname",

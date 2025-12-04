@@ -108,26 +108,19 @@ class MpesaSettings(Document):
             settings="Mpesa Settings",
             controller=self.payment_gateway_name,
         )
+        if "erpnext" in frappe.get_installed_apps():
+            create_payment_gateway_account(
+                gateway="Mpesa-" + self.payment_gateway_name,
+                payment_channel="Phone",
+                company=self.company,
+            )
 
-        # erpnext create_payment_gateway_account doesn't allow for company to be passed, ovveriden
-        # call_hook_method(
-        #     "payment_gateway_enabled",
-        #     gateway="Mpesa-" + self.payment_gateway_name,
-        #     payment_channel="Phone",
-        # )
-        create_payment_gateway_account(
-            gateway="Mpesa-" + self.payment_gateway_name,
-            payment_channel="Phone",
-            company=self.company,
-        )
-
-        # required to fetch the bank account details from the payment gateway account
-        frappe.db.commit()  # nosemgrep
-        create_mode_of_payment(
-            "Mpesa-" + self.payment_gateway_name,
-            payment_type="Phone",
-            company=self.company,
-        )
+            frappe.db.commit()  # nosemgrep
+            create_mode_of_payment(
+                "Mpesa-" + self.payment_gateway_name,
+                payment_type="Phone",
+                company=self.company,
+            )
 
     def validate(self) -> None:
         if self.initiator_password and not self.security_credential:

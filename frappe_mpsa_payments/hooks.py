@@ -248,3 +248,6 @@ scheduler_events = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+
+
+after_migrate = "frappe_mpsa_payments.frappe_mpsa_payments.migrate.after_migrate"
