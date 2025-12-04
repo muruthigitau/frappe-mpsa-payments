@@ -132,10 +132,13 @@ class MpesaSettings(Document):
                 cert_url = certs.production_certificate
 
             self.security_credential = generate_security_credential(
-                self.get_password("initiator_password", "")
-                if self.initiator_password
-                else "",
+                (
+                    self.get_password("initiator_password", "")
+                    if self.initiator_password
+                    else ""
+                ),
                 cert_url,
+                self.sandbox,
             )
 
     def request_for_payment(self, **kwargs) -> None:
@@ -512,9 +515,11 @@ def process_transaction_status(integration_request_name):
             initiator=settings.initiator_name,
             security_credential=settings.security_credential,
             transaction_id=transaction_id,
-            party_a=settings.business_shortcode
-            if not settings.sandbox
-            else settings.till_number,
+            party_a=(
+                settings.business_shortcode
+                if not settings.sandbox
+                else settings.till_number
+            ),
             identifier_type=4,  # Organization Short Code
             remarks=remarks,
             occasion="",

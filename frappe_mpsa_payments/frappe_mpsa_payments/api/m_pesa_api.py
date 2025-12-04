@@ -144,6 +144,7 @@ def get_account_balance(name: str) -> Any:
                 else ""
             ),
             cert_url,
+            settings.sandbox,
         )
 
         endpoint = "/mpesa/accountbalance/v1/query"
