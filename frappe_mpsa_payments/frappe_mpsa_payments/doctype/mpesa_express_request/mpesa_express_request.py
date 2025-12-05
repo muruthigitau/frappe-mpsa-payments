@@ -4,8 +4,9 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe_mpsa_payments.utils.doctype_names import MPESA_SETTINGS_DOCTYPE
 
-from ....utils.utils import validate_phone_number
+from ....utils.utils import handle_successful_transaction, validate_phone_number
 from ...api.m_pesa_api import initiate_stk_push  # Import the STK push function
 
 
@@ -106,3 +107,10 @@ class MpesaExpressRequest(Document):
                 frappe.get_traceback(),
                 f"Error neutralising duplicate C2B {c2b_name} for Express Request {self.name}",
             )
+
+    @frappe.whitelist()
+    def reconcile_payment(self):
+        settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, self.settings)
+
+        if not self.is_reconciled:
+            handle_successful_transaction(self, settings)

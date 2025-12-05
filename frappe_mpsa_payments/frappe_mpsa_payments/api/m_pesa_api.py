@@ -368,16 +368,6 @@ def stk_push_callback(**kwargs) -> None:
             MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id}
         )
 
-        if request_doc and request_doc.reference_doctype == "Payment Request":
-            publish_stk_status(status, request_doc.reference_name)
-
-        settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
-
-        if status == "Completed" and request_doc.status != "Completed":
-            handle_successful_transaction(
-                request_doc, metadata_dict, settings, checkout_request_id
-            )
-
         update_mpesa_request_status(
             request_doc.name,
             {
@@ -412,6 +402,12 @@ def stk_push_callback(**kwargs) -> None:
                 "output": output,
             },
         )
+
+        request_doc.reconcile_payment()
+
+        if "erpnext" in frappe.get_installed_apps():
+            if request_doc and request_doc.reference_doctype == "Payment Request":
+                publish_stk_status(status, request_doc.reference_name)
 
     except Exception:
         log_and_throw_error("STK Push Callback Error", checkout_request_id)
