@@ -29,6 +29,8 @@ class B2CPaymentDisbursement(Document):
     def validate(self) -> None:
         """Validations for the document and references."""
         self.error = ""
+        if "erpnext" not in frappe.get_installed_apps():
+            return
         self.validate_mandatory_fields()
         self.validate_mode_of_payment()
         self.validate_party_type()
@@ -38,6 +40,8 @@ class B2CPaymentDisbursement(Document):
 
     def before_save(self) -> None:
         """Set missing values before saving."""
+        if "erpnext" not in frappe.get_installed_apps():
+            return
         self.set_missing_values()
 
     def before_submit(self) -> None:
@@ -617,10 +621,12 @@ class B2CPaymentDisbursement(Document):
                 "reference_name": entry.get("voucher_no") or entry.get("name"),
                 "party_type": party_type,
                 "party": party,
-                "payroll_entry": entry.get("payroll_entry")
-                if doctype == "Salary Slip"
-                and self.transaction_to_pay_against == "Salary Slip"
-                else None,
+                "payroll_entry": (
+                    entry.get("payroll_entry")
+                    if doctype == "Salary Slip"
+                    and self.transaction_to_pay_against == "Salary Slip"
+                    else None
+                ),
                 "due_date": entry.get("due_date") or entry.get("schedule_date"),
                 "total_amount": self._get_invoice_amount(entry, config),
                 "outstanding_amount": payable_amount,

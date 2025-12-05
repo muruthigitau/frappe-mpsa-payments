@@ -77,24 +77,27 @@ class MpesaC2BPaymentRegister(Document):
             filter(None, [self.firstname, self.middlename, self.lastname])
         )
 
-        register_url_list = frappe.get_all(
-            "Mpesa C2B Payment Register URL",
-            filters={
-                "business_shortcode": self.businessshortcode,
-                "register_status": "Success",
-            },
-            fields=["company", "mode_of_payment"],
-        )
-        if len(register_url_list) > 0:
-            self.company = register_url_list[0].company
-            self.mode_of_payment = register_url_list[0].mode_of_payment
+        if "erpnext" in frappe.get_installed_apps():
+            register_url_list = frappe.get_all(
+                "Mpesa C2B Payment Register URL",
+                filters={
+                    "business_shortcode": self.businessshortcode,
+                    "register_status": "Success",
+                },
+                fields=["company", "mode_of_payment"],
+            )
+            if len(register_url_list) > 0:
+                self.company = register_url_list[0].company
+                self.mode_of_payment = register_url_list[0].mode_of_payment
 
-        if self.billrefnumber and not self.customer:
-            self._find_customer_from_billref(self.billrefnumber)
+            if self.billrefnumber and not self.customer:
+                self._find_customer_from_billref(self.billrefnumber)
 
     def before_submit(self):
         if not self.transamount:
             frappe.throw(_("Trans Amount is required"))
+        if "erpnext" not in frappe.get_installed_apps():
+            return
         if not self.company:
             frappe.throw(_("Company is required"))
         if not self.customer:

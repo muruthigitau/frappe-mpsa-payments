@@ -17,8 +17,9 @@ class MpesaExpressRequest(Document):
                 "Payment Gateway", {"gateway_controller": self.settings}, "name"
             )
 
-        if self.reference_doctype == "Payment Request":
-            self.validate_payment_request_amount()
+        if "erpnext" in frappe.get_installed_apps():
+            if self.reference_doctype == "Payment Request":
+                self.validate_payment_request_amount()
 
         if not validate_phone_number(self.phone_number):
             frappe.throw(

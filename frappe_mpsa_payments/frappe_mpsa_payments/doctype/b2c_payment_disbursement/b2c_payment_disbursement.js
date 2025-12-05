@@ -1,6 +1,12 @@
 // Copyright (c) 2024, Navari Limited and contributors
 // For license information, please see license.txt
 
+const HAS_ERPNEXT = frappe.boot?.user?.all_apps?.includes("erpnext");
+
+if (!HAS_ERPNEXT) {
+	return;
+}
+
 frappe.ui.form.on("B2C Payment Disbursement", {
 	onload: function (frm) {
 		frm.ignore_doctypes_on_cancel_all = [

@@ -630,7 +630,9 @@ def submit_mpesa_payment(mpesa_payment, customer):
 @frappe.whitelist()
 def submit_instant_mpesa_payment():
     mpesa_payment = frappe.form_dict.get("mpesa_payment")
-    customer = frappe.form_dict.get("customer")
+    customer = None
+    if "erpnext" in frappe.get_installed_apps():
+        customer = frappe.form_dict.get("customer")
 
     try:
         process_mpesa_payment(mpesa_payment, customer, submit_payment=False)
@@ -642,9 +644,10 @@ def submit_instant_mpesa_payment():
 def process_mpesa_payment(mpesa_payment, customer, submit_payment=False):
     try:
         doc = frappe.get_doc("Mpesa C2B Payment Register", mpesa_payment)
-        doc.customer = customer
-        # TODO: after testing, mode of payment
-        doc.mode_of_payment = get_mode_of_payment(doc)
+        if "erpnext" in frappe.get_installed_apps():
+            doc.customer = customer
+            # TODO: after testing, mode of payment
+            doc.mode_of_payment = get_mode_of_payment(doc)
         doc.submit_payment = submit_payment
         doc.save()
         doc.submit()

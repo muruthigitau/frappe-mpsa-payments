@@ -3,8 +3,10 @@
 
 frappe.ui.form.on("Mpesa Payment Reconciliation", {
 	onload(frm) {
-		const default_company = frappe.defaults.get_user_default("Company");
-		frm.set_value("company", default_company);
+		if (frm.fields_dict.company) {
+			const default_company = frappe.defaults.get_user_default("Company");
+			frm.set_value("company", default_company);
+		}
 	},
 
 	refresh(frm) {
