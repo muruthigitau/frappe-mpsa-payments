@@ -11,7 +11,7 @@ __pycache__.DS_Store
 *.rest
 
 *.pem
-*.cer
+# *.cer
 
 logfile.txt
 tags
