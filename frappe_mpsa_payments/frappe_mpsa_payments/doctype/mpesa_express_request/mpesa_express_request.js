@@ -7,6 +7,8 @@ frappe.ui.form.on("Mpesa Express Request", {
 			frm.reload_doc();
 		});
 
+		autofill_gateway_settings(frm);
+
 		if (frm.doc.status !== "Completed" && frm.doc.docstatus == 1) {
 			frm.add_custom_button(
 				__("Check Transaction Status"),
@@ -16,6 +18,8 @@ frappe.ui.form.on("Mpesa Express Request", {
 						args: {
 							name: frm.doc.name,
 						},
+						freeze: true,
+						freeze_message: __("Checking Transaction Status..."),
 						callback: function (r) {
 							if (r && r.message) {
 								const res = r.message;
@@ -61,35 +65,25 @@ frappe.ui.form.on("Mpesa Express Request", {
 				__("Initiate STK Push"),
 				function () {
 					frappe.call({
-						method: "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.initiate_stk_push",
-						args: {
-							document_name: frm.doc.name,
-							doctype: frm.doc.doctype,
-							payment_gateway: frm.doc.payment_gateway,
-							phone_number: frm.doc.phone_number,
-							request_amount: frm.doc.amount,
-						},
+						method: "initiate_request",
+						doc: frm.doc,
+						freeze: true,
+						freeze_message: __("Initiating STK Push..."),
+						// args: {
+						// 	document_name: frm.doc.name,
+						// 	doctype: frm.doc.doctype,
+						// 	payment_gateway: frm.doc.payment_gateway,
+						// 	phone_number: frm.doc.phone_number,
+						// 	request_amount: frm.doc.amount,
+						// },
 						callback: function (r) {
 							const res = r.message;
 							if (res) {
-								if (res.errorMessage) {
-									frappe.msgprint({
-										message: res.errorMessage,
-										indicator: "red",
-										title: __("Error"),
-									});
-								} else if (res.CustomerMessage || res.message?.CustomerMessage) {
-									const msg = res.CustomerMessage || res.message.CustomerMessage;
-									frappe.msgprint({
-										message: msg,
-										indicator: "green",
-										title: __("STK Push Initiated"),
-									});
-								} else {
-									frappe.msgprint(__("Unexpected response."));
-								}
-
-								frm.reload_doc();
+								frappe.msgprint({
+									message: msg,
+									indicator: "green",
+									title: __("STK Push Initiated"),
+								});
 							} else {
 								frappe.msgprint(__("No response received."));
 							}
@@ -118,4 +112,31 @@ frappe.ui.form.on("Mpesa Express Request", {
 			);
 		}
 	},
+
+	settings: function (frm) {
+		autofill_gateway_settings(frm);
+	},
+	payment_gateway: function (frm) {
+		autofill_gateway_settings(frm);
+	},
 });
+
+function autofill_gateway_settings(frm) {
+	if (frm.doc.settings && !frm.doc.payment_gateway) {
+		frappe.db
+			.get_value("Payment Gateway", { gateway_controller: frm.doc.settings }, "name")
+			.then((r) => {
+				if (r.message) {
+					frm.set_value("payment_gateway", r.message.name);
+				}
+			});
+	} else if (frm.doc.payment_gateway && !frm.doc.settings) {
+		frappe.db
+			.get_value("Payment Gateway", { name: frm.doc.payment_gateway }, "gateway_controller")
+			.then((r) => {
+				if (r.message) {
+					frm.set_value("settings", r.message.gateway_controller);
+				}
+			});
+	}
+}
