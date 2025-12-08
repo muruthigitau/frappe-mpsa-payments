@@ -211,6 +211,7 @@ def handle_successful_transaction(request_doc, settings):
             frappe.db.set_value(
                 "Payment Request", payment_request.name, "status", "Paid"
             )
+            set_mpesa_request_reconciled(request_doc)
 
         elif request_doc.reference_doctype == "Sales Invoice":
             sales_invoice = frappe.get_doc("Sales Invoice", request_doc.reference_name)
@@ -228,6 +229,7 @@ def handle_successful_transaction(request_doc, settings):
                 payment_row.reference_no = request_doc.transaction_id
                 payment_row.clearance_date = frappe.utils.nowdate()
                 sales_invoice.save(ignore_permissions=True)
+                set_mpesa_request_reconciled(request_doc)
             except Exception:
                 log_and_throw_error("Payment Creation Error", request_doc.name)
         elif request_doc.reference_doctype == "Sales Invoice Payment":
@@ -239,11 +241,22 @@ def handle_successful_transaction(request_doc, settings):
                         "reference_no": request_doc.transaction_id,
                     },
                 )
+                set_mpesa_request_reconciled(request_doc)
             except Exception:
                 log_and_throw_error(
                     "Sales Invoice Payment Update Error", request_doc.name
                 )
+    if request_doc.reference_doctype == "Event Booking":
+        try:
+            frappe.flags.ignore_permissions = True
+            event_booking = frappe.get_doc("Event Booking", request_doc.reference_name)
+            event_booking.submit()
+            set_mpesa_request_reconciled(request_doc)
+        except Exception:
+            log_and_throw_error("Event Booking Submission Error", request_doc.name)
 
+
+def set_mpesa_request_reconciled(request_doc):
     request_doc.reload()
     request_doc.is_reconciled = 1
     request_doc.save(ignore_permissions=True)

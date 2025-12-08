@@ -15,19 +15,14 @@ def balance_query_on_success(response: dict, document_name: str, **kwargs) -> No
 
 def transaction_status_on_success(response: dict, document_name: str, **kwargs) -> None:
     try:
-        frappe.set_user("Administrator")
+        # frappe.set_user("Administrator")
+
+        frappe.flags.ignore_permissions = True
 
         result_code = response.get("ResultCode")
         status = "Completed" if result_code == "0" else "Failed"
-        metadata_dict = kwargs.get("metadata", {})
 
         request_doc = frappe.get_doc(MPESA_EXPRESS_REQUEST_DOCTYPE, document_name)
-        settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, request_doc.settings)
-
-        if status == "Completed" and request_doc.status != "Completed":
-            handle_successful_transaction(
-                request_doc, metadata_dict, settings, response.get("CheckoutRequestID")
-            )
 
         update_mpesa_request_status(
             document_name,
@@ -41,6 +36,7 @@ def transaction_status_on_success(response: dict, document_name: str, **kwargs) 
                 "status": status,
             },
         )
+        request_doc.reconcile_payment()
 
     except Exception:
         log_and_throw_error("MPESA Transaction Status Update Error", document_name)
@@ -93,6 +89,28 @@ def stk_push_on_success(
         #     enqueue_after_commit=True,
         #     timeout=300
         # )
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(), f"STK Push Success Error for {document_name}"
+        )
+        raise
+
+
+def stk_push_on_error(
+    response: dict, payload: dict, document_name: str, **kwargs
+) -> None:
+    try:
+        frappe.db.set_value(
+            MPESA_EXPRESS_REQUEST_DOCTYPE,
+            document_name,
+            {
+                # "response_code": response.get("errorCode", ""),
+                "response_description": response.get("errorMessage", ""),
+                "status": "Failed",
+            },
+        )
+        frappe.db.commit()
 
     except Exception:
         frappe.log_error(

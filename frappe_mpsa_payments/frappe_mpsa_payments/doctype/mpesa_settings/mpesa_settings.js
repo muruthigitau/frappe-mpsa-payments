@@ -112,4 +112,50 @@ frappe.ui.form.on("Mpesa Settings", {
 			__("Submit")
 		);
 	},
+
+	update_match_field_options: function (frm, cdt, cdn) {
+		const row = frappe.get_doc(cdt, cdn);
+		const target_doctype = row.target_doctype;
+
+		if (!target_doctype) {
+			frappe.utils.filter_dict(
+				frm.fields_dict["reconciliation_order"].grid.grid_rows_by_docname[cdn].docfields,
+				{ fieldname: "match_field" }
+			)[0].options = [];
+			frm.refresh();
+			return;
+		}
+
+		frappe.call({
+			method: "frappe_mpsa_payments.frappe_mpsa_payments.doctype.mpesa_settings.mpesa_settings.get_doctype_fields",
+			args: { doctype: target_doctype },
+			callback: function (r) {
+				if (r && r.message) {
+					let fields = ["", "name", ...r.message];
+
+					frappe.utils.filter_dict(
+						frm.fields_dict["reconciliation_order"].grid.grid_rows_by_docname[cdn]
+							.docfields,
+						{ fieldname: "match_field" }
+					)[0].options = fields;
+
+					frm.refresh();
+				} else {
+					frappe.msgprint(
+						__("Could not load field information for DocType: {0}", [target_doctype])
+					);
+				}
+			},
+		});
+	},
+});
+
+frappe.ui.form.on("Mpesa Reconciliation Order", {
+	target_doctype: function (frm, cdt, cdn) {
+		frm.events.update_match_field_options(frm, cdt, cdn);
+	},
+
+	refresh: function (frm, cdt, cdn) {
+		frm.events.update_match_field_options(frm, cdt, cdn);
+	},
 });

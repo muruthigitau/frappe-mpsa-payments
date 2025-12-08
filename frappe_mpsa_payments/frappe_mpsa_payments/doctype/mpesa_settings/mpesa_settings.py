@@ -7,6 +7,8 @@ from json import dumps, loads
 from typing import Any
 from urllib.parse import urlparse
 
+import urllib
+
 import frappe
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -18,6 +20,7 @@ from frappe.model.document import Document
 from frappe.utils import (
     fmt_money,
     get_request_site_address,
+    get_url,
 )
 from frappe.utils.file_manager import get_file_path
 
@@ -94,10 +97,21 @@ class MpesaSettings(Document):
 
             self.security_credential = base64.b64encode(ciphertext).decode("utf-8")
 
-    @frappe.whitelist()
-    def get_payment_url(self, **kwargs) -> str:
-        """Return the payment URL"""
-        return "/all-products"
+    def get_payment_url(self, **kwargs):
+        phone = kwargs.get("phone") or kwargs.get("phone_number") or ""
+
+        query_params = {
+            "phone_number": phone,
+            "payment_gateway": kwargs.get("payment_gateway"),
+            "reference_type": kwargs.get("reference_doctype"),
+            "reference_id": kwargs.get("reference_docname"),
+            "amount": kwargs.get("amount"),
+            "redirect_to": kwargs.get("redirect_to"),
+        }
+
+        encoded_params = urllib.parse.urlencode(query_params)
+
+        return get_url(f"./mpesa/stkpush?{encoded_params}")
 
     def on_update(self) -> None:
         """On Update Hook"""
@@ -566,3 +580,32 @@ def process_transaction_status(integration_request_name):
             message={"status": "error", "message": f"Error checking status: {str(e)}"},
             user=frappe.session.user,
         )
+
+
+@frappe.whitelist()
+def get_doctype_fields(doctype):
+    if not doctype:
+        return []
+
+    try:
+        meta = frappe.get_meta(doctype)
+        fields = [
+            f.fieldname
+            for f in meta.fields
+            if f.fieldtype
+            not in (
+                "Table",
+                "Section Break",
+                "Column Break",
+                "Tab Break",
+                "HTML",
+                "Button",
+                "Table MultiSelect",
+                "Attach",
+                "Attach Image",
+            )
+        ]
+        return fields
+    except Exception as e:
+        frappe.log_error(f"Error fetching fields for {doctype}: {str(e)}")
+        return []

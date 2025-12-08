@@ -25,6 +25,7 @@ from ...utils.utils import (
 )
 from .mpesa_response_handler import (
     balance_query_on_success,
+    stk_push_on_error,
     stk_push_on_success,
     transaction_status_on_success,
 )
@@ -321,6 +322,7 @@ def initiate_stk_push(**args) -> any:
             method="POST",
             payload=payload,
             success_callback=stk_push_on_success,
+            error_callback=stk_push_on_error,
             request_description="Mpesa STK Push",
             doctype=args.get("doctype", MPESA_SETTINGS_DOCTYPE),
             document_name=args.get("document_name", mpesa_settings.name),
