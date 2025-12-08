@@ -99,3 +99,25 @@ def stk_push_on_success(
             frappe.get_traceback(), f"STK Push Success Error for {document_name}"
         )
         raise
+
+
+def stk_push_on_error(
+    response: dict, payload: dict, document_name: str, **kwargs
+) -> None:
+    try:
+        frappe.db.set_value(
+            MPESA_EXPRESS_REQUEST_DOCTYPE,
+            document_name,
+            {
+                # "response_code": response.get("errorCode", ""),
+                "response_description": response.get("errorMessage", ""),
+                "status": "Failed",
+            },
+        )
+        frappe.db.commit()
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(), f"STK Push Success Error for {document_name}"
+        )
+        raise
