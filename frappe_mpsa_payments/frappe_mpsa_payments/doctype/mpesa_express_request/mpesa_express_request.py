@@ -5,17 +5,30 @@
 import frappe
 from frappe.model.document import Document
 from frappe_mpsa_payments.utils.doctype_names import MPESA_SETTINGS_DOCTYPE
-
+from frappe.utils import time
+from frappe.exceptions import DoesNotExistError
 from ....utils.utils import handle_successful_transaction, validate_phone_number
-from ...api.m_pesa_api import initiate_stk_push  # Import the STK push function
+from ...api.m_pesa_api import (
+    check_transaction_status,
+    initiate_stk_push,
+)  # Import the STK push function
 
 
 class MpesaExpressRequest(Document):
-    def validate(self):
-        if self.settings:
+
+    def set_missing_values(self):
+        if self.settings and not self.payment_gateway:
             self.payment_gateway = frappe.db.get_value(
                 "Payment Gateway", {"gateway_controller": self.settings}, "name"
             )
+
+        if self.payment_gateway and not self.settings:
+            self.settings = frappe.db.get_value(
+                "Payment Gateway", {"name": self.payment_gateway}, "gateway_controller"
+            )
+
+    def validate(self):
+        self.set_missing_values()
 
         if "erpnext" in frappe.get_installed_apps():
             if self.reference_doctype == "Payment Request":

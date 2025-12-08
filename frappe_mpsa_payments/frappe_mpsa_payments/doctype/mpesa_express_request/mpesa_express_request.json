@@ -11,17 +11,17 @@
  "field_order": [
   "request_details_section",
   "phone_number",
+  "payment_gateway",
   "settings",
   "reference_doctype",
-  "payment_gateway",
-  "transaction_desc",
+  "reference_name",
   "column_break_hakd",
   "amount",
   "status",
   "is_reconciled",
-  "reference_name",
   "account_reference",
   "timestamp",
+  "transaction_desc",
   "response_details_section",
   "merchant_request_id",
   "response_code",
@@ -39,12 +39,14 @@
  ],
  "fields": [
   {
+   "allow_on_submit": 1,
    "fieldname": "response_code",
    "fieldtype": "Data",
    "label": "Response Code",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "response_description",
    "fieldtype": "Small Text",
    "label": "Response Description",
@@ -55,12 +57,14 @@
    "fieldtype": "Column Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "merchant_request_id",
    "fieldtype": "Data",
    "label": "Merchant Request ID",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "checkout_request_id",
    "fieldtype": "Data",
    "in_filter": 1,
@@ -73,12 +77,14 @@
    "unique": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "result_code",
    "fieldtype": "Data",
    "label": "Result Code",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "result_desc",
    "fieldtype": "Data",
    "label": "Result Desc",
@@ -112,6 +118,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "transaction_desc",
    "fieldtype": "Data",
    "label": "Transaction Desc",
@@ -132,12 +139,14 @@
    "fieldtype": "Column Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "timestamp",
    "fieldtype": "Datetime",
    "label": "Timestamp",
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "transaction_id",
    "fieldtype": "Data",
    "in_filter": 1,
@@ -152,8 +161,7 @@
    "fieldname": "settings",
    "fieldtype": "Link",
    "label": "Paybill Settings",
-   "options": "Mpesa Settings",
-   "reqd": 1
+   "options": "Mpesa Settings"
   },
   {
    "allow_on_submit": 1,
@@ -182,7 +190,7 @@
    "fieldtype": "Link",
    "label": "Payment Gateway",
    "options": "Payment Gateway",
-   "read_only": 1
+   "reqd": 1
   },
   {
    "fieldname": "reference_doctype",
@@ -197,6 +205,7 @@
    "options": "reference_doctype"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "customer_message",
    "fieldtype": "Small Text",
    "label": "Customer Message",
@@ -236,8 +245,8 @@
    "link_fieldname": "reference_docname"
   }
  ],
- "modified": "2025-12-05 12:49:03.508783",
- "modified_by": "a@d.com",
+ "modified": "2025-12-08 18:01:18.592900",
+ "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Express Request",
  "naming_rule": "Expression (old style)",
