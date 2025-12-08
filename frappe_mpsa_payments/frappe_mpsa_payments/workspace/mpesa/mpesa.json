@@ -1,6 +1,7 @@
 {
+ "app": "frappe_mpsa_payments",
  "charts": [],
- "content": "[{\"id\":\"nu2bkf51Ir\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">M-Pesa</span>\",\"col\":12}},{\"id\":\"v5xMov9fuY\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"L2zasfpoOs\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Disbursed B2C\",\"col\":4}},{\"id\":\"7jnhj5XLgU\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Received C2B\",\"col\":4}},{\"id\":\"IitgNsFwsJ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"gvenJof67-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Settings\",\"col\":3}},{\"id\":\"0da8pdMCsQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Integration Request\",\"col\":3}},{\"id\":\"UdyOBPCeG1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Error Log\",\"col\":3}},{\"id\":\"LxbqU74dB5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"B2C Payment Disbursement\",\"col\":3}},{\"id\":\"dee9XfjZYm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Payment Reconciliation\",\"col\":3}},{\"id\":\"aBHUw7-kkd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Bl25BRZWzc\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}},{\"id\":\"U7swFux4jx\",\"type\":\"card\",\"data\":{\"card_name\":\"Disbursements\",\"col\":4}},{\"id\":\"Eqauc23rby\",\"type\":\"card\",\"data\":{\"card_name\":\"Payments\",\"col\":4}},{\"id\":\"NGfRDMvXcQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"nu2bkf51Ir\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h3\\\">M-Pesa</span>\",\"col\":12}},{\"id\":\"v5xMov9fuY\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"L2zasfpoOs\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Disbursed B2C\",\"col\":4}},{\"id\":\"7jnhj5XLgU\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Total Received C2B\",\"col\":4}},{\"id\":\"IitgNsFwsJ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Shortcuts</span>\",\"col\":12}},{\"id\":\"gvenJof67-\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Settings\",\"col\":4}},{\"id\":\"0da8pdMCsQ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Integration Request\",\"col\":4}},{\"id\":\"UdyOBPCeG1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Error Log\",\"col\":4}},{\"id\":\"qYn6qlFgrm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"STK Push\",\"col\":4}},{\"id\":\"LxbqU74dB5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"B2C Payment Disbursement\",\"col\":4}},{\"id\":\"dee9XfjZYm\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mpesa Payment Reconciliation\",\"col\":4}},{\"id\":\"aBHUw7-kkd\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"Bl25BRZWzc\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}},{\"id\":\"U7swFux4jx\",\"type\":\"card\",\"data\":{\"card_name\":\"Disbursements\",\"col\":4}},{\"id\":\"Eqauc23rby\",\"type\":\"card\",\"data\":{\"card_name\":\"Payments\",\"col\":4}},{\"id\":\"NGfRDMvXcQ\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2025-03-06 09:26:13.194859",
  "custom_blocks": [],
  "docstatus": 0,
@@ -241,8 +242,8 @@
    "type": "Link"
   }
  ],
- "modified": "2025-12-04 18:23:53.863856",
- "modified_by": "Administrator",
+ "modified": "2025-12-08 18:36:25.478892",
+ "modified_by": "e@e.com",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa",
  "number_cards": [
@@ -282,7 +283,15 @@
    "doc_view": "List",
    "label": "B2C Payment Disbursement",
    "link_to": "B2C Payment Disbursement",
-   "stats_filter": "[[\"B2C Payment Disbursement\",\"status\",\"=\",\"Not Initiated\",false]]",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "STK Push",
+   "link_to": "Mpesa Express Request",
+   "stats_filter": "[]",
    "type": "DocType"
   },
   {
@@ -309,5 +318,6 @@
    "type": "DocType"
   }
  ],
- "title": "Mpesa"
+ "title": "Mpesa",
+ "type": "Workspace"
 }
