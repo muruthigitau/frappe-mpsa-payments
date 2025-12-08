@@ -70,6 +70,10 @@ class MpesaExpressRequest(Document):
                 frappe.throw("Missing reference document to determine conversion rate.")
 
     def on_submit(self):
+        self.initiate_request()
+
+    @frappe.whitelist()
+    def initiate_request(self):
         args = {
             "payment_gateway": self.payment_gateway,
             "phone_number": self.phone_number,
@@ -128,3 +132,103 @@ class MpesaExpressRequest(Document):
 
         if not self.is_reconciled:
             handle_successful_transaction(self, settings)
+
+
+@frappe.whitelist(allow_guest=True)
+def create_new_request(
+    phone_number, payment_gateway, reference_type, reference_id, amount, redirect=None
+):
+    phone_number = clean_digits(phone_number)
+    if (
+        not phone_number
+        or not payment_gateway
+        or not reference_type
+        or not reference_id
+        or not amount
+    ):
+        frappe.throw("Missing fields")
+
+    doc = frappe.get_doc(
+        {
+            "doctype": "Mpesa Express Request",
+            "phone_number": phone_number,
+            "payment_gateway": payment_gateway,
+            "reference_doctype": reference_type,
+            "reference_name": reference_id,
+            "amount": float(amount),
+            "status": "In Progress",
+        }
+    )
+    doc.insert(ignore_permissions=True)
+    doc.submit()
+    frappe.db.commit()
+
+    return doc.name
+
+
+def clean_digits(v):
+    if not v:
+        return ""
+    return "".join(filter(str.isdigit, str(v)))
+
+
+@frappe.whitelist(allow_guest=True)
+def get_request_status(name):
+    frappe.flags.ignore_permissions = True
+
+    try:
+        doc = frappe.get_doc("Mpesa Express Request", name)
+    except DoesNotExistError:
+        frappe.throw(f"Mpesa Express Request {name} not found.")
+
+    max_retries = 10
+    wait_time_seconds = 3
+    retries = 0
+
+    while doc.status == "Pending" and retries < max_retries:
+        check_transaction_status(doc.name)
+        time.sleep(wait_time_seconds)
+
+        doc.reload()
+
+        retries += 1
+
+    return {
+        "status": doc.status,
+        "amount": doc.amount,
+        "phone_number": doc.phone_number,
+    }
+
+
+@frappe.whitelist(allow_guest=True)
+def get_stkpush_defaults():
+    gateways = frappe.get_all(
+        "Payment Gateway",
+        filters={"gateway_settings": "Mpesa Settings"},
+        fields=["name", "gateway_controller"],
+        ignore_permissions=True,
+    )
+
+    reference_map = {}
+    for g in gateways:
+        settings_name = g.gateway_controller
+        if settings_name:
+            settings = frappe.get_doc(
+                "Mpesa Settings", settings_name, ignore_permissions=True
+            )
+            reference_map[g.name] = [
+                d.target_doctype for d in settings.reconciliation_order
+            ]
+        else:
+            reference_map[g.name] = []
+
+    return {"gateways": gateways, "reference_map": reference_map}
+
+
+@frappe.whitelist(allow_guest=True)
+def retry_stkpush(name):
+    doc = frappe.get_doc("Mpesa Express Request", name)
+    if doc.status == "Completed":
+        frappe.throw("Cannot retry a completed STK Push request.")
+
+    doc.initiate_request()
