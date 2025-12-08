@@ -566,3 +566,32 @@ def process_transaction_status(integration_request_name):
             message={"status": "error", "message": f"Error checking status: {str(e)}"},
             user=frappe.session.user,
         )
+
+
+@frappe.whitelist()
+def get_doctype_fields(doctype):
+    if not doctype:
+        return []
+
+    try:
+        meta = frappe.get_meta(doctype)
+        fields = [
+            f.fieldname
+            for f in meta.fields
+            if f.fieldtype
+            not in (
+                "Table",
+                "Section Break",
+                "Column Break",
+                "Tab Break",
+                "HTML",
+                "Button",
+                "Table MultiSelect",
+                "Attach",
+                "Attach Image",
+            )
+        ]
+        return fields
+    except Exception as e:
+        frappe.log_error(f"Error fetching fields for {doctype}: {str(e)}")
+        return []

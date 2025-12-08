@@ -14,11 +14,8 @@
   "section_break_rrgz",
   "column_break_uspo",
   "get_account_balance",
+  "column_break_rsfp",
   "check_transaction_status",
-  "column_break_gtyp",
-  "auto_create_sales_invoice",
-  "auto_reconcile_c2b",
-  "submit_b2c_accounting_entries",
   "section_break_lkry",
   "consumer_key",
   "consumer_secret",
@@ -37,7 +34,15 @@
   "column_break_bcac",
   "expires_in",
   "column_break_ppbt",
-  "token_expiry"
+  "token_expiry",
+  "reconciliation_tab",
+  "column_break_gtyp",
+  "auto_create_sales_invoice",
+  "auto_reconcile_c2b",
+  "column_break_cuud",
+  "submit_b2c_accounting_entries",
+  "section_break_pwed",
+  "reconciliation_order"
  ],
  "fields": [
   {
@@ -202,7 +207,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "auto_reconcile_c2b",
    "fieldtype": "Check",
    "label": "Auto Reconcile C2B Payments"
@@ -219,10 +224,36 @@
    "fieldtype": "Long Text",
    "hidden": 1,
    "label": "Account Balance"
+  },
+  {
+   "fieldname": "reconciliation_tab",
+   "fieldtype": "Tab Break",
+   "label": "Reconciliation"
+  },
+  {
+   "fieldname": "column_break_cuud",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_rsfp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_pwed",
+   "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval: doc.auto_reconcile_c2b",
+   "description": "Defines the order and fields used to auto-reconcile M-Pesa C2B payments. The system matches payments sequentially based on this table (e.g., Customer by ID \u2192 Customer by PIN \u2192 Sales Invoice by ID) until a successful reconciliation. Works for PayBill transactions referencing an account.",
+   "fieldname": "reconciliation_order",
+   "fieldtype": "Table",
+   "label": "Reconciliation Order",
+   "mandatory_depends_on": "eval: doc.auto_reconcile_c2b",
+   "options": "Mpesa Reconciliation Order"
   }
  ],
  "links": [],
- "modified": "2025-12-03 22:48:47.513243",
+ "modified": "2025-12-08 09:05:54.289224",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",
