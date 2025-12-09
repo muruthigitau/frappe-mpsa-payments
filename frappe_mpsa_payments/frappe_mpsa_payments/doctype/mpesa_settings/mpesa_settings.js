@@ -150,7 +150,7 @@ frappe.ui.form.on("Mpesa Settings", {
 	},
 });
 
-frappe.ui.form.on("Mpesa Reconciliation Order", {
+frappe.ui.form.on("Mpesa Reconciliation Priority", {
 	target_doctype: function (frm, cdt, cdn) {
 		frm.events.update_match_field_options(frm, cdt, cdn);
 	},

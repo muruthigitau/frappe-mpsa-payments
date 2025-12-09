@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class MpesaReconciliationOrder(Document):
+class MpesaReconciliationPriority(Document):
 	pass

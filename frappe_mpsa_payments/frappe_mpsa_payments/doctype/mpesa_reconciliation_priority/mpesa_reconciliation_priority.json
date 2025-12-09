@@ -46,7 +46,7 @@
  "modified": "2025-12-08 08:57:37.769408",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
- "name": "Mpesa Reconciliation Order",
+ "name": "Mpesa Reconciliation Priority",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",
