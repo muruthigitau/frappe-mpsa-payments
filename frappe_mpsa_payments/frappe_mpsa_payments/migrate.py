@@ -11,6 +11,9 @@ def is_app_installed(app_name: str) -> bool:
 
 
 def after_migrate():
+    if is_app_installed("payments"):
+        update_settings_module()
+
     if is_app_installed("erpnext"):
         create_custom_pos_fields()
         create_custom_erpnext_fields()
@@ -21,6 +24,13 @@ def after_migrate():
 
     if is_app_installed("hrms"):
         create_custom_hrms_fields()
+
+
+def update_settings_module():
+    current_module = frappe.db.get_value("DocType", "Mpesa Settings", "module")
+    if current_module != MODULE:
+        frappe.db.set_value("DocType", "Mpesa Settings", "module", MODULE)
+        frappe.reload_doctype("Mpesa Settings")
 
 
 def create_custom_lending_fields():
