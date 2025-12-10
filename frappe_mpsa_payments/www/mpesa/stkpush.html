@@ -22,12 +22,12 @@ page_content %}
 
 			<div class="mp-group">
 				<div class="mp-label">Payment Gateway</div>
-				<select class="mp-select" id="payment_gateway"></select>
+				<select class="mp-select" id="payment_gateway" disabled></select>
 			</div>
 
 			<div class="mp-group" id="reference-group">
 				<div class="mp-label">Reference Type</div>
-				<select class="mp-select" id="reference_type"></select>
+				<select class="mp-select" id="reference_type" disabled></select>
 			</div>
 
 			<div class="mp-group">
@@ -36,12 +36,18 @@ page_content %}
 					class="mp-input"
 					id="reference_id"
 					value="{{ mpesa_request.reference_id or '' }}"
+					disabled
 				/>
 			</div>
 
 			<div class="mp-group">
 				<div class="mp-label">Amount (KES)</div>
-				<input class="mp-input" id="amount" value="{{ mpesa_request.amount or '' }}" />
+				<input
+					class="mp-input"
+					id="amount"
+					value="{{ mpesa_request.amount or '' }}"
+					disabled
+				/>
 			</div>
 
 			<div class="mp-btn" id="create-btn" onclick="submit_new_request()">
