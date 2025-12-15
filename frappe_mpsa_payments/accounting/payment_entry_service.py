@@ -1,4 +1,3 @@
-import erpnext
 import frappe
 from frappe.utils import nowdate
 
@@ -16,6 +15,8 @@ def create_payment_entry_for_doc(b2c_disbursement, b2c_disbursement_ref, submit=
         b2c_disbursement_ref: B2C Payment Disbursement Reference document
         submit: whether to submit the Payment Entry
     """
+    import erpnext
+
     current_user = frappe.session.user
     frappe.set_user("Administrator")
 
