@@ -1,7 +1,5 @@
 import ast
 import json
-
-import erpnext
 import frappe
 import frappe.defaults
 from frappe import _, qb
@@ -49,6 +47,8 @@ def create_payment_entry(
     Returns:
             PaymentEntry: Newly created payment entry document.
     """
+
+    import erpnext
     from erpnext.accounts.doctype.bank_account.bank_account import (
         get_party_bank_account,
     )
@@ -237,6 +237,7 @@ def get_outstanding_invoices(
     limit=None,
     voucher_no=None,
 ):
+    import erpnext
     from erpnext.accounts.party import get_party_account
     from erpnext.accounts.utils import QueryPaymentLedger
 
