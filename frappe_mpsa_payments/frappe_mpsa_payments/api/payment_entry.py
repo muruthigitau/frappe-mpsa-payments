@@ -4,13 +4,6 @@ import json
 import erpnext
 import frappe
 import frappe.defaults
-from erpnext.accounts.doctype.bank_account.bank_account import get_party_bank_account
-from erpnext.accounts.doctype.journal_entry.journal_entry import (
-    get_default_bank_cash_account,
-)
-from erpnext.accounts.party import get_party_account
-from erpnext.accounts.utils import QueryPaymentLedger, get_account_currency
-from erpnext.setup.utils import get_exchange_rate
 from frappe import _, qb
 from frappe.utils import (
     flt,
@@ -56,6 +49,13 @@ def create_payment_entry(
     Returns:
             PaymentEntry: Newly created payment entry document.
     """
+    from erpnext.accounts.doctype.bank_account.bank_account import (
+        get_party_bank_account,
+    )
+    from erpnext.accounts.party import get_party_account
+    from erpnext.accounts.utils import get_account_currency
+    from erpnext.setup.utils import get_exchange_rate
+
     # TODO : need to have a better way to handle currency
     date = posting_date or nowdate()
 
@@ -161,6 +161,10 @@ def get_bank_cash_account(company, mode_of_payment, bank_account=None):
     Returns:
             BankAccount: Default bank or cash account.
     """
+    from erpnext.accounts.doctype.journal_entry.journal_entry import (
+        get_default_bank_cash_account,
+    )
+
     bank = get_default_bank_cash_account(
         company, "Bank", mode_of_payment=mode_of_payment, account=bank_account
     )
@@ -233,6 +237,9 @@ def get_outstanding_invoices(
     limit=None,
     voucher_no=None,
 ):
+    from erpnext.accounts.party import get_party_account
+    from erpnext.accounts.utils import QueryPaymentLedger
+
     if invoice_type is None:
         invoice_type = "Sales Invoice"
 
@@ -444,6 +451,8 @@ def get_available_pos_profiles(company, currency):
 def create_and_reconcile_payment_reconciliation(
     outstanding_invoices, customer, company, payment_entries
 ):
+    from erpnext.accounts.party import get_party_account
+
     reconcile_doc = frappe.new_doc("Payment Reconciliation")
     reconcile_doc.party_type = "Customer"
     reconcile_doc.party = customer

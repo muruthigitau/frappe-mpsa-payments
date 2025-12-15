@@ -4,11 +4,6 @@
 from typing import Dict, List, Optional
 
 import frappe
-from erpnext.accounts.doctype.payment_entry.payment_entry import (
-    get_outstanding_reference_documents as original_get_outstanding_reference_documents,
-)
-from erpnext.accounts.party import get_party_account
-from erpnext.setup.utils import get_exchange_rate
 from frappe import _
 from frappe.model.document import Document
 from frappe.query_builder import DocType
@@ -113,6 +108,8 @@ class B2CPaymentDisbursement(Document):
                 )
 
     def set_missing_values(self):
+        from erpnext.setup.utils import get_exchange_rate
+
         if not self.company_currency:
             self.company_currency = frappe.get_cached_value(
                 "Company", self.company, "default_currency"
@@ -341,10 +338,10 @@ class B2CPaymentDisbursement(Document):
         Returns:
             List of document entries.
         """
-        if config.use_erpnext_function:
+        if "erpnext" in frappe.get_installed_apps() and config.use_erpnext_function:
             return self._fetch_erpnext_entries(doctype, args)
 
-        if doctype == "Salary Slip":
+        if "hrms" in frappe.get_installed_apps() and doctype == "Salary Slip":
             return self._fetch_unpaid_salary_slips(doctype, args, filters)
 
         try:
@@ -496,6 +493,12 @@ class B2CPaymentDisbursement(Document):
         Returns:
             List of document entries.
         """
+        from erpnext.accounts.doctype.payment_entry.payment_entry import (
+            get_outstanding_reference_documents as original_get_outstanding_reference_documents,
+        )
+
+        from erpnext.accounts.party import get_party_account
+
         party_type = args.get("party_type")
         company = args.get("company")
         party = args.get("party")
@@ -696,6 +699,8 @@ class B2CPaymentDisbursement(Document):
 
     def _get_exchange_rate(self, entry: Dict, doctype: str) -> float:
         """Calculate exchange rate for the document."""
+        from erpnext.setup.utils import get_exchange_rate
+
         if self.paid_to_account_currency == self.company_currency:
             return 1
 

@@ -1,8 +1,9 @@
 import frappe
-from lending.loan_management.doctype.loan.loan import make_loan_disbursement
 
 
 def create_loan_disbursement(b2c_disbursement, b2c_disbursement_ref, submit):
+    from lending.loan_management.doctype.loan.loan import make_loan_disbursement
+
     try:
         loan = frappe.get_doc("Loan", b2c_disbursement_ref.reference_name)
 
