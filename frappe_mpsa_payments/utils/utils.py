@@ -251,12 +251,16 @@ def handle_successful_transaction(request_doc, settings):
             frappe.flags.ignore_permissions = True
             event_booking = frappe.get_doc("Event Booking", request_doc.reference_name)
             event_booking.submit()
+            event_payment = frappe.get_doc("Event Payment", {"reference_docname": event_booking.name, "reference_doctype": "Event Booking"})
+            event_payment.payment_id = request_doc.transaction_id
+            event_payment.payment_received = 1
+            event_payment.save(ignore_permissions=True)
             set_mpesa_request_reconciled(request_doc)
         except Exception:
             log_and_throw_error("Event Booking Submission Error", request_doc.name)
 
 
-def set_mpesa_request_reconciled(request_doc):
+def set_mpesa_request_reconciled(request_doc): 
     request_doc.reload()
     request_doc.is_reconciled = 1
     request_doc.save(ignore_permissions=True)
@@ -288,3 +292,44 @@ def get_mode_of_payment_account(mode_of_payment: str, company: str) -> str:
         {"parent": mode_of_payment, "company": company},
         "default_account",
     )
+
+
+@frappe.whitelist(allow_guest=True)
+def convert_amount_to_kes(currency: str, amount: float, date: str = None, settings: str = None) -> float | None:
+    """
+    Convert the given amount from `currency` to KES.
+
+    Priority:
+    1. Check Mpesa Settings → exchange_rates child table
+    2. If ERPNext is installed, use get_exchange_rate
+    3. Otherwise, return None
+    """
+
+    try:
+        if settings:
+            settings = frappe.get_doc("Mpesa Settings", settings)
+    except frappe.DoesNotExistError:
+        settings = None
+
+    if settings and settings.exchange_rates:
+        for row in settings.exchange_rates:
+            if row.currency == currency:
+                return float(amount) * float(row.rate)
+
+    if "erpnext" in frappe.get_installed_apps():
+        from erpnext.setup.utils import get_exchange_rate
+
+        conversion_rate = get_exchange_rate(
+            currency,
+            "KES",
+            date,
+            "for_selling",
+        )
+
+        if not conversion_rate:
+            frappe.throw("Conversion rate not available to convert amount to KES.")
+
+        return float(amount) * float(conversion_rate)
+
+    return None
+

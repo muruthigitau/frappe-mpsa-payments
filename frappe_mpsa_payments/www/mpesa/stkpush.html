@@ -1,117 +1,201 @@
-{% extends "templates/web.html" %} {% block title %}M-Pesa STK Push{% endblock %} {% block
-page_content %}
+{% extends "templates/web.html" %} {% block title %}{{ title or "M-Pesa STK Push" }}{% endblock %}
+{% block page_content %}
 <div class="mp-wrapper">
 	<div class="mp-card">
-		<div class="mp-title">M-Pesa Express Payment</div>
+		<div class="mp-header">
+			<div class="mp-brand-icon">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+				</svg>
+			</div>
+			<h2 class="mp-title" id="title">
+				{{ mpesa_request.title or title or "M-Pesa Express" }}
+			</h2>
+			{% if mpesa_request.description or description %}
+			<p class="mp-description" id="description">
+				{{ mpesa_request.description or description }}
+			</p>
+			{% endif %}
+		</div>
 
 		{% if error %}
-		<div class="mp-alert">{{ error }}</div>
+		<div class="mp-alert">
+			<svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+				<path
+					fill-rule="evenodd"
+					d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+					clip-rule="evenodd"
+				></path>
+			</svg>
+			{{ error }}
+		</div>
 		{% endif %} {% if is_new %}
-
 		<div class="mp-form">
 			<input type="hidden" id="redirect_to" value="{{ redirect_to or '' }}" />
 
 			<div class="mp-group">
-				<div class="mp-label">Phone Number</div>
-				<input
-					class="mp-input"
-					id="phone_number"
-					value="{{ mpesa_request.phone_number or '' }}"
-				/>
+				<label class="mp-label">Phone Number</label>
+				<div class="mp-input-wrapper">
+					<input
+						class="mp-input"
+						id="phone_number"
+						placeholder="e.g. 2547..."
+						value="{{ mpesa_request.phone_number or '' }}"
+					/>
+				</div>
 			</div>
 
 			<div class="mp-group">
-				<div class="mp-label">Payment Gateway</div>
-				<select class="mp-select" id="payment_gateway" disabled></select>
-			</div>
-
-			<div class="mp-group" id="reference-group">
-				<div class="mp-label">Reference Type</div>
-				<select class="mp-select" id="reference_type" disabled></select>
-			</div>
-
-			<div class="mp-group">
-				<div class="mp-label">Reference ID</div>
+				<label class="mp-label">Gateway</label>
 				<input
-					class="mp-input"
-					id="reference_id"
-					value="{{ mpesa_request.reference_id or '' }}"
+					class="mp-input mp-readonly"
+					id="payment_gateway"
 					disabled
+					value="{{ mpesa_request.payment_gateway or '' }}"
 				/>
 			</div>
 
-			<div class="mp-group">
-				<div class="mp-label">Amount (KES)</div>
-				<input
-					class="mp-input"
-					id="amount"
-					value="{{ mpesa_request.amount or '' }}"
-					disabled
-				/>
+			<div class="mp-grid-2">
+				<div class="mp-group">
+					<label class="mp-label">Reference Type</label>
+					<input
+						class="mp-input mp-readonly"
+						id="reference_type"
+						disabled
+						value="{{ mpesa_request.reference_type or '' }}"
+					/>
+				</div>
+
+				<div class="mp-group">
+					<label class="mp-label">Reference ID</label>
+					{% if allow_payment_reference_editing %}
+					<input
+						class="mp-input"
+						id="reference_id"
+						placeholder="e.g. INV-001"
+						value="{{ mpesa_request.reference_id or '' }}"
+					/>
+					{% else %}
+					<input
+						class="mp-input mp-readonly"
+						id="reference_id"
+						disabled
+						value="{{ mpesa_request.reference_id or '' }}"
+					/>
+					{% endif %}
+				</div>
 			</div>
 
-			<div class="mp-btn" id="create-btn" onclick="submit_new_request()">
-				Initiate Payment
+			<div class="mp-amount-box">
+				<div class="mp-grid-2">
+					<div class="mp-group">
+						<label class="mp-label">
+							Amount (<span id="currency_label"
+								>{{ mpesa_request.currency or currency or 'KES' }}</span
+							>)
+						</label>
+						{% if allow_amount_editing %}
+						<input
+							type="number"
+							step="0.01"
+							class="mp-input"
+							id="base_amount"
+							value="{{ mpesa_request.base_amount or '0.00' }}"
+							oninput="update_total_display()"
+						/>
+						{% else %}
+						<div class="mp-sub-val">{{ mpesa_request.base_amount or '0.00' }}</div>
+						<input
+							type="hidden"
+							id="base_amount"
+							value="{{ mpesa_request.base_amount }}"
+						/>
+						{% endif %}
+					</div>
+				</div>
+
+				<div class="mp-divider"></div>
+
+				<div class="mp-group mb-0">
+					<label class="mp-label">Total to Pay </label>
+					<div class="mp-sub-val" id="total_display">
+						Ksh {{ mpesa_request.amount or '0.00' }}
+					</div>
+				</div>
 			</div>
+
+			<button class="mp-btn-primary" id="create-btn" onclick="submit_new_request()">
+				<span>Pay Now</span>
+				<svg
+					width="20"
+					height="20"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					viewBox="0 0 24 24"
+				>
+					<path d="M5 12h14M12 5l7 7-7 7"></path>
+				</svg>
+			</button>
 		</div>
 
 		{% else %}
-
-		<div class="mp-status">
-			<div class="mp-row">
-				<div>Phone Number</div>
-				<div>{{ mpesa_request.phone_number }}</div>
-			</div>
-			<div class="mp-row">
-				<div>Gateway</div>
-				<div>{{ mpesa_request.payment_gateway }}</div>
-			</div>
-			<div class="mp-row">
-				<div>Reference</div>
-				<div>{{ mpesa_request.reference_type }} / {{ mpesa_request.reference_id }}</div>
-			</div>
-			<div class="mp-row">
-				<div>Amount</div>
-				<div>{{ mpesa_request.amount }}</div>
-			</div>
-
-			<div class="mp-row">
-				<div>Status</div>
-				<div id="status-badge" data-status="{{ mpesa_request.status }}" class="mp-badge">
+		<div class="mp-status-view">
+			<div class="mp-status-header">
+				<div
+					id="status-badge"
+					class="mp-badge-large"
+					data-status="{{ mpesa_request.status }}"
+				>
 					{{ mpesa_request.status }}
 				</div>
 			</div>
 
-			<div class="mp-actions">
-				<div class="mp-btn mp-secondary" id="check-btn" onclick="manual_check()">
-					Recheck Status
+			<div class="mp-details-list">
+				<div class="mp-detail-item">
+					<span>Phone</span>
+					<strong>{{ mpesa_request.phone_number }}</strong>
 				</div>
-				<div
-					class="mp-btn mp-danger"
+				<div class="mp-detail-item">
+					<span>Reference</span>
+					<strong>{{ mpesa_request.reference_id }}</strong>
+				</div>
+				<div class="mp-detail-item">
+					<span>Amount Paid</span>
+					<strong class="mp-text-success">
+						{{ mpesa_request.currency or currency or 'KES' }} {{ mpesa_request.amount
+						}}
+					</strong>
+				</div>
+			</div>
+
+			<div class="mp-actions-vertical">
+				<button class="mp-btn-secondary" id="check-btn" onclick="beginChecking()">
+					Refresh Status
+				</button>
+				<button
+					class="mp-btn-danger"
 					id="retry-btn"
 					style="display: none"
 					onclick="retry_stk()"
 				>
-					Retry Payment
-				</div>
+					Try Again
+				</button>
 			</div>
 		</div>
-
 		{% endif %}
 	</div>
 </div>
 
 <div id="overlay" class="mp-overlay" style="display: none">
 	<div class="mp-overlay-card">
-		<div class="mp-spinner"></div>
-		<div class="mp-overlay-text">Processing...</div>
-		<div class="mp-overlay-actions">
-			<div class="mp-btn mp-secondary" onclick="cancel_check()">Cancel</div>
+		<div class="mp-loader">
+			<div class="mp-dot"></div>
+			<div class="mp-dot"></div>
+			<div class="mp-dot"></div>
 		</div>
+		<div class="mp-overlay-text">Awaiting M-Pesa PIN...</div>
+		<button class="mp-btn-danger" onclick="cancel_check()">Cancel</button>
 	</div>
 </div>
-
-{% endblock %} {% block script %}
-<link rel="stylesheet" href="stkpush.css" />
-<script src="stkpush.js"></script>
 {% endblock %}

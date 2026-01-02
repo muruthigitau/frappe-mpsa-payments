@@ -105,9 +105,14 @@ class MpesaSettings(Document):
             "payment_gateway": kwargs.get("payment_gateway"),
             "reference_type": kwargs.get("reference_doctype"),
             "reference_id": kwargs.get("reference_docname"),
+            "title": kwargs.get("title"),
+            "description": kwargs.get("description"),
+            "payment": kwargs.get("payment"),
+            "currency": kwargs.get("currency"),
             "amount": kwargs.get("amount"),
             "redirect_to": kwargs.get("redirect_to"),
         }
+
 
         encoded_params = urllib.parse.urlencode(query_params)
 
@@ -154,6 +159,11 @@ class MpesaSettings(Document):
                 cert_url,
                 self.sandbox,
             )
+            
+        if self.exchange_rates:
+            for rate in self.exchange_rates:
+                if rate.currency == "KES":
+                    frappe.throw(_("Conversion rate for KES cannot be set."))
 
     def request_for_payment(self, **kwargs) -> None:
         args = frappe._dict(kwargs)
@@ -183,7 +193,8 @@ class MpesaSettings(Document):
                 stk_request = frappe.new_doc(MPESA_EXPRESS_REQUEST_DOCTYPE)
                 stk_request.update(
                     {
-                        "amount": args.get("request_amount", 0.0),
+                        "base_amount": args.get("request_amount", 0.0),
+                        "currency": args.get("currency", "KES"),
                         "phone_number": phone_number,
                         "timestamp": frappe.utils.now(),
                         "settings": args.payment_gateway[6:],

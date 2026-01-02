@@ -42,7 +42,16 @@
   "column_break_cuud",
   "submit_b2c_accounting_entries",
   "section_break_pwed",
-  "reconciliation_order"
+  "reconciliation_order",
+  "payment_page_tab",
+  "payment_page_title",
+  "payment_page_description",
+  "column_break_uunu",
+  "allow_amount_editing",
+  "allow_payment_reference_editing",
+  "section_break_yzhu",
+  "enable_multi_currency_payments",
+  "exchange_rates"
  ],
  "fields": [
   {
@@ -247,13 +256,64 @@
    "description": "Defines the order and fields used to auto-reconcile M-Pesa C2B payments. The system matches payments sequentially based on this table (e.g., Customer by ID \u2192 Customer by PIN \u2192 Sales Invoice by ID) until a successful reconciliation. Works for PayBill transactions referencing an account.",
    "fieldname": "reconciliation_order",
    "fieldtype": "Table",
-   "label": "Reconciliation Order",
+   "label": "Reconciliation Priority",
    "mandatory_depends_on": "eval: doc.auto_reconcile_c2b",
    "options": "Mpesa Reconciliation Priority"
+  },
+  {
+   "fieldname": "payment_page_tab",
+   "fieldtype": "Tab Break",
+   "label": "Payment Page"
+  },
+  {
+   "fieldname": "payment_page_title",
+   "fieldtype": "Data",
+   "label": "Payment Page Title"
+  },
+  {
+   "fieldname": "payment_page_description",
+   "fieldtype": "Small Text",
+   "label": "Payment Page Description"
+  },
+  {
+   "fieldname": "column_break_uunu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "Allows user to enter their own payment amount",
+   "fieldname": "allow_amount_editing",
+   "fieldtype": "Check",
+   "label": "Allow Amount Editing"
+  },
+  {
+   "default": "0",
+   "description": "Allows the user to edit the Reference ID and, if a Reconciliation Priority is set, also allows changing the Reference Type.",
+   "fieldname": "allow_payment_reference_editing",
+   "fieldtype": "Check",
+   "label": "Allow Payment Reference Editing"
+  },
+  {
+   "fieldname": "section_break_yzhu",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_multi_currency_payments",
+   "fieldtype": "Check",
+   "label": "Enable Multi Currency Payments"
+  },
+  {
+   "depends_on": "eval: doc.enable_multi_currency_payments",
+   "description": "Select the source currency to convert from, and specify the exchange rate to KES. If Currency Exchange is enabled, these rates will take precedence and override the system exchange rates; otherwise, the system exchange rates will be used.",
+   "fieldname": "exchange_rates",
+   "fieldtype": "Table",
+   "label": "Exchange Rates",
+   "options": "Mpesa Conversion Rate"
   }
  ],
  "links": [],
- "modified": "2025-12-09 09:25:04.686174",
+ "modified": "2026-01-02 11:57:14.880419",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",
