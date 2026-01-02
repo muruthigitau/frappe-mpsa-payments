@@ -368,7 +368,7 @@ def stk_push_callback(**kwargs) -> None:
 
         request_doc = frappe.get_doc(
             MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id}
-        )
+        ) 
 
         update_mpesa_request_status(
             request_doc.name,
@@ -405,7 +405,8 @@ def stk_push_callback(**kwargs) -> None:
             },
         )
 
-        request_doc.reconcile_payment()
+        if status == "Completed": 
+            request_doc.reconcile_payment()
 
         if "erpnext" in frappe.get_installed_apps():
             if request_doc and request_doc.reference_doctype == "Payment Request":

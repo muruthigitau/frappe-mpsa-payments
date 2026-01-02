@@ -260,4 +260,6 @@ def retry_stkpush(name):
     if doc.status == "Completed":
         frappe.throw("Cannot retry a completed STK Push request.")
 
+    doc.status = "In Progress"
+    doc.save(ignore_permissions=True)
     doc.initiate_request()

@@ -90,7 +90,7 @@ def create_payment_entry(
         company_currency,
         date,
         "for_selling" if payment_type == "Receive" else "for_buying",
-    )
+    ) 
     paid_amount, received_amount = set_paid_amount_and_received_amount(
         party_account_currency, bank, amount, payment_type, None, conversion_rate
     )

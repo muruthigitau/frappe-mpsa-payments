@@ -1,7 +1,7 @@
 // Copyright (c) 2024, Navari Limited and contributors
 // For license information, please see license.txt
 
-const HAS_ERPNEXT = frappe.boot?.user?.all_apps?.includes("erpnext");
+const HAS_ERPNEXT = frappe.boot?.app_data?.some((app) => app.app_name === "erpnext");
 
 if (!HAS_ERPNEXT) {
 	return;

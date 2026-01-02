@@ -251,12 +251,16 @@ def handle_successful_transaction(request_doc, settings):
             frappe.flags.ignore_permissions = True
             event_booking = frappe.get_doc("Event Booking", request_doc.reference_name)
             event_booking.submit()
+            event_payment = frappe.get_doc("Event Payment", {"reference_docname": event_booking.name, "reference_doctype": "Event Booking"})
+            event_payment.payment_id = request_doc.transaction_id
+            event_payment.payment_received = 1
+            event_payment.save(ignore_permissions=True)
             set_mpesa_request_reconciled(request_doc)
         except Exception:
             log_and_throw_error("Event Booking Submission Error", request_doc.name)
 
 
-def set_mpesa_request_reconciled(request_doc):
+def set_mpesa_request_reconciled(request_doc): 
     request_doc.reload()
     request_doc.is_reconciled = 1
     request_doc.save(ignore_permissions=True)
