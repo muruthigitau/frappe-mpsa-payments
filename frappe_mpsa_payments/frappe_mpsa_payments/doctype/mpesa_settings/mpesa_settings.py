@@ -105,9 +105,14 @@ class MpesaSettings(Document):
             "payment_gateway": kwargs.get("payment_gateway"),
             "reference_type": kwargs.get("reference_doctype"),
             "reference_id": kwargs.get("reference_docname"),
+            "title": kwargs.get("title"),
+            "description": kwargs.get("description"),
+            "payment": kwargs.get("payment"),
+            "currency": kwargs.get("currency"),
             "amount": kwargs.get("amount"),
             "redirect_to": kwargs.get("redirect_to"),
         }
+
 
         encoded_params = urllib.parse.urlencode(query_params)
 
