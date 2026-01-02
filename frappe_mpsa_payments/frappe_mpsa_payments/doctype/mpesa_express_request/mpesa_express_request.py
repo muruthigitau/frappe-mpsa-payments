@@ -7,7 +7,11 @@ from frappe.model.document import Document
 from frappe_mpsa_payments.utils.doctype_names import MPESA_SETTINGS_DOCTYPE
 from frappe.utils import time
 from frappe.exceptions import DoesNotExistError
-from ....utils.utils import handle_successful_transaction, validate_phone_number
+from ....utils.utils import (
+    handle_successful_transaction,
+    validate_phone_number,
+    convert_amount_to_kes,
+)
 from ...api.m_pesa_api import (
     check_transaction_status,
     initiate_stk_push,
@@ -27,6 +31,18 @@ class MpesaExpressRequest(Document):
                 "Payment Gateway", {"name": self.payment_gateway}, "gateway_controller"
             )
 
+        if self.currency != "KES":
+            if "erpnext" not in frappe.get_installed_apps():
+                frappe.throw("Mpesa Express Requests must be in KES currency.")
+
+            converted_amount = convert_amount_to_kes(self.currency, self.base_amount)
+            if converted_amount is not None:
+                self.amount = converted_amount
+
+        else:
+            if self.base_amount:
+                self.amount = self.base_amount
+
     def validate(self):
         self.set_missing_values()
 
@@ -42,32 +58,34 @@ class MpesaExpressRequest(Document):
     def validate_payment_request_amount(self):
         payment_request = frappe.get_doc("Payment Request", self.reference_name)
         currency = payment_request.currency
-        company = payment_request.company
-        company_currency = frappe.db.get_value("Company", company, "default_currency")
+        self.amount = payment_request.grand_total
+        self.currency = currency
+        # company = payment_request.company
+        # company_currency = frappe.db.get_value("Company", company, "default_currency")
 
-        if currency != "KES":
-            if payment_request.reference_doctype and payment_request.reference_name:
-                ref_doc = frappe.get_doc(
-                    payment_request.reference_doctype, payment_request.reference_name
-                )
-                conversion_rate = getattr(ref_doc, "conversion_rate", None)
+        # if currency != "KES":
+        #     if payment_request.reference_doctype and payment_request.reference_name:
+        #         ref_doc = frappe.get_doc(
+        #             payment_request.reference_doctype, payment_request.reference_name
+        #         )
+        #         conversion_rate = getattr(ref_doc, "conversion_rate", None)
 
-                if company_currency != "KES":
-                    frappe.throw(
-                        "STK Push can only be initiated if document or company currency is KES. "
-                        f"Current currency: {currency}, Company currency: {company_currency}"
-                    )
+        #         if company_currency != "KES":
+        #             frappe.throw(
+        #                 "STK Push can only be initiated if document or company currency is KES. "
+        #                 f"Current currency: {currency}, Company currency: {company_currency}"
+        #             )
 
-                if not conversion_rate:
-                    frappe.throw(
-                        "Conversion rate not available to convert amount to KES."
-                    )
+        #         if not conversion_rate:
+        #             frappe.throw(
+        #                 "Conversion rate not available to convert amount to KES."
+        #             )
 
-                self.amount = float(payment_request.grand_total) * float(
-                    conversion_rate
-                )
-            else:
-                frappe.throw("Missing reference document to determine conversion rate.")
+        #         self.amount = float(payment_request.grand_total) * float(
+        #             conversion_rate
+        #         )
+        #     else:
+        #         frappe.throw("Missing reference document to determine conversion rate.")
 
     def on_submit(self):
         self.initiate_request()
@@ -136,7 +154,15 @@ class MpesaExpressRequest(Document):
 
 @frappe.whitelist(allow_guest=True)
 def create_new_request(
-    phone_number, payment_gateway, reference_type, reference_id, amount, redirect=None
+    phone_number,
+    payment_gateway,
+    reference_type,
+    reference_id,
+    amount,
+    currency="KES",
+    redirect=None,
+    title="",
+    description="",
 ):
     phone_number = clean_digits(phone_number)
     if (
@@ -155,8 +181,11 @@ def create_new_request(
             "payment_gateway": payment_gateway,
             "reference_doctype": reference_type,
             "reference_name": reference_id,
-            "amount": float(amount),
+            "base_amount": float(amount),
+            "currency": currency,
             "status": "In Progress",
+            "transaction_title": title,
+            "transaction_description": description,
         }
     )
     doc.insert(ignore_permissions=True)

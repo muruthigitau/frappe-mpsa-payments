@@ -1,6 +1,8 @@
 // Copyright (c) 2025, Navari Limited and contributors
 // For license information, please see license.txt
 
+const HAS_ERPNEXT = frappe.boot?.app_data?.some((app) => app.app_name === "erpnext");
+
 frappe.ui.form.on("Mpesa Express Request", {
 	refresh(frm) {
 		frappe.realtime.on("refresh_form", function () {
@@ -8,6 +10,17 @@ frappe.ui.form.on("Mpesa Express Request", {
 		});
 
 		autofill_gateway_settings(frm);
+
+		if (!HAS_ERPNEXT) {
+			if (frm.doc.currency && frm.doc.currency !== "KES") {
+				frm.set_value("currency", "KES");
+			}
+			frm.set_query("currency", () => ({
+				filters: [["Currency", "name", "=", "KES"]],
+			}));
+		}
+
+		convertAmountToKES(frm);
 
 		if (frm.doc.status !== "Completed" && frm.doc.docstatus == 1) {
 			frm.add_custom_button(
@@ -119,6 +132,14 @@ frappe.ui.form.on("Mpesa Express Request", {
 	payment_gateway: function (frm) {
 		autofill_gateway_settings(frm);
 	},
+
+	base_amount: function (frm) {
+		convertAmountToKES(frm);
+	},
+
+	currency: function (frm) {
+		convertAmountToKES(frm);
+	},
 });
 
 function autofill_gateway_settings(frm) {
@@ -138,5 +159,26 @@ function autofill_gateway_settings(frm) {
 					frm.set_value("settings", r.message.gateway_controller);
 				}
 			});
+	}
+}
+
+function convertAmountToKES(frm) {
+	if (frm.doc.currency && frm.doc.currency !== "KES" && frm.doc.base_amount) {
+		frappe.call({
+			method: "frappe_mpsa_payments.utils.utils.convert_amount_to_kes",
+			args: {
+				amount: frm.doc.base_amount,
+				currency: frm.doc.currency,
+			},
+			callback: function (r) {
+				if (r.message) {
+					if (r.message !== frm.doc.amount) {
+						frm.set_value("amount", r.message);
+					}
+				}
+			},
+		});
+	} else {
+		frm.set_value("amount", frm.doc.amount || 0);
 	}
 }

@@ -15,7 +15,11 @@
   "settings",
   "reference_doctype",
   "reference_name",
+  "transaction_title",
+  "transaction_description",
   "column_break_hakd",
+  "currency",
+  "base_amount",
   "amount",
   "status",
   "is_reconciled",
@@ -89,17 +93,6 @@
    "fieldtype": "Data",
    "label": "Result Desc",
    "read_only": 1
-  },
-  {
-   "fieldname": "amount",
-   "fieldtype": "Currency",
-   "in_filter": 1,
-   "in_list_view": 1,
-   "in_preview": 1,
-   "in_standard_filter": 1,
-   "label": "Amount",
-   "non_negative": 1,
-   "reqd": 1
   },
   {
    "fieldname": "phone_number",
@@ -235,6 +228,47 @@
    "fieldtype": "Check",
    "label": "Is Reconciled",
    "read_only": 1
+  },
+  {
+   "default": "KES",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.currency != \"KES\"",
+   "fieldname": "base_amount",
+   "fieldtype": "Currency",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Amount (Original Currency)",
+   "mandatory_depends_on": "eval: doc.currency != \"KES\"",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Amount (KES)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "transaction_title",
+   "fieldtype": "Data",
+   "label": "Transaction Title"
+  },
+  {
+   "fieldname": "transaction_description",
+   "fieldtype": "Small Text",
+   "label": "Transaction Description"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -245,7 +279,7 @@
    "link_fieldname": "reference_docname"
   }
  ],
- "modified": "2025-12-08 18:01:18.592900",
+ "modified": "2026-01-02 14:06:57.029047",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Express Request",

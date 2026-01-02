@@ -14,6 +14,13 @@ frappe.ui.form.on("Mpesa Settings", {
 			frm.reload_doc();
 			frm.events.setup_account_balance_html(frm);
 		});
+		frm.fields_dict["exchange_rates"].grid.get_field("currency").get_query = function () {
+			return {
+				filters: {
+					name: ["!=", "KES"],
+				},
+			};
+		};
 	},
 	get_account_balance: function (frm) {
 		if (!frm.doc.initiator_name && !frm.doc.security_credential) {
@@ -159,3 +166,22 @@ frappe.ui.form.on("Mpesa Reconciliation Priority", {
 		frm.events.update_match_field_options(frm, cdt, cdn);
 	},
 });
+
+frappe.ui.form.on("Mpesa Conversion Rate", {
+	currency: function (frm, cdt, cdn) {
+		validate_kes_currency(frm, cdt, cdn);
+	},
+
+	exchange_rates_add: function (frm, cdt, cdn) {
+		validate_kes_currency(frm, cdt, cdn);
+	},
+});
+
+function validate_kes_currency(frm, cdt, cdn) {
+	const row = locals[cdt][cdn];
+
+	if (row.currency === "KES") {
+		row.currency = null;
+		frm.refresh_field("exchange_rates");
+	}
+}
