@@ -24,15 +24,15 @@ fixtures = [
 
 
 # Each item in the list will be shown as an app in the apps page
-add_to_apps_screen = [
-	{
-		"name": "frappe_mpsa_payments",
-		"logo": "/assets/frappe_mpsa_payments/logo.svg",
-		"title": "Frappe Mpesa Payments",
-		"route": "/desk/mpesa",
-		"has_permission": "frappe_mpsa_payments.check_app_permission"
-	}
-]
+# add_to_apps_screen = [
+# 	{
+# 		"name": "frappe_mpsa_payments",
+# 		"logo": "/assets/frappe_mpsa_payments/logo.png",
+# 		"title": "Frappe Mpesa Payments",
+# 		"route": "/frappe_mpsa_payments",
+# 		"has_permission": "frappe_mpsa_payments.api.permission.has_app_permission"
+# 	}
+# ]
 
 # Includes in <head>
 # ------------------
