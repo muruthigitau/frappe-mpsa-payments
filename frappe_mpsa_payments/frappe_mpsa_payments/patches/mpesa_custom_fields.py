@@ -16,6 +16,7 @@ def create_custom_pos_fields():
                 "fieldtype": "Button",
                 "hidden": 1,
                 "insert_after": "contact_email",
+                "module": "Frappe Mpsa Payments",
             },
             {
                 "fieldname": "mpesa_receipt_number",
@@ -23,6 +24,7 @@ def create_custom_pos_fields():
                 "fieldtype": "Data",
                 "read_only": 1,
                 "insert_after": "company",
+                "module": "Frappe Mpsa Payments",
             },
         ]
     }
@@ -39,6 +41,7 @@ def create_custom_pos_fields():
             "parenttype": "POS Settings",
             "parent": "POS Settings",
             "parentfield": "invoice_fields",
+            "module": "Frappe Mpsa Payments",
         },
         {
             "doctype": "POS Field",
@@ -48,6 +51,7 @@ def create_custom_pos_fields():
             "parenttype": "POS Settings",
             "parent": "POS Settings",
             "parentfield": "invoice_fields",
+            "module": "Frappe Mpsa Payments",
         },
     ]
     create_pos_settings(record_dict)
