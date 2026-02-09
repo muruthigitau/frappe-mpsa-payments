@@ -169,6 +169,13 @@ def log_and_throw_error(err_msg, context=None):
 
 def handle_successful_transaction(request_doc, settings):
     """Handle actions for a successful transaction"""
+    if request_doc.get("reference_doctype") and request_doc.get("reference_name"):
+            frappe.get_doc(
+                request_doc.get("reference_doctype"), request_doc.get("reference_name")
+            ).run_method("on_payment_authorized", "Completed") 
+            set_mpesa_request_reconciled(request_doc)  
+            frappe.db.commit()
+
     if "erpnext" in frappe.get_installed_apps():
         if request_doc.reference_doctype == "Payment Request":
             payment_request = frappe.get_doc(
@@ -252,9 +259,14 @@ def handle_successful_transaction(request_doc, settings):
             event_booking = frappe.get_doc("Event Booking", request_doc.reference_name)
             event_booking.submit()
             event_payment = frappe.get_doc("Event Payment", {"reference_docname": event_booking.name, "reference_doctype": "Event Booking"})
-            event_payment.payment_id = request_doc.transaction_id
-            event_payment.payment_received = 1
-            event_payment.save(ignore_permissions=True)
+            frappe.db.set_value(
+                "Event Payment",
+                event_payment.name,
+                {
+                    "payment_received": 1,
+                    "payment_id": request_doc.transaction_id
+                },
+            )
             set_mpesa_request_reconciled(request_doc)
         except Exception:
             log_and_throw_error("Event Booking Submission Error", request_doc.name)
