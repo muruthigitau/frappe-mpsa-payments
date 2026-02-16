@@ -6,9 +6,6 @@ from frappe.model.document import Document
 
 
 class MpesaPaymentReconciliation(Document):
-
-	_table_fieldnames = []
-
 	def save(self):
 		return
 	
