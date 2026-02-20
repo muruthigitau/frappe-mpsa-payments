@@ -98,11 +98,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "depends_on": "eval:(doc.sandbox==0)",
    "fieldname": "business_shortcode",
    "fieldtype": "Data",
    "label": "Business Shortcode",
-   "mandatory_depends_on": "eval:(doc.sandbox==0)"
+   "reqd": 1
   },
   {
    "fieldname": "online_passkey",
@@ -313,7 +312,7 @@
   }
  ],
  "links": [],
- "modified": "2026-01-02 11:57:14.880419",
+ "modified": "2026-02-19 11:04:34.141995",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "Mpesa Settings",

@@ -1,7 +1,10 @@
 import frappe
 from frappe.utils import now_datetime
 
-from ...utils.doctype_names import MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
+from ...utils.doctype_names import (
+    MPESA_EXPRESS_REQUEST_DOCTYPE,
+    TAX_REMMITANCE_DOCTYPE,
+)
 from ...utils.utils import (
     handle_successful_transaction,
     log_and_throw_error,
@@ -113,7 +116,76 @@ def stk_push_on_error(
         frappe.db.commit()
 
     except Exception:
+        frappe.log_error(frappe.get_traceback(), f"STK Push Error for {document_name}")
+        raise
+
+
+def tax_remmitance_on_success(
+    response: dict, payload: dict, document_name: str, **kwargs
+) -> None:
+    try:
+        fields = {
+            "conversation_id": response.get("ConversationID", ""),
+            "response_code": response.get("ResponseCode", ""),
+            "response_description": response.get("ResponseDescription", ""),
+            "amount": payload.get("Amount", 0.0),
+            "status": "Completed" if response.get("ResponseCode") == "0" else "Failed",
+        }
+
+        doctype = kwargs.get("doctype", "")
+
+        if doctype == TAX_REMMITANCE_DOCTYPE:
+            for key, value in fields.items():
+                frappe.db.set_value(TAX_REMMITANCE_DOCTYPE, document_name, key, value)
+        else:
+            doc = frappe.new_doc(TAX_REMMITANCE_DOCTYPE)
+            for key, value in fields.items():
+                setattr(doc, key, value)
+            doc.insert(ignore_permissions=True)
+            frappe.logger().info(
+                f"Mpesa Tax Remittance created for {document_name} with ID {doc.name}"
+            )
+
+        frappe.db.commit()
+
+        frappe.publish_realtime(
+            event="refresh_form",
+            doctype=TAX_REMMITANCE_DOCTYPE,
+            docname=document_name,
+        )
+
+    except Exception:
         frappe.log_error(
-            frappe.get_traceback(), f"STK Push Success Error for {document_name}"
+            frappe.get_traceback(), f"Tax Remittance Success Error for {document_name}"
         )
         raise
+
+
+def tax_remmitance_on_error(
+    response: dict, payload: dict, document_name: str, **kwargs
+) -> None:
+    try:
+        frappe.db.set_value(
+            TAX_REMMITANCE_DOCTYPE,
+            document_name,
+            {
+                # "response_code": response.get("errorCode", ""),
+                "response_description": response.get("errorMessage", ""),
+                "status": "Failed",
+            },
+        )
+        frappe.db.commit()
+
+    except Exception:
+        frappe.log_error(
+            frappe.get_traceback(), f"Tax Remittance Error for {document_name}"
+        )
+        raise
+
+
+# {
+#     "OriginatorConversationID": "b331-459a-8a17-c0c7053a27ab12560",
+#     "ConversationID": "AG_20260219_010020060obc9af6zk5v",
+#     "ResponseCode": "0",
+#     "ResponseDescription": "Accept the service request successfully.",
+# }
