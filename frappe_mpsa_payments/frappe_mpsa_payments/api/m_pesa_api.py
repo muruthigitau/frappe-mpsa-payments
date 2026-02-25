@@ -13,7 +13,11 @@ from frappe.model.document import Document
 from frappe.utils import flt
 from requests.auth import HTTPBasicAuth
 
-from ...utils.doctype_names import MPESA_EXPRESS_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
+from ...utils.doctype_names import (
+    MPESA_EXPRESS_REQUEST_DOCTYPE,
+    MPESA_SETTINGS_DOCTYPE,
+    TAX_REMMITANCE_DOCTYPE,
+)
 from ...utils.encoding_initiator_password import (
     generate_security_credential,
 )
@@ -27,6 +31,8 @@ from .mpesa_response_handler import (
     balance_query_on_success,
     stk_push_on_error,
     stk_push_on_success,
+    tax_remmitance_on_error,
+    tax_remmitance_on_success,
     transaction_status_on_success,
 )
 from .process_request import process_request
@@ -368,7 +374,7 @@ def stk_push_callback(**kwargs) -> None:
 
         request_doc = frappe.get_doc(
             MPESA_EXPRESS_REQUEST_DOCTYPE, {"checkout_request_id": checkout_request_id}
-        ) 
+        )
 
         update_mpesa_request_status(
             request_doc.name,
@@ -405,7 +411,7 @@ def stk_push_callback(**kwargs) -> None:
             },
         )
 
-        if status == "Completed": 
+        if status == "Completed":
             request_doc.reconcile_payment()
 
         if "erpnext" in frappe.get_installed_apps():
@@ -952,3 +958,100 @@ def verify_transaction(**kwargs) -> None:
             ),
         },
     )
+
+
+@frappe.whitelist()
+def initiate_tax_remmitance(**args) -> any:
+    if len(args) == 1 and "args" in args:
+        try:
+            parsed_args = json.loads(args.get("args"))
+            if isinstance(parsed_args, dict):
+                args = frappe._dict(parsed_args)
+            else:
+                frappe.log_error(_("Invalid input format. Expected JSON object."))
+        except json.JSONDecodeError:
+            frappe.log_error(_("Failed to decode JSON arguments."))
+    else:
+        args = frappe._dict(args)
+
+    required_fields = ["mpesa_settings", "account_reference", "request_amount"]
+    missing_fields = [field for field in required_fields if not args.get(field)]
+    if missing_fields:
+        frappe.log_error(
+            _("Missing required fields: {0}").format(", ".join(missing_fields))
+        )
+
+    try:
+        callback_url = build_callback_url(
+            "frappe_mpsa_payments.frappe_mpsa_payments.api.m_pesa_api.tax_remmitance_callback"
+        )
+        mpesa_settings = frappe.get_doc(MPESA_SETTINGS_DOCTYPE, args.mpesa_settings)
+        certs = frappe.get_single("Mpesa Public Key Certificate")
+        cert_url = ""
+
+        if mpesa_settings.sandbox:
+            cert_url = certs.sandbox_certificate
+        else:
+            cert_url = certs.production_certificate
+
+        security_credential = generate_security_credential(
+            (
+                mpesa_settings.get_password("initiator_password", "")
+                if mpesa_settings.initiator_password
+                else ""
+            ),
+            cert_url,
+            mpesa_settings.sandbox,
+        )
+        amount = args.request_amount
+        reference_name = args.get("account_reference", "Online Payment")
+
+        payload = {
+            "Initiator": mpesa_settings.initiator_name,
+            "SecurityCredential": mpesa_settings.get_password("security_credential")
+            or security_credential,
+            "CommandID": "PayTaxToKRA",
+            "Amount": amount,
+            "PartyA": mpesa_settings.business_shortcode,
+            "PartyB": 572572,
+            "AccountReference": reference_name,
+            "SenderIdentifierType": "4",
+            "RecieverIdentifierType": "4",
+            "Remarks": "Tax remittance",
+            "QueueTimeOutURL": callback_url,
+            "ResultURL": callback_url,
+        }
+
+        endpoint = "/mpesa/b2b/v1/remittax"
+
+        response = process_request(
+            endpoint=endpoint,
+            method="POST",
+            payload=payload,
+            success_callback=tax_remmitance_on_success,
+            error_callback=tax_remmitance_on_error,
+            request_description="Mpesa Tax Remittance",
+            doctype=args.get("doctype", TAX_REMMITANCE_DOCTYPE),
+            document_name=args.get("document_name", mpesa_settings.name),
+            settings_name=mpesa_settings.name,
+        )
+        return response
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Tax Remittance Generation Error")
+        frappe.log_error(
+            _("Failed to generate Tax Remittance. Please check the error logs.")
+        )
+
+
+def tax_remmitance_callback(**kwargs) -> None:
+    try:
+        transaction_response = frappe._dict(kwargs["Body"])
+        frappe.log_error(
+            title="Tax Remittance Callback Received",
+            message=f"Received tax remittance callback: {(transaction_response)}",
+        )
+
+    except Exception:
+        # log_and_throw_error("Tax Remittance Callback Error", checkout_request_id)
+        pass
