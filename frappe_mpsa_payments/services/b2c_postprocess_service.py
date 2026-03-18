@@ -26,6 +26,16 @@ def handle_successful_payment(disbursement_name: str, reference_name: str) -> No
     b2c_req = frappe.get_doc(B2C_REQUEST_DOCTYPE, ref.b2c_disbursement_request)
     b2c_disb = frappe.get_doc(ref.parenttype, disbursement_name)
 
+    try:
+        frappe.get_doc(
+            b2c_req.get("reference_doctype"), b2c_req.get("reference_name")
+        ).run_method("on_payment_disbursed", "Completed")
+    except Exception:
+        frappe.log_error(
+            f"Error calling on_payment_disbursed for {b2c_req.get('reference_doctype')} {b2c_req.get('reference_name')}",
+            frappe.get_traceback(),
+        )
+
     if b2c_req.mpesa_settings:
         settings_doctype = MPESA_SETTINGS_DOCTYPE
         settings_name = b2c_req.mpesa_settings
