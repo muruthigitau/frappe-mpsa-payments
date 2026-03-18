@@ -157,10 +157,14 @@ class MpesaB2CConnector(BaseAPIConnector, B2CConnector):
             update_integration_request(
                 integration_request.name, status="Completed", output=str(data)
             )
+            b2c_req = frappe.get_doc(B2C_REQUEST_DOCTYPE, document_name)
             frappe.db.commit()
             frappe.publish_realtime(
                 event="refresh_form", doctype=B2C_REQUEST_DOCTYPE, docname=document_name
             )
+            frappe.get_doc(
+                b2c_req.get("reference_doctype"), b2c_req.get("reference_name")
+            ).run_method("on_payment_disbursed", "Completed")
 
         except Exception:
             frappe.log_error(
