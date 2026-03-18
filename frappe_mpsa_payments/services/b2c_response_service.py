@@ -34,6 +34,7 @@ def process_b2c_result(provider: str, payload: dict) -> None:
             settings_name = req.stanbic_settings
 
     # Now load the connector with a real settings_name
+    
     connector = get_b2c_connector(provider, settings_name)
     connector.handle_callback(payload)
 
