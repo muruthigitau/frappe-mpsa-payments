@@ -156,8 +156,7 @@
    "fieldname": "originator_conversation_id",
    "fieldtype": "Data",
    "label": "Originator Conversation ID",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "column_break_uaay",
@@ -369,7 +368,6 @@
    "label": "B2C Payment Disbursement",
    "options": "B2C Payment Disbursement",
    "read_only": 1,
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -377,8 +375,7 @@
    "fieldtype": "Link",
    "label": "B2C Payment Disbursement Reference",
    "options": "B2C Payment Disbursement Reference",
-   "read_only": 1,
-   "reqd": 1
+   "read_only": 1
   },
   {
    "fieldname": "column_break_kown",
@@ -431,7 +428,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-16 06:44:32.312411",
+ "modified": "2026-03-13 17:12:33.296713",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Disbursement Request",
