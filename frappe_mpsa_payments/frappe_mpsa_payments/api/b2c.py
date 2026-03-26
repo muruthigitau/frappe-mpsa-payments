@@ -20,10 +20,6 @@ def b2c_results_callback(**kwargs):
     """
 
     try:
-        frappe.log_error(
-            "B2C Callback Received",
-            f"Received B2C callback with payload: {kwargs}",
-        )
         result_payload = kwargs.get("Result") or {}
         process_b2c_result(None, result_payload)
         return "OK"
