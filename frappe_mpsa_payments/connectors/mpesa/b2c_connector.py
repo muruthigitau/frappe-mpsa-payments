@@ -275,10 +275,12 @@ class MpesaB2CConnector(BaseAPIConnector, B2CConnector):
                 setattr(req, k, v)
         req.save(ignore_permissions=True)
 
+        status = "Completed" if req.status == "Paid" else req.status
+
         if self.integration_request:
             update_integration_request(
                 self.integration_request.name,
-                status=req.status,
+                status=status,
                 output=json.dumps(payload),
             )
         else:
