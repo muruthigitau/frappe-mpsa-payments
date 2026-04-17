@@ -428,7 +428,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-03-13 17:12:33.296713",
+ "modified": "2026-04-17 09:14:02.392799",
  "modified_by": "Administrator",
  "module": "Frappe Mpsa Payments",
  "name": "B2C Disbursement Request",
@@ -506,6 +506,23 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
+ "states": [
+  {
+   "color": "Gray",
+   "title": "Not Initiated"
+  },
+  {
+   "color": "Blue",
+   "title": "Initiated"
+  },
+  {
+   "color": "Green",
+   "title": "Paid"
+  },
+  {
+   "color": "Red",
+   "title": "Failed"
+  }
+ ],
  "track_changes": 1
 }

@@ -12,6 +12,7 @@ from frappe_mpsa_payments.utils.doctype_names import (
     MPESA_SETTINGS_DOCTYPE,
     STANBIC_SETTINGS_DOCTYPE,
 )
+from frappe_mpsa_payments.utils.utils import log_and_throw_error
 
 
 def handle_successful_payment(disbursement_name: str, reference_name: str) -> None:
@@ -27,9 +28,18 @@ def handle_successful_payment(disbursement_name: str, reference_name: str) -> No
     b2c_disb = frappe.get_doc(ref.parenttype, disbursement_name)
 
     try:
-        frappe.get_doc(
+        request_doc = frappe.get_doc(
             b2c_req.get("reference_doctype"), b2c_req.get("reference_name")
-        ).run_method("on_payment_disbursed", "Completed")
+        )
+        request_doc.run_method("on_payment_disbursed", "Completed")
+        if "erpnext" in frappe.get_installed_apps():
+            if request_doc.doctype == "Payment Request":
+                try:
+                    request_doc.create_payment_entry()
+                except Exception:
+                    log_and_throw_error(
+                        "Payment Entry Creation Error", request_doc.name
+                    )
     except Exception:
         frappe.log_error(
             f"Error calling on_payment_disbursed for {b2c_req.get('reference_doctype')} {b2c_req.get('reference_name')}",

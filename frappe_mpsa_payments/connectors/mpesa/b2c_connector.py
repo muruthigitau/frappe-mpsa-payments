@@ -7,6 +7,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import get_datetime
 
+from frappe_mpsa_payments.utils.utils import log_and_throw_error
+
 from ...utils.doctype_names import B2C_REQUEST_DOCTYPE, MPESA_SETTINGS_DOCTYPE
 from ..abstract import B2CConnector
 from ..base_connector import (
@@ -162,9 +164,18 @@ class MpesaB2CConnector(BaseAPIConnector, B2CConnector):
             frappe.publish_realtime(
                 event="refresh_form", doctype=B2C_REQUEST_DOCTYPE, docname=document_name
             )
-            frappe.get_doc(
+            request_doc = frappe.get_doc(
                 b2c_req.get("reference_doctype"), b2c_req.get("reference_name")
-            ).run_method("on_payment_disbursed", "Completed")
+            )
+            request_doc.run_method("on_payment_disbursed", "Completed")
+            if "erpnext" in frappe.get_installed_apps():
+                if request_doc.doctype == "Payment Request":
+                    try:
+                        request_doc.create_payment_entry()
+                    except Exception:
+                        log_and_throw_error(
+                            "Payment Entry Creation Error", request_doc.name
+                        )
 
         except Exception:
             frappe.log_error(
