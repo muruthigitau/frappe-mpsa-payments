@@ -154,13 +154,11 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+    "Payment Request": {
+        "on_submit": "frappe_mpsa_payments.frappe_mpsa_payments.overrides.server.payment_request.on_submit"
+    }
+}
 
 # Scheduled Tasks
 # ---------------
